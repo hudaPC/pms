@@ -201,8 +201,7 @@
                         <div class="mt-1">
 
                             @if (in_array($supplierInvoice->status, ['unpaid', 'partially_paid', 'paid']))
-                                <form
-                                    action="{{ route('supplier-invoices.due-date.update', $supplierInvoice) }}"
+                                <form action="{{ route('supplier-invoices.due-date.update', $supplierInvoice) }}"
                                     method="POST" class="form-inline">
 
                                     @csrf
@@ -367,6 +366,8 @@
 
                                 <th>#</th>
 
+                                <th>Product Model</th>
+
                                 <th>Item Code</th>
 
                                 <th>Item Name</th>
@@ -398,6 +399,22 @@
 
                                     <td>
                                         {{ $loop->iteration }}
+                                    </td>
+
+                                    <td>
+
+                                        @if ($invoiceItem->productModel)
+                                            <span class="badge badge-info">
+
+                                                {{ $invoiceItem->productModel->model_code }}
+
+                                            </span>
+                                        @else
+                                            <span class="text-muted">
+                                                -
+                                            </span>
+                                        @endif
+
                                     </td>
 
                                     <td>
@@ -476,7 +493,7 @@
 
                                 <tr>
 
-                                    <td colspan="7" class="text-center text-muted py-5">
+                                    <td colspan="8" class="text-center text-muted py-5">
 
                                         No invoice items have been added yet.
 

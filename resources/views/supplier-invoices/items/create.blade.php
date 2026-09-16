@@ -177,7 +177,10 @@
 
                                 </label>
 
-                                <select id="product_model_id" class="form-control no-clear" required>
+                                <select name="product_model_id" id="product_model_id"
+                                    class="form-control no-clear
+                                         @error('product_model_id') is-invalid @enderror"
+                                    required>
 
                                     <option value="">
                                         -- Select Product Model --
@@ -192,6 +195,11 @@
                                     @endforeach
 
                                 </select>
+                                @error('product_model_id')
+                                    <div class="invalid-feedback">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
 
                                 <small class="form-text text-muted">
                                     Select the Product Model first.
@@ -442,7 +450,7 @@
                 $('#item_id');
 
             const unitInput =
-    $('#unit_display');
+                $('#unit_display');
 
             const quantityInput =
                 $('#quantity');

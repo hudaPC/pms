@@ -9,6 +9,7 @@ use App\Models\SupplierInvoiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Item;
+use App\Models\ProductModelItem;
 
 class SupplierInvoiceItemController extends Controller
 {
@@ -71,24 +72,24 @@ class SupplierInvoiceItemController extends Controller
         );
     }
 
-public function itemsByProductModel(
-    SupplierInvoice $supplierInvoice,
-    ProductModel $productModel
-) {
-    /*
+    public function itemsByProductModel(
+        SupplierInvoice $supplierInvoice,
+        ProductModel $productModel
+    ) {
+        /*
     |--------------------------------------------------------------------------
     | Invoice Must Be Draft
     |--------------------------------------------------------------------------
     */
 
-    abort_if(
-        $supplierInvoice->status !== 'draft',
-        403,
-        'Only draft supplier invoices can be modified.'
-    );
+        abort_if(
+            $supplierInvoice->status !== 'draft',
+            403,
+            'Only draft supplier invoices can be modified.'
+        );
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Existing Invoice Items
     |--------------------------------------------------------------------------
@@ -97,21 +98,25 @@ public function itemsByProductModel(
     |--------------------------------------------------------------------------
     */
 
-    $existingItemIds =
-        $supplierInvoice
+        $existingItemIds =
+            $supplierInvoice
             ->items()
+            ->where(
+                'product_model_id',
+                $productModel->id
+            )
             ->pluck('item_id')
             ->toArray();
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Product Model BOM Items
     |--------------------------------------------------------------------------
     */
 
-    $modelItems =
-        $productModel
+        $modelItems =
+            $productModel
             ->modelItems()
             ->with([
                 'item.unit',
@@ -131,87 +136,87 @@ public function itemsByProductModel(
             ->get();
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Prepare Available Items
     |--------------------------------------------------------------------------
     */
 
-    $items = $modelItems
-        ->filter(function ($modelItem) use ($existingItemIds) {
+        $items = $modelItems
+            ->filter(function ($modelItem) use ($existingItemIds) {
 
-            if (!$modelItem->item) {
-                return false;
-            }
+                if (!$modelItem->item) {
+                    return false;
+                }
 
-            if (!$modelItem->item->status) {
-                return false;
-            }
+                if (!$modelItem->item->status) {
+                    return false;
+                }
 
-            if (
-                in_array(
-                    $modelItem->item->id,
-                    $existingItemIds
-                )
-            ) {
-                return false;
-            }
+                if (
+                    in_array(
+                        $modelItem->item->id,
+                        $existingItemIds
+                    )
+                ) {
+                    return false;
+                }
 
-            /*
+                /*
             |--------------------------------------------------------------------------
             | Item Must Belong To Invoice Supplier
             |--------------------------------------------------------------------------
             */
 
-            return
-                $modelItem->item
+                return
+                    $modelItem->item
                     ->suppliers
                     ->isNotEmpty();
-        })
-        ->map(function ($modelItem) {
+            })
+            ->map(function ($modelItem) {
 
-            $item =
-                $modelItem->item;
+                $item =
+                    $modelItem->item;
 
-            $supplier =
-                $item->suppliers->first();
+                $supplier =
+                    $item->suppliers->first();
 
 
-            return [
+                return [
 
-                'id' =>
+                    'id' =>
                     $item->id,
 
-                'item_code' =>
+                    'item_code' =>
                     $item->item_code,
 
-                'item_name' =>
+                    'item_name' =>
                     $item->item_name,
 
-                'unit' =>
+                    'unit' =>
                     $item->unit->name ?? '',
 
-                'unit_price' =>
+                    'unit_price' =>
                     (float) (
                         $supplier->pivot->unit_price
                         ?? 0
                     ),
 
-            ];
-        })
-        ->values();
+                ];
+            })
+            ->values();
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | JSON Response
     |--------------------------------------------------------------------------
     */
 
-    return response()->json([
-        'items' => $items,
-    ]);
-}
+        return response()->json([
+            'items' => $items,
+        ]);
+    }
     /*
     |--------------------------------------------------------------------------
     | Store Invoice Item
@@ -243,6 +248,11 @@ public function itemsByProductModel(
 
         $validated = $request->validate([
 
+            'product_model_id' => [
+                'required',
+                'exists:product_models,id',
+            ],
+
             'item_id' => [
                 'required',
                 'exists:items,id',
@@ -267,7 +277,32 @@ public function itemsByProductModel(
 
         ]);
 
+        /*
+|--------------------------------------------------------------------------
+| Verify Item Belongs To Selected Product Model BOM
+|--------------------------------------------------------------------------
+*/
 
+        $itemBelongsToModel =
+            ProductModelItem::where(
+                'product_model_id',
+                $validated['product_model_id']
+            )
+            ->where(
+                'item_id',
+                $validated['item_id']
+            )
+            ->exists();
+
+        if (!$itemBelongsToModel) {
+
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'item_id' =>
+                    'The selected item does not belong to the selected Product Model BOM.',
+                ]);
+        }
         /*
     |--------------------------------------------------------------------------
     | Prevent Duplicate Item On Same Invoice
@@ -278,6 +313,10 @@ public function itemsByProductModel(
             SupplierInvoiceItem::where(
                 'supplier_invoice_id',
                 $supplierInvoice->id
+            )
+            ->where(
+                'product_model_id',
+                $validated['product_model_id']
             )
             ->where(
                 'item_id',
@@ -341,15 +380,15 @@ public function itemsByProductModel(
         */
 
             SupplierInvoiceItem::create([
+                'supplier_invoice_id' => $supplierInvoice->id,
 
-                'supplier_invoice_id' =>
-                $supplierInvoice->id,
+                'product_model_id' =>
+                $validated['product_model_id'],
 
                 'item_id' =>
                 $validated['item_id'],
 
-                'purchase_order_item_id' =>
-                null,
+                'purchase_order_item_id' => null,
 
                 'quantity' =>
                 $quantity,
@@ -475,10 +514,10 @@ public function itemsByProductModel(
         SupplierInvoiceItem $supplierInvoiceItem
     ) {
         /*
-        |--------------------------------------------------------------------------
-        | Only Draft Invoice Can Be Modified
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Only Draft Invoice Can Be Modified
+    |--------------------------------------------------------------------------
+    */
 
         abort_if(
             $supplierInvoice->status !== 'draft',
@@ -488,10 +527,10 @@ public function itemsByProductModel(
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Make Sure Item Belongs To This Invoice
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Make Sure Item Belongs To This Invoice
+    |--------------------------------------------------------------------------
+    */
 
         abort_if(
             $supplierInvoiceItem->supplier_invoice_id
@@ -501,80 +540,60 @@ public function itemsByProductModel(
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Load Relationships
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Load Invoice + Item Information
+    |--------------------------------------------------------------------------
+    */
+
+        $supplierInvoice->load(
+            'supplier'
+        );
 
         $supplierInvoiceItem->load([
+            'productModel',
             'item.unit',
-            'purchaseOrderItem',
         ]);
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Received Quantity
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Supplier-Specific Item Price
+    |--------------------------------------------------------------------------
+    */
 
-        $receivedQuantity =
-            (float) $supplierInvoiceItem
-                ->purchaseOrderItem
-                ->received_quantity;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Already Invoiced On Other Active Invoices
-        |--------------------------------------------------------------------------
-        */
-
-        $alreadyInvoicedQuantity =
-            (float) SupplierInvoiceItem::where(
-                'purchase_order_item_id',
-                $supplierInvoiceItem->purchase_order_item_id
+        $supplierItem =
+            $supplierInvoiceItem
+            ->item
+            ->suppliers()
+            ->where(
+                'suppliers.id',
+                $supplierInvoice->supplier_id
             )
-                ->where(
-                    'id',
-                    '!=',
-                    $supplierInvoiceItem->id
-                )
-                ->whereHas(
-                    'supplierInvoice',
-                    function ($query) {
+            ->wherePivot(
+                'status',
+                true
+            )
+            ->first();
 
-                        $query->where(
-                            'status',
-                            '!=',
-                            'cancelled'
-                        );
-                    }
-                )
-                ->sum('quantity');
+
+        $supplierUnitPrice =
+            $supplierItem
+            ? (float) $supplierItem->pivot->unit_price
+            : (float) $supplierInvoiceItem->unit_price;
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Maximum Quantity Allowed For This Line
-        |--------------------------------------------------------------------------
-        */
-
-        $maximumInvoiceableQuantity = max(
-            0,
-            $receivedQuantity
-                - $alreadyInvoicedQuantity
-        );
-
+    |--------------------------------------------------------------------------
+    | Edit View
+    |--------------------------------------------------------------------------
+    */
 
         return view(
             'supplier-invoices.items.edit',
             compact(
                 'supplierInvoice',
                 'supplierInvoiceItem',
-                'receivedQuantity',
-                'alreadyInvoicedQuantity',
-                'maximumInvoiceableQuantity'
+                'supplierUnitPrice'
             )
         );
     }
@@ -585,10 +604,10 @@ public function itemsByProductModel(
         SupplierInvoiceItem $supplierInvoiceItem
     ) {
         /*
-        |--------------------------------------------------------------------------
-        | Only Draft Invoice Can Be Modified
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Only Draft Invoice Can Be Modified
+    |--------------------------------------------------------------------------
+    */
 
         abort_if(
             $supplierInvoice->status !== 'draft',
@@ -598,10 +617,10 @@ public function itemsByProductModel(
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Make Sure Item Belongs To This Invoice
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Make Sure Item Belongs To This Invoice
+    |--------------------------------------------------------------------------
+    */
 
         abort_if(
             $supplierInvoiceItem->supplier_invoice_id
@@ -611,10 +630,10 @@ public function itemsByProductModel(
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Validation
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Validation
+    |--------------------------------------------------------------------------
+    */
 
         $validated = $request->validate([
 
@@ -639,107 +658,10 @@ public function itemsByProductModel(
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Load PO Item
-        |--------------------------------------------------------------------------
-        */
-
-        $supplierInvoiceItem->load([
-            'purchaseOrderItem.item.unit',
-        ]);
-
-
-        $poItem =
-            $supplierInvoiceItem->purchaseOrderItem;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Received Quantity
-        |--------------------------------------------------------------------------
-        */
-
-        $receivedQuantity =
-            (float) $poItem->received_quantity;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Already Invoiced On Other Active Invoices
-        |--------------------------------------------------------------------------
-        */
-
-        $alreadyInvoicedQuantity =
-            (float) SupplierInvoiceItem::where(
-                'purchase_order_item_id',
-                $poItem->id
-            )
-                ->where(
-                    'id',
-                    '!=',
-                    $supplierInvoiceItem->id
-                )
-                ->whereHas(
-                    'supplierInvoice',
-                    function ($query) {
-
-                        $query->where(
-                            'status',
-                            '!=',
-                            'cancelled'
-                        );
-                    }
-                )
-                ->sum('quantity');
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Maximum Quantity Allowed For This Line
-        |--------------------------------------------------------------------------
-        */
-
-        $maximumInvoiceableQuantity = max(
-            0,
-            $receivedQuantity
-                - $alreadyInvoicedQuantity
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Prevent Over-Invoicing
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            (float) $validated['quantity']
-            > $maximumInvoiceableQuantity
-        ) {
-
-            return back()
-                ->withInput()
-                ->withErrors([
-
-                    'quantity' =>
-                    'Invoice quantity cannot exceed the remaining received quantity of '
-                        . number_format(
-                            $maximumInvoiceableQuantity,
-                            3
-                        )
-                        . ' '
-                        . ($poItem->item->unit->name ?? 'units')
-                        . '.',
-
-                ]);
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Recalculate Line Total
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Calculate Line Total
+    |--------------------------------------------------------------------------
+    */
 
         $quantity =
             (float) $validated['quantity'];
@@ -752,18 +674,25 @@ public function itemsByProductModel(
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Update + Recalculate Invoice
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Update Invoice Item + Invoice Totals
+    |--------------------------------------------------------------------------
+    */
 
-        DB::transaction(function () use ($supplierInvoice, $supplierInvoiceItem, $validated, $quantity, $unitPrice, $lineTotal) {
+        DB::transaction(function () use (
+            $supplierInvoice,
+            $supplierInvoiceItem,
+            $validated,
+            $quantity,
+            $unitPrice,
+            $lineTotal
+        ) {
 
             /*
-            |--------------------------------------------------------------------------
-            | Update Invoice Item
-            |--------------------------------------------------------------------------
-            */
+        |--------------------------------------------------------------------------
+        | Update Invoice Item
+        |--------------------------------------------------------------------------
+        */
 
             $supplierInvoiceItem->update([
 
@@ -783,16 +712,22 @@ public function itemsByProductModel(
 
 
             /*
-            |--------------------------------------------------------------------------
-            | Recalculate Invoice Totals
-            |--------------------------------------------------------------------------
-            */
+        |--------------------------------------------------------------------------
+        | Recalculate Subtotal
+        |--------------------------------------------------------------------------
+        */
 
             $subtotal =
                 (float) $supplierInvoice
                     ->items()
                     ->sum('line_total');
 
+
+            /*
+        |--------------------------------------------------------------------------
+        | Recalculate Total
+        |--------------------------------------------------------------------------
+        */
 
             $totalAmount = max(
                 0,
@@ -802,6 +737,12 @@ public function itemsByProductModel(
             );
 
 
+            /*
+        |--------------------------------------------------------------------------
+        | Recalculate Balance
+        |--------------------------------------------------------------------------
+        */
+
             $balanceAmount = max(
                 0,
                 $totalAmount
@@ -810,10 +751,10 @@ public function itemsByProductModel(
 
 
             /*
-            |--------------------------------------------------------------------------
-            | Update Invoice Header
-            |--------------------------------------------------------------------------
-            */
+        |--------------------------------------------------------------------------
+        | Update Invoice Header
+        |--------------------------------------------------------------------------
+        */
 
             $supplierInvoice->update([
 
@@ -830,6 +771,12 @@ public function itemsByProductModel(
         });
 
 
+        /*
+    |--------------------------------------------------------------------------
+    | Redirect
+    |--------------------------------------------------------------------------
+    */
+
         return redirect()
             ->route(
                 'supplier-invoices.show',
@@ -840,7 +787,6 @@ public function itemsByProductModel(
                 'Supplier invoice item updated successfully.'
             );
     }
-
     public function destroy(
         SupplierInvoice $supplierInvoice,
         SupplierInvoiceItem $supplierInvoiceItem

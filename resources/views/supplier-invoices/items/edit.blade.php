@@ -4,182 +4,72 @@
 
 @section('content')
 
-<div class="container-fluid py-4">
-
-    {{-- Page Header --}}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-
-        <div>
-
-            <h2 class="mb-1">
-                Edit Supplier Invoice Item
-            </h2>
-
-            <p class="text-muted mb-0">
-                Invoice: {{ $supplierInvoice->invoice_number }}
-            </p>
-
-        </div>
-
-        <a
-            href="{{ route('supplier-invoices.show', $supplierInvoice) }}"
-            class="btn btn-secondary"
-        >
-
-            <i class="fas fa-arrow-left mr-1"></i>
-
-            Back to Invoice
-
-        </a>
-
-    </div>
-
-
-    @if($errors->any())
-
-        <div class="alert alert-danger">
-
-            <ul class="mb-0">
-
-                @foreach($errors->all() as $error)
-
-                    <li>{{ $error }}</li>
-
-                @endforeach
-
-            </ul>
-
-        </div>
-
-    @endif
-
-
-    {{-- Item Information --}}
-    <div class="card card-primary card-outline mb-4">
-
-        <div class="card-header">
-
-            <h3 class="card-title">
-
-                <i class="fas fa-box mr-2"></i>
-
-                Item Information
-
-            </h3>
-
-        </div>
-
-
-        <div class="card-body">
-
-            <div class="row">
-
-                <div class="col-md-3">
-
-                    <strong>Item Code</strong>
-
-                    <div class="mt-1">
-
-                        {{ $supplierInvoiceItem->item->item_code ?? '-' }}
-
-                    </div>
-
-                </div>
-
-
-                <div class="col-md-3">
-
-                    <strong>Item Name</strong>
-
-                    <div class="mt-1">
-
-                        {{ $supplierInvoiceItem->item->item_name ?? '-' }}
-
-                    </div>
-
-                </div>
-
-
-                <div class="col-md-2">
-
-                    <strong>Received Qty</strong>
-
-                    <div class="mt-1">
-
-                        {{ number_format(
-                            $receivedQuantity,
-                            3
-                        ) }}
-
-                    </div>
-
-                </div>
-
-
-                <div class="col-md-2">
-
-                    <strong>Other Invoiced</strong>
-
-                    <div class="mt-1">
-
-                        {{ number_format(
-                            $alreadyInvoicedQuantity,
-                            3
-                        ) }}
-
-                    </div>
-
-                </div>
-
-
-                <div class="col-md-2">
-
-                    <strong>Max Allowed</strong>
-
-                    <div class="mt-1 text-primary">
-
-                        <strong>
-
-                            {{ number_format(
-                                $maximumInvoiceableQuantity,
-                                3
-                            ) }}
-
-                        </strong>
-
-                    </div>
-
-                </div>
+    <div class="container-fluid py-4">
+
+        {{-- =====================================================
+         PAGE HEADER
+    ====================================================== --}}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+
+            <div>
+
+                <h2 class="mb-1">
+                    Edit Supplier Invoice Item
+                </h2>
+
+                <p class="text-muted mb-0">
+                    Invoice:
+                    {{ $supplierInvoice->invoice_number }}
+                </p>
 
             </div>
 
+            <a href="{{ route('supplier-invoices.show', $supplierInvoice) }}"
+                class="btn btn-secondary">
+
+                <i class="fas fa-arrow-left mr-1"></i>
+
+                Back to Invoice
+
+            </a>
+
         </div>
 
-    </div>
+
+        {{-- =====================================================
+         VALIDATION ERRORS
+    ====================================================== --}}
+        @if ($errors->any())
+
+            <div class="alert alert-danger">
+
+                <ul class="mb-0">
+
+                    @foreach ($errors->all() as $error)
+                        <li>
+                            {{ $error }}
+                        </li>
+                    @endforeach
+
+                </ul>
+
+            </div>
+
+        @endif
 
 
-    {{-- Edit Form --}}
-    <form
-        action="{{ route(
-            'supplier-invoices.items.update',
-            [$supplierInvoice, $supplierInvoiceItem]
-        ) }}"
-        method="POST"
-    >
-
-        @csrf
-        @method('PUT')
-
-
-        <div class="card shadow-sm">
+        {{-- =====================================================
+         INVOICE INFORMATION
+    ====================================================== --}}
+        <div class="card card-primary card-outline mb-4">
 
             <div class="card-header">
 
                 <h3 class="card-title">
 
-                    <i class="fas fa-edit mr-2"></i>
+                    <i class="fas fa-file-invoice mr-2"></i>
 
-                    Invoice Item Details
+                    Invoice Information
 
                 </h3>
 
@@ -190,144 +80,50 @@
 
                 <div class="row">
 
-                    {{-- Quantity --}}
+                    {{-- Supplier --}}
                     <div class="col-md-4">
 
-                        <div class="form-group">
+                        <strong>
+                            Supplier
+                        </strong>
 
-                            <label>
-                                Invoice Quantity
-                                <span class="text-danger">*</span>
-                            </label>
+                        <div class="mt-1">
 
-                            <input
-                                type="number"
-                                name="quantity"
-                                id="quantity"
-                                step="0.001"
-                                min="0.001"
-                                max="{{ $maximumInvoiceableQuantity }}"
-                                value="{{ old(
-                                    'quantity',
-                                    $supplierInvoiceItem->quantity
-                                ) }}"
-                                class="form-control @error('quantity') is-invalid @enderror"
-                                required
-                            >
-
-                            @error('quantity')
-
-                                <div class="invalid-feedback">
-                                    {{ $message }}
-                                </div>
-
-                            @enderror
-
-                            <small class="form-text text-muted">
-
-                                Maximum allowed:
-                                {{ number_format(
-                                    $maximumInvoiceableQuantity,
-                                    3
-                                ) }}
-                                {{ $supplierInvoiceItem->item->unit->name ?? '' }}
-
-                            </small>
+                            {{ $supplierInvoice->supplier->name ?? '-' }}
 
                         </div>
 
                     </div>
 
 
-                    {{-- Unit Price --}}
+                    {{-- Invoice Number --}}
                     <div class="col-md-4">
 
-                        <div class="form-group">
+                        <strong>
+                            Invoice Number
+                        </strong>
 
-                            <label>
-                                Unit Price
-                                <span class="text-danger">*</span>
-                            </label>
+                        <div class="mt-1">
 
-                            <input
-                                type="number"
-                                name="unit_price"
-                                id="unit_price"
-                                step="0.0001"
-                                min="0"
-                                value="{{ old(
-                                    'unit_price',
-                                    $supplierInvoiceItem->unit_price
-                                ) }}"
-                                class="form-control @error('unit_price') is-invalid @enderror"
-                                required
-                            >
-
-                            @error('unit_price')
-
-                                <div class="invalid-feedback">
-                                    {{ $message }}
-                                </div>
-
-                            @enderror
+                            {{ $supplierInvoice->invoice_number }}
 
                         </div>
 
                     </div>
 
 
-                    {{-- Line Total --}}
+                    {{-- Invoice Date --}}
                     <div class="col-md-4">
 
-                        <div class="form-group">
+                        <strong>
+                            Invoice Date
+                        </strong>
 
-                            <label>
-                                Line Total
-                            </label>
+                        <div class="mt-1">
 
-                            <input
-                                type="text"
-                                id="line_total"
-                                class="form-control"
-                                value="{{ number_format(
-                                    (float) $supplierInvoiceItem->line_total,
-                                    4,
-                                    '.',
-                                    ''
-                                ) }}"
-                                readonly
-                            >
-
-                        </div>
-
-                    </div>
-
-
-                    {{-- Remarks --}}
-                    <div class="col-md-12">
-
-                        <div class="form-group">
-
-                            <label>
-                                Remarks
-                            </label>
-
-                            <textarea
-                                name="remarks"
-                                rows="3"
-                                class="form-control @error('remarks') is-invalid @enderror"
-                            >{{ old(
-                                'remarks',
-                                $supplierInvoiceItem->remarks
-                            ) }}</textarea>
-
-                            @error('remarks')
-
-                                <div class="invalid-feedback">
-                                    {{ $message }}
-                                </div>
-
-                            @enderror
+                            {{ $supplierInvoice->invoice_date
+                                ? \Carbon\Carbon::parse($supplierInvoice->invoice_date)->format('d-M-Y')
+                                : '-' }}
 
                         </div>
 
@@ -337,71 +133,359 @@
 
             </div>
 
+        </div>
 
-            <div class="card-footer text-right">
 
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                >
+        {{-- =====================================================
+         ITEM INFORMATION
+    ====================================================== --}}
+        <div class="card card-info card-outline mb-4">
 
-                    <i class="fas fa-save mr-1"></i>
+            <div class="card-header">
 
-                    Update Invoice Item
+                <h3 class="card-title">
 
-                </button>
+                    <i class="fas fa-box mr-2"></i>
+
+                    Item Information
+
+                </h3>
+
+            </div>
+
+
+            <div class="card-body">
+
+                <div class="row">
+
+                    {{-- Product Model --}}
+                    <div class="col-md-3">
+
+                        <strong>
+                            Product Model
+                        </strong>
+
+                        <div class="mt-1">
+
+                            {{ $supplierInvoiceItem->productModel->model_code ?? '-' }}
+
+                        </div>
+
+                    </div>
+
+
+                    {{-- Item Code --}}
+                    <div class="col-md-3">
+
+                        <strong>
+                            Item Code
+                        </strong>
+
+                        <div class="mt-1">
+
+                            {{ $supplierInvoiceItem->item->item_code ?? '-' }}
+
+                        </div>
+
+                    </div>
+
+
+                    {{-- Item Name --}}
+                    <div class="col-md-3">
+
+                        <strong>
+                            Item Name
+                        </strong>
+
+                        <div class="mt-1">
+
+                            {{ $supplierInvoiceItem->item->item_name ?? '-' }}
+
+                        </div>
+
+                    </div>
+
+
+                    {{-- Unit --}}
+                    <div class="col-md-3">
+
+                        <strong>
+                            Unit
+                        </strong>
+
+                        <div class="mt-1">
+
+                            {{ $supplierInvoiceItem->item->unit->name ?? '-' }}
+
+                        </div>
+
+                    </div>
+
+                </div>
 
             </div>
 
         </div>
 
-    </form>
 
-</div>
+        {{-- =====================================================
+         EDIT FORM
+    ====================================================== --}}
+        <form
+            action="{{ route('supplier-invoices.items.update', [$supplierInvoice, $supplierInvoiceItem]) }}"
+            method="POST">
 
-
-<script>
-
-document.addEventListener('DOMContentLoaded', function () {
-
-    const quantityInput =
-        document.getElementById('quantity');
-
-    const unitPriceInput =
-        document.getElementById('unit_price');
-
-    const lineTotalInput =
-        document.getElementById('line_total');
+            @csrf
+            @method('PUT')
 
 
-    function calculateLineTotal()
-    {
-        const quantity =
-            Number(quantityInput.value || 0);
+            <div class="card shadow-sm">
 
-        const unitPrice =
-            Number(unitPriceInput.value || 0);
+                <div class="card-header">
 
-        const lineTotal =
-            quantity * unitPrice;
+                    <h3 class="card-title">
 
-        lineTotalInput.value =
-            lineTotal.toFixed(4);
-    }
+                        <i class="fas fa-edit mr-2"></i>
+
+                        Invoice Item Details
+
+                    </h3>
+
+                </div>
 
 
-    quantityInput.addEventListener(
-        'input',
-        calculateLineTotal
-    );
+                <div class="card-body">
 
-    unitPriceInput.addEventListener(
-        'input',
-        calculateLineTotal
-    );
+                    <div class="row">
 
-});
+                        {{-- =====================================================
+                         INVOICE QUANTITY
+                    ====================================================== --}}
+                        <div class="col-md-4">
 
-</script>
+                            <div class="form-group">
+
+                                <label for="quantity">
+
+                                    Invoice Quantity
+
+                                    <span class="text-danger">
+                                        *
+                                    </span>
+
+                                </label>
+
+                                <input type="number" name="quantity" id="quantity" step="0.001" min="0.001"
+                                    value="{{ old('quantity', $supplierInvoiceItem->quantity) }}"
+                                    class="form-control
+                                    @error('quantity')
+                                        is-invalid
+                                    @enderror"
+                                    required>
+
+                                @error('quantity')
+                                    <div class="invalid-feedback">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+
+                                <small class="form-text text-muted">
+
+                                    Unit:
+                                    {{ $supplierInvoiceItem->item->unit->name ?? '-' }}
+
+                                </small>
+
+                            </div>
+
+                        </div>
+
+
+                        {{-- =====================================================
+                         UNIT PRICE
+                    ====================================================== --}}
+                        <div class="col-md-4">
+
+                            <div class="form-group">
+
+                                <label for="unit_price">
+
+                                    Unit Price
+
+                                    <span class="text-danger">
+                                        *
+                                    </span>
+
+                                </label>
+
+                                <input type="number" name="unit_price" id="unit_price" step="0.0001" min="0"
+                                    value="{{ old('unit_price', $supplierInvoiceItem->unit_price) }}"
+                                    class="form-control
+                                    @error('unit_price')
+                                        is-invalid
+                                    @enderror"
+                                    required>
+
+                                @error('unit_price')
+                                    <div class="invalid-feedback">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+
+                                <small class="form-text text-muted">
+
+                                    Current supplier price:
+
+                                    {{ number_format((float) $supplierUnitPrice, 4) }}
+
+                                </small>
+
+                            </div>
+
+                        </div>
+
+
+                        {{-- =====================================================
+                         LINE TOTAL
+                    ====================================================== --}}
+                        <div class="col-md-4">
+
+                            <div class="form-group">
+
+                                <label for="line_total">
+                                    Line Total
+                                </label>
+
+                                <input type="text" id="line_total" class="form-control"
+                                    value="{{ number_format((float) $supplierInvoiceItem->line_total, 4, '.', '') }}"
+                                    readonly>
+
+                                <small class="form-text text-muted">
+                                    Invoice Quantity × Unit Price
+                                </small>
+
+                            </div>
+
+                        </div>
+
+
+                        {{-- =====================================================
+                         REMARKS
+                    ====================================================== --}}
+                        <div class="col-md-12">
+
+                            <div class="form-group">
+
+                                <label for="remarks">
+                                    Remarks
+                                </label>
+
+                                <textarea name="remarks" id="remarks" rows="3"
+                                    class="form-control
+                                    @error('remarks')
+                                        is-invalid
+                                    @enderror">{{ old('remarks', $supplierInvoiceItem->remarks) }}</textarea>
+
+                                @error('remarks')
+                                    <div class="invalid-feedback">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="card-footer d-flex justify-content-between">
+
+                    <a href="{{ route('supplier-invoices.show', $supplierInvoice) }}"
+                        class="btn btn-secondary">
+
+                        <i class="fas fa-times mr-1"></i>
+
+                        Cancel
+
+                    </a>
+
+
+                    <button type="submit" class="btn btn-primary">
+
+                        <i class="fas fa-save mr-1"></i>
+
+                        Update Invoice Item
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+
+    {{-- =====================================================
+     LINE TOTAL CALCULATION
+===================================================== --}}
+    <script>
+        document.addEventListener(
+            'DOMContentLoaded',
+            function() {
+
+                const quantityInput =
+                    document.getElementById(
+                        'quantity'
+                    );
+
+                const unitPriceInput =
+                    document.getElementById(
+                        'unit_price'
+                    );
+
+                const lineTotalInput =
+                    document.getElementById(
+                        'line_total'
+                    );
+
+
+                function calculateLineTotal() {
+                    const quantity =
+                        Number(
+                            quantityInput.value || 0
+                        );
+
+                    const unitPrice =
+                        Number(
+                            unitPriceInput.value || 0
+                        );
+
+                    const lineTotal =
+                        quantity * unitPrice;
+
+                    lineTotalInput.value =
+                        lineTotal.toFixed(4);
+                }
+
+
+                quantityInput.addEventListener(
+                    'input',
+                    calculateLineTotal
+                );
+
+
+                unitPriceInput.addEventListener(
+                    'input',
+                    calculateLineTotal
+                );
+
+            }
+        );
+    </script>
 
 @endsection

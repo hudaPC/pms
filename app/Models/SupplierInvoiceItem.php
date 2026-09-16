@@ -13,6 +13,7 @@ class SupplierInvoiceItem extends Model
     protected $fillable = [
 
         'supplier_invoice_id',
+        'product_model_id',
         'item_id',
         'purchase_order_item_id',
         'quantity',
@@ -25,11 +26,11 @@ class SupplierInvoiceItem extends Model
     protected $casts = [
 
         'quantity' =>
-            'decimal:3',
+        'decimal:3',
         'unit_price' =>
-            'decimal:4',
+        'decimal:4',
         'line_total' =>
-            'decimal:4',
+        'decimal:4',
     ];
 
 
@@ -75,5 +76,9 @@ class SupplierInvoiceItem extends Model
             PurchaseOrderItem::class,
             'purchase_order_item_id'
         );
+    }
+    public function productModel()
+    {
+        return $this->belongsTo(ProductModel::class);
     }
 }

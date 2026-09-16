@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PurchaseOrderItem;
+use App\Models\ProductModel;
 use App\Models\SupplierInvoice;
 use App\Models\SupplierInvoiceItem;
 use Illuminate\Http\Request;
@@ -17,11 +18,66 @@ class SupplierInvoiceItemController extends Controller
     |--------------------------------------------------------------------------
     */
 
-   public function create(SupplierInvoice $supplierInvoice)
-{
-    /*
+    public function create(SupplierInvoice $supplierInvoice)
+    {
+        /*
     |--------------------------------------------------------------------------
     | Only Draft Invoice Can Be Modified
+    |--------------------------------------------------------------------------
+    */
+
+        abort_if(
+            $supplierInvoice->status !== 'draft',
+            403,
+            'Only draft supplier invoices can be modified.'
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Load Supplier
+    |--------------------------------------------------------------------------
+    */
+
+        $supplierInvoice->load('supplier');
+
+
+        /*
+|--------------------------------------------------------------------------
+| Product Models
+|--------------------------------------------------------------------------
+*/
+
+        $productModels =
+            ProductModel::where(
+                'status',
+                true
+            )
+            ->orderBy('model_code')
+            ->get();
+
+        /*
+    |--------------------------------------------------------------------------
+    | View
+    |--------------------------------------------------------------------------
+    */
+
+        return view(
+            'supplier-invoices.items.create',
+            compact(
+                'supplierInvoice',
+                'productModels'
+            )
+        );
+    }
+
+public function itemsByProductModel(
+    SupplierInvoice $supplierInvoice,
+    ProductModel $productModel
+) {
+    /*
+    |--------------------------------------------------------------------------
+    | Invoice Must Be Draft
     |--------------------------------------------------------------------------
     */
 
@@ -34,38 +90,10 @@ class SupplierInvoiceItemController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Load Supplier
-    |--------------------------------------------------------------------------
-    */
-
-    $supplierInvoice->load('supplier');
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Available Items
+    | Existing Invoice Items
     |--------------------------------------------------------------------------
     |
-    | The Supplier Invoice is created BEFORE the Purchase Order.
-    |
-    | Therefore items are selected directly from the Items table.
-    | Product Model is not used as an invoice-level restriction because
-    | one Supplier Invoice may contain items used by multiple models.
-    |--------------------------------------------------------------------------
-    */
-
-    $items = Item::with([
-        'unit',
-        'productModel',
-    ])
-        ->where('status', true)
-        ->orderBy('item_code')
-        ->get();
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Remove Items Already Added To This Invoice
+    | Do not show an item again if it is already on this invoice.
     |--------------------------------------------------------------------------
     */
 
@@ -75,33 +103,115 @@ class SupplierInvoiceItemController extends Controller
             ->pluck('item_id')
             ->toArray();
 
-    $items = $items
-        ->reject(function ($item) use ($existingItemIds) {
 
-            return in_array(
-                $item->id,
-                $existingItemIds
-            );
+    /*
+    |--------------------------------------------------------------------------
+    | Product Model BOM Items
+    |--------------------------------------------------------------------------
+    */
+
+    $modelItems =
+        $productModel
+            ->modelItems()
+            ->with([
+                'item.unit',
+                'item.suppliers' => function ($query) use ($supplierInvoice) {
+
+                    $query
+                        ->where(
+                            'suppliers.id',
+                            $supplierInvoice->supplier_id
+                        )
+                        ->wherePivot(
+                            'status',
+                            true
+                        );
+                },
+            ])
+            ->get();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prepare Available Items
+    |--------------------------------------------------------------------------
+    */
+
+    $items = $modelItems
+        ->filter(function ($modelItem) use ($existingItemIds) {
+
+            if (!$modelItem->item) {
+                return false;
+            }
+
+            if (!$modelItem->item->status) {
+                return false;
+            }
+
+            if (
+                in_array(
+                    $modelItem->item->id,
+                    $existingItemIds
+                )
+            ) {
+                return false;
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Item Must Belong To Invoice Supplier
+            |--------------------------------------------------------------------------
+            */
+
+            return
+                $modelItem->item
+                    ->suppliers
+                    ->isNotEmpty();
+        })
+        ->map(function ($modelItem) {
+
+            $item =
+                $modelItem->item;
+
+            $supplier =
+                $item->suppliers->first();
+
+
+            return [
+
+                'id' =>
+                    $item->id,
+
+                'item_code' =>
+                    $item->item_code,
+
+                'item_name' =>
+                    $item->item_name,
+
+                'unit' =>
+                    $item->unit->name ?? '',
+
+                'unit_price' =>
+                    (float) (
+                        $supplier->pivot->unit_price
+                        ?? 0
+                    ),
+
+            ];
         })
         ->values();
 
 
     /*
     |--------------------------------------------------------------------------
-    | View
+    | JSON Response
     |--------------------------------------------------------------------------
     */
 
-    return view(
-        'supplier-invoices.items.create',
-        compact(
-            'supplierInvoice',
-            'items'
-        )
-    );
+    return response()->json([
+        'items' => $items,
+    ]);
 }
-
-
     /*
     |--------------------------------------------------------------------------
     | Store Invoice Item
@@ -109,117 +219,117 @@ class SupplierInvoiceItemController extends Controller
     */
 
     public function store(
-    Request $request,
-    SupplierInvoice $supplierInvoice
-) {
-    /*
+        Request $request,
+        SupplierInvoice $supplierInvoice
+    ) {
+        /*
     |--------------------------------------------------------------------------
     | Only Draft Invoice Can Be Modified
     |--------------------------------------------------------------------------
     */
 
-    abort_if(
-        $supplierInvoice->status !== 'draft',
-        403,
-        'Only draft supplier invoices can be modified.'
-    );
+        abort_if(
+            $supplierInvoice->status !== 'draft',
+            403,
+            'Only draft supplier invoices can be modified.'
+        );
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Validation
     |--------------------------------------------------------------------------
     */
 
-    $validated = $request->validate([
+        $validated = $request->validate([
 
-        'item_id' => [
-            'required',
-            'exists:items,id',
-        ],
+            'item_id' => [
+                'required',
+                'exists:items,id',
+            ],
 
-        'quantity' => [
-            'required',
-            'numeric',
-            'min:0.001',
-        ],
+            'quantity' => [
+                'required',
+                'numeric',
+                'min:0.001',
+            ],
 
-        'unit_price' => [
-            'required',
-            'numeric',
-            'min:0',
-        ],
+            'unit_price' => [
+                'required',
+                'numeric',
+                'min:0',
+            ],
 
-        'remarks' => [
-            'nullable',
-            'string',
-        ],
+            'remarks' => [
+                'nullable',
+                'string',
+            ],
 
-    ]);
+        ]);
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Prevent Duplicate Item On Same Invoice
     |--------------------------------------------------------------------------
     */
 
-    $alreadyExists =
-        SupplierInvoiceItem::where(
-            'supplier_invoice_id',
-            $supplierInvoice->id
-        )
-        ->where(
-            'item_id',
-            $validated['item_id']
-        )
-        ->exists();
+        $alreadyExists =
+            SupplierInvoiceItem::where(
+                'supplier_invoice_id',
+                $supplierInvoice->id
+            )
+            ->where(
+                'item_id',
+                $validated['item_id']
+            )
+            ->exists();
 
 
-    if ($alreadyExists) {
+        if ($alreadyExists) {
 
-        return back()
-            ->withInput()
-            ->withErrors([
+            return back()
+                ->withInput()
+                ->withErrors([
 
-                'item_id' =>
+                    'item_id' =>
                     'This item already exists on this supplier invoice. Please edit the existing line instead.',
 
-            ]);
-    }
+                ]);
+        }
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Invoice Values
     |--------------------------------------------------------------------------
     */
 
-    $quantity =
-        (float) $validated['quantity'];
+        $quantity =
+            (float) $validated['quantity'];
 
-    $unitPrice =
-        (float) $validated['unit_price'];
+        $unitPrice =
+            (float) $validated['unit_price'];
 
-    $lineTotal =
-        $quantity * $unitPrice;
+        $lineTotal =
+            $quantity * $unitPrice;
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Save Invoice Item + Recalculate Invoice
     |--------------------------------------------------------------------------
     */
 
-    DB::transaction(function () use (
-        $supplierInvoice,
-        $validated,
-        $quantity,
-        $unitPrice,
-        $lineTotal
-    ) {
+        DB::transaction(function () use (
+            $supplierInvoice,
+            $validated,
+            $quantity,
+            $unitPrice,
+            $lineTotal
+        ) {
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Create Supplier Invoice Item
         |--------------------------------------------------------------------------
@@ -230,110 +340,110 @@ class SupplierInvoiceItemController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        SupplierInvoiceItem::create([
+            SupplierInvoiceItem::create([
 
-            'supplier_invoice_id' =>
+                'supplier_invoice_id' =>
                 $supplierInvoice->id,
 
-            'item_id' =>
+                'item_id' =>
                 $validated['item_id'],
 
-            'purchase_order_item_id' =>
+                'purchase_order_item_id' =>
                 null,
 
-            'quantity' =>
+                'quantity' =>
                 $quantity,
 
-            'unit_price' =>
+                'unit_price' =>
                 $unitPrice,
 
-            'line_total' =>
+                'line_total' =>
                 $lineTotal,
 
-            'remarks' =>
+                'remarks' =>
                 $validated['remarks'] ?? null,
 
-        ]);
+            ]);
 
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Recalculate Subtotal
         |--------------------------------------------------------------------------
         */
 
-        $subtotal =
-            (float) $supplierInvoice
-                ->items()
-                ->sum('line_total');
+            $subtotal =
+                (float) $supplierInvoice
+                    ->items()
+                    ->sum('line_total');
 
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Recalculate Total
         |--------------------------------------------------------------------------
         */
 
-        $totalAmount = max(
-            0,
-            $subtotal
-                + (float) $supplierInvoice->tax_amount
-                - (float) $supplierInvoice->discount_amount
-        );
+            $totalAmount = max(
+                0,
+                $subtotal
+                    + (float) $supplierInvoice->tax_amount
+                    - (float) $supplierInvoice->discount_amount
+            );
 
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Recalculate Balance
         |--------------------------------------------------------------------------
         */
 
-        $balanceAmount = max(
-            0,
-            $totalAmount
-                - (float) $supplierInvoice->paid_amount
-        );
+            $balanceAmount = max(
+                0,
+                $totalAmount
+                    - (float) $supplierInvoice->paid_amount
+            );
 
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Update Invoice Header
         |--------------------------------------------------------------------------
         */
 
-        $supplierInvoice->update([
+            $supplierInvoice->update([
 
-            'subtotal' =>
+                'subtotal' =>
                 $subtotal,
 
-            'total_amount' =>
+                'total_amount' =>
                 $totalAmount,
 
-            'balance_amount' =>
+                'balance_amount' =>
                 $balanceAmount,
 
-        ]);
-    });
+            ]);
+        });
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Redirect
     |--------------------------------------------------------------------------
     */
 
-    return redirect()
-        ->route(
-            'supplier-invoices.show',
-            $supplierInvoice
-        )
-        ->with(
-            'success',
-            'Supplier invoice item added successfully.'
-        );
-}
+        return redirect()
+            ->route(
+                'supplier-invoices.show',
+                $supplierInvoice
+            )
+            ->with(
+                'success',
+                'Supplier invoice item added successfully.'
+            );
+    }
 
-    
+
     public function show(SupplierInvoice $supplierInvoice)
     {
         $supplierInvoice->load([

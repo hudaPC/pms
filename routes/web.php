@@ -446,6 +446,14 @@ Route::middleware(['auth'])->group(function () {
         [SupplierInvoiceItemController::class, 'create']
     )->name('supplier-invoices.items.create');
 
+    Route::get(
+        '/supplier-invoices/{supplierInvoice}/product-models/{productModel}/items',
+        [SupplierInvoiceItemController::class, 'itemsByProductModel']
+    )->name(
+        'supplier-invoices.product-model-items'
+    );
+
+
 
     Route::post(
         '/supplier-invoices/{supplierInvoice}/items',

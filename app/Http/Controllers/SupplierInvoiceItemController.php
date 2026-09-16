@@ -7,6 +7,7 @@ use App\Models\SupplierInvoice;
 use App\Models\SupplierInvoiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Item;
 
 class SupplierInvoiceItemController extends Controller
 {
@@ -16,156 +17,89 @@ class SupplierInvoiceItemController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function create(SupplierInvoice $supplierInvoice)
-    {
-        /*
-        |--------------------------------------------------------------------------
-        | Only Draft Invoice Can Be Modified
-        |--------------------------------------------------------------------------
-        */
+   public function create(SupplierInvoice $supplierInvoice)
+{
+    /*
+    |--------------------------------------------------------------------------
+    | Only Draft Invoice Can Be Modified
+    |--------------------------------------------------------------------------
+    */
 
-        abort_if(
-            $supplierInvoice->status !== 'draft',
-            403,
-            'Only draft supplier invoices can be modified.'
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Invoice Must Be Linked To Purchase Order
-        |--------------------------------------------------------------------------
-        */
-
-        abort_if(
-            !$supplierInvoice->purchase_order_id,
-            404,
-            'This supplier invoice is not linked to a Purchase Order.'
-        );
+    abort_if(
+        $supplierInvoice->status !== 'draft',
+        403,
+        'Only draft supplier invoices can be modified.'
+    );
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Load Purchase Order Items
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Load Supplier
+    |--------------------------------------------------------------------------
+    */
 
-        $poItems = PurchaseOrderItem::with([
-            'item.unit',
-        ])
-            ->where(
-                'purchase_order_id',
-                $supplierInvoice->purchase_order_id
-            )
-            ->get()
-            ->map(function ($poItem) use ($supplierInvoice) {
-
-                /*
-                |--------------------------------------------------------------------------
-                | Received Quantity
-                |--------------------------------------------------------------------------
-                */
-
-                $receivedQuantity =
-                    (float) $poItem->received_quantity;
+    $supplierInvoice->load('supplier');
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | Already Invoiced Quantity
-                |--------------------------------------------------------------------------
-                |
-                | Exclude cancelled invoices.
-                |
-                */
+    /*
+    |--------------------------------------------------------------------------
+    | Available Items
+    |--------------------------------------------------------------------------
+    |
+    | The Supplier Invoice is created BEFORE the Purchase Order.
+    |
+    | Therefore items are selected directly from the Items table.
+    | Product Model is not used as an invoice-level restriction because
+    | one Supplier Invoice may contain items used by multiple models.
+    |--------------------------------------------------------------------------
+    */
 
-                $alreadyInvoicedQuantity =
-                    (float) SupplierInvoiceItem::where(
-                        'purchase_order_item_id',
-                        $poItem->id
-                    )
-                        ->whereHas(
-                            'supplierInvoice',
-                            function ($query) use ($supplierInvoice) {
-
-                                $query->where(
-                                    'id',
-                                    '!=',
-                                    $supplierInvoice->id
-                                );
-
-                                $query->where(
-                                    'status',
-                                    '!=',
-                                    'cancelled'
-                                );
-                            }
-                        )
-                        ->sum('quantity');
+    $items = Item::with([
+        'unit',
+        'productModel',
+    ])
+        ->where('status', true)
+        ->orderBy('item_code')
+        ->get();
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | Quantity Already Added On Current Invoice
-                |--------------------------------------------------------------------------
-                */
+    /*
+    |--------------------------------------------------------------------------
+    | Remove Items Already Added To This Invoice
+    |--------------------------------------------------------------------------
+    */
 
-                $currentInvoiceQuantity =
-                    (float) SupplierInvoiceItem::where(
-                        'supplier_invoice_id',
-                        $supplierInvoice->id
-                    )
-                        ->where(
-                            'purchase_order_item_id',
-                            $poItem->id
-                        )
-                        ->sum('quantity');
+    $existingItemIds =
+        $supplierInvoice
+            ->items()
+            ->pluck('item_id')
+            ->toArray();
 
+    $items = $items
+        ->reject(function ($item) use ($existingItemIds) {
 
-                /*
-                |--------------------------------------------------------------------------
-                | Remaining Invoiceable
-                |--------------------------------------------------------------------------
-                */
-
-                $remainingInvoiceableQuantity = max(
-                    0,
-                    $receivedQuantity
-                        - $alreadyInvoicedQuantity
-                        - $currentInvoiceQuantity
-                );
+            return in_array(
+                $item->id,
+                $existingItemIds
+            );
+        })
+        ->values();
 
 
-                $poItem->received_qty =
-                    $receivedQuantity;
+    /*
+    |--------------------------------------------------------------------------
+    | View
+    |--------------------------------------------------------------------------
+    */
 
-                $poItem->already_invoiced_qty =
-                    $alreadyInvoicedQuantity
-                    + $currentInvoiceQuantity;
-
-                $poItem->remaining_invoiceable_qty =
-                    $remainingInvoiceableQuantity;
-
-
-                return $poItem;
-            })
-            ->filter(function ($poItem) {
-
-                return
-                    $poItem->remaining_invoiceable_qty
-                    > 0;
-            })
-            ->values();
-
-
-        return view(
-            'supplier-invoices.items.create',
-            compact(
-                'supplierInvoice',
-                'poItems'
-            )
-        );
-    }
+    return view(
+        'supplier-invoices.items.create',
+        compact(
+            'supplierInvoice',
+            'items'
+        )
+    );
+}
 
 
     /*
@@ -175,324 +109,229 @@ class SupplierInvoiceItemController extends Controller
     */
 
     public function store(
-        Request $request,
-        SupplierInvoice $supplierInvoice
+    Request $request,
+    SupplierInvoice $supplierInvoice
+) {
+    /*
+    |--------------------------------------------------------------------------
+    | Only Draft Invoice Can Be Modified
+    |--------------------------------------------------------------------------
+    */
+
+    abort_if(
+        $supplierInvoice->status !== 'draft',
+        403,
+        'Only draft supplier invoices can be modified.'
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation
+    |--------------------------------------------------------------------------
+    */
+
+    $validated = $request->validate([
+
+        'item_id' => [
+            'required',
+            'exists:items,id',
+        ],
+
+        'quantity' => [
+            'required',
+            'numeric',
+            'min:0.001',
+        ],
+
+        'unit_price' => [
+            'required',
+            'numeric',
+            'min:0',
+        ],
+
+        'remarks' => [
+            'nullable',
+            'string',
+        ],
+
+    ]);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prevent Duplicate Item On Same Invoice
+    |--------------------------------------------------------------------------
+    */
+
+    $alreadyExists =
+        SupplierInvoiceItem::where(
+            'supplier_invoice_id',
+            $supplierInvoice->id
+        )
+        ->where(
+            'item_id',
+            $validated['item_id']
+        )
+        ->exists();
+
+
+    if ($alreadyExists) {
+
+        return back()
+            ->withInput()
+            ->withErrors([
+
+                'item_id' =>
+                    'This item already exists on this supplier invoice. Please edit the existing line instead.',
+
+            ]);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Invoice Values
+    |--------------------------------------------------------------------------
+    */
+
+    $quantity =
+        (float) $validated['quantity'];
+
+    $unitPrice =
+        (float) $validated['unit_price'];
+
+    $lineTotal =
+        $quantity * $unitPrice;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Save Invoice Item + Recalculate Invoice
+    |--------------------------------------------------------------------------
+    */
+
+    DB::transaction(function () use (
+        $supplierInvoice,
+        $validated,
+        $quantity,
+        $unitPrice,
+        $lineTotal
     ) {
-        /*
-        |--------------------------------------------------------------------------
-        | Only Draft Invoice Can Be Modified
-        |--------------------------------------------------------------------------
-        */
-
-        abort_if(
-            $supplierInvoice->status !== 'draft',
-            403,
-            'Only draft supplier invoices can be modified.'
-        );
-
 
         /*
         |--------------------------------------------------------------------------
-        | Validation
+        | Create Supplier Invoice Item
+        |--------------------------------------------------------------------------
+        |
+        | There is no Purchase Order yet.
+        | purchase_order_item_id will be linked later when the PO is
+        | generated from this Supplier Invoice.
         |--------------------------------------------------------------------------
         */
 
-        $validated = $request->validate([
+        SupplierInvoiceItem::create([
 
-            'purchase_order_item_id' => [
-                'required',
-                'exists:purchase_order_items,id',
-            ],
+            'supplier_invoice_id' =>
+                $supplierInvoice->id,
 
-            'quantity' => [
-                'required',
-                'numeric',
-                'min:0.001',
-            ],
+            'item_id' =>
+                $validated['item_id'],
 
-            'unit_price' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
+            'purchase_order_item_id' =>
+                null,
 
-            'remarks' => [
-                'nullable',
-                'string',
-            ],
+            'quantity' =>
+                $quantity,
+
+            'unit_price' =>
+                $unitPrice,
+
+            'line_total' =>
+                $lineTotal,
+
+            'remarks' =>
+                $validated['remarks'] ?? null,
 
         ]);
 
 
         /*
         |--------------------------------------------------------------------------
-        | Purchase Order Item
+        | Recalculate Subtotal
         |--------------------------------------------------------------------------
         */
 
-        $poItem = PurchaseOrderItem::with([
-            'item.unit',
-        ])
-            ->where(
-                'id',
-                $validated['purchase_order_item_id']
-            )
-            ->where(
-                'purchase_order_id',
-                $supplierInvoice->purchase_order_id
-            )
-            ->firstOrFail();
+        $subtotal =
+            (float) $supplierInvoice
+                ->items()
+                ->sum('line_total');
 
 
         /*
         |--------------------------------------------------------------------------
-        | Prevent Duplicate Same Item Line On Current Invoice
+        | Recalculate Total
         |--------------------------------------------------------------------------
         */
 
-        $alreadyExists = SupplierInvoiceItem::where(
-            'supplier_invoice_id',
-            $supplierInvoice->id
-        )
-            ->where(
-                'purchase_order_item_id',
-                $poItem->id
-            )
-            ->exists();
-
-
-        if ($alreadyExists) {
-
-            return back()
-                ->withInput()
-                ->withErrors([
-
-                    'purchase_order_item_id' =>
-                    'This Purchase Order item already exists on this supplier invoice.',
-
-                ]);
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Received Quantity
-        |--------------------------------------------------------------------------
-        */
-
-        $receivedQuantity =
-            (float) $poItem->received_quantity;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Already Invoiced On Other Active Invoices
-        |--------------------------------------------------------------------------
-        */
-
-        $alreadyInvoicedQuantity =
-            (float) SupplierInvoiceItem::where(
-                'purchase_order_item_id',
-                $poItem->id
-            )
-                ->whereHas(
-                    'supplierInvoice',
-                    function ($query) use ($supplierInvoice) {
-
-                        $query->where(
-                            'id',
-                            '!=',
-                            $supplierInvoice->id
-                        );
-
-                        $query->where(
-                            'status',
-                            '!=',
-                            'cancelled'
-                        );
-                    }
-                )
-                ->sum('quantity');
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Remaining Invoiceable
-        |--------------------------------------------------------------------------
-        */
-
-        $remainingInvoiceableQuantity = max(
+        $totalAmount = max(
             0,
-            $receivedQuantity
-                - $alreadyInvoicedQuantity
+            $subtotal
+                + (float) $supplierInvoice->tax_amount
+                - (float) $supplierInvoice->discount_amount
         );
 
 
         /*
         |--------------------------------------------------------------------------
-        | Prevent Over-Invoicing
+        | Recalculate Balance
         |--------------------------------------------------------------------------
         */
 
-        if (
-            (float) $validated['quantity']
-            > $remainingInvoiceableQuantity
-        ) {
-
-            return back()
-                ->withInput()
-                ->withErrors([
-
-                    'quantity' =>
-                    'Invoice quantity cannot exceed the remaining received quantity of '
-                        . number_format(
-                            $remainingInvoiceableQuantity,
-                            3
-                        )
-                        . ' '
-                        . ($poItem->item->unit->name ?? 'units')
-                        . '.',
-
-                ]);
-        }
+        $balanceAmount = max(
+            0,
+            $totalAmount
+                - (float) $supplierInvoice->paid_amount
+        );
 
 
         /*
         |--------------------------------------------------------------------------
-        | Line Total
+        | Update Invoice Header
         |--------------------------------------------------------------------------
         */
 
-        $quantity =
-            (float) $validated['quantity'];
+        $supplierInvoice->update([
 
-        $unitPrice =
-            (float) $validated['unit_price'];
-
-        $lineTotal =
-            $quantity * $unitPrice;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Save + Recalculate Invoice
-        |--------------------------------------------------------------------------
-        */
-
-        DB::transaction(function () use ($supplierInvoice, $poItem, $validated, $quantity, $unitPrice, $lineTotal) {
-
-            /*
-            |--------------------------------------------------------------------------
-            | Create Invoice Item
-            |--------------------------------------------------------------------------
-            */
-
-            SupplierInvoiceItem::create([
-
-                'supplier_invoice_id' =>
-                $supplierInvoice->id,
-
-                'item_id' =>
-                $poItem->item_id,
-
-                'purchase_order_item_id' =>
-                $poItem->id,
-
-                'quantity' =>
-                $quantity,
-
-                'unit_price' =>
-                $unitPrice,
-
-                'line_total' =>
-                $lineTotal,
-
-                'remarks' =>
-                $validated['remarks'] ?? null,
-
-            ]);
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Recalculate Subtotal
-            |--------------------------------------------------------------------------
-            */
-
-            $subtotal =
-                (float) $supplierInvoice
-                    ->items()
-                    ->sum('line_total');
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Total
-            |--------------------------------------------------------------------------
-            |
-            | Total =
-            | Subtotal + Tax - Discount
-            |
-            */
-
-            $totalAmount = max(
-                0,
-                $subtotal
-                    + (float) $supplierInvoice->tax_amount
-                    - (float) $supplierInvoice->discount_amount
-            );
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Balance
-            |--------------------------------------------------------------------------
-            */
-
-            $balanceAmount = max(
-                0,
-                $totalAmount
-                    - (float) $supplierInvoice->paid_amount
-            );
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Update Invoice
-            |--------------------------------------------------------------------------
-            */
-
-            $supplierInvoice->update([
-
-                'subtotal' =>
+            'subtotal' =>
                 $subtotal,
 
-                'total_amount' =>
+            'total_amount' =>
                 $totalAmount,
 
-                'balance_amount' =>
+            'balance_amount' =>
                 $balanceAmount,
 
-            ]);
-        });
+        ]);
+    });
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Redirect
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Redirect
+    |--------------------------------------------------------------------------
+    */
 
-        return redirect()
-            ->route(
-                'supplier-invoices.show',
-                $supplierInvoice
-            )
-            ->with(
-                'success',
-                'Supplier invoice item added successfully.'
-            );
-    }
+    return redirect()
+        ->route(
+            'supplier-invoices.show',
+            $supplierInvoice
+        )
+        ->with(
+            'success',
+            'Supplier invoice item added successfully.'
+        );
+}
 
     
     public function show(SupplierInvoice $supplierInvoice)

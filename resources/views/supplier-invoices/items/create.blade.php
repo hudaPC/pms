@@ -4,67 +4,164 @@
 
 @section('content')
 
-    <div class="container-fluid py-4">
+<div class="container-fluid py-4">
 
-        {{-- ============================================================
+    {{-- ============================================================
          PAGE HEADER
     ============================================================ --}}
-        <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
 
-            <div>
+        <div>
 
-                <h2 class="mb-1">
-                    Add Supplier Invoice Item
-                </h2>
+            <h2 class="mb-1">
+                Add Supplier Invoice Item
+            </h2>
 
-                <p class="text-muted mb-0">
-                    Invoice: {{ $supplierInvoice->invoice_number }}
-                </p>
-
-            </div>
-
-            <a href="{{ route('supplier-invoices.show', $supplierInvoice) }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left mr-1"></i>
-                Back to Invoice
-            </a>
+            <p class="text-muted mb-0">
+                Enter the item quantity and price exactly as shown
+                on the supplier invoice.
+            </p>
 
         </div>
 
+        <a href="{{ route('supplier-invoices.show', $supplierInvoice) }}"
+            class="btn btn-secondary">
 
-        {{-- ============================================================
+            <i class="fas fa-arrow-left mr-1"></i>
+            Back to Invoice
+
+        </a>
+
+    </div>
+
+
+    {{-- ============================================================
          VALIDATION ERRORS
     ============================================================ --}}
-        @if ($errors->any())
+    @if ($errors->any())
 
-            <div class="alert alert-danger">
+        <div class="alert alert-danger">
 
-                <ul class="mb-0">
+            <strong>
+                Please check the following:
+            </strong>
 
-                    @foreach ($errors->all() as $error)
-                        <li>
-                            {{ $error }}
-                        </li>
-                    @endforeach
+            <ul class="mb-0 mt-2">
 
-                </ul>
+                @foreach ($errors->all() as $error)
 
-            </div>
+                    <li>
+                        {{ $error }}
+                    </li>
 
-        @endif
+                @endforeach
+
+            </ul>
+
+        </div>
+
+    @endif
 
 
-        {{-- ============================================================
+    {{-- ============================================================
          INVOICE INFORMATION
     ============================================================ --}}
-        <div class="card card-primary card-outline mb-4">
+    <div class="card card-primary card-outline mb-4">
+
+        <div class="card-header">
+
+            <h3 class="card-title">
+
+                <i class="fas fa-file-invoice-dollar mr-2"></i>
+
+                Supplier Invoice
+
+            </h3>
+
+        </div>
+
+
+        <div class="card-body">
+
+            <div class="row">
+
+                {{-- Invoice Number --}}
+                <div class="col-md-4 mb-3 mb-md-0">
+
+                    <small class="text-muted d-block">
+                        Invoice Number
+                    </small>
+
+                    <strong>
+                        {{ $supplierInvoice->invoice_number }}
+                    </strong>
+
+                </div>
+
+
+                {{-- Supplier --}}
+                <div class="col-md-4 mb-3 mb-md-0">
+
+                    <small class="text-muted d-block">
+                        Supplier
+                    </small>
+
+                    <strong>
+                        {{ $supplierInvoice->supplier->name ?? '-' }}
+                    </strong>
+
+                </div>
+
+
+                {{-- Invoice Date --}}
+                <div class="col-md-4">
+
+                    <small class="text-muted d-block">
+                        Invoice Date
+                    </small>
+
+                    <strong>
+                        {{ $supplierInvoice->invoice_date
+                            ? \Carbon\Carbon::parse(
+                                $supplierInvoice->invoice_date
+                            )->format('d-M-Y')
+                            : '-'
+                        }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    {{-- ============================================================
+         ADD INVOICE ITEM
+    ============================================================ --}}
+    <form
+        action="{{ route(
+            'supplier-invoices.items.store',
+            $supplierInvoice
+        ) }}"
+        method="POST"
+        id="invoiceItemForm"
+    >
+
+        @csrf
+
+
+        <div class="card shadow-sm">
 
             <div class="card-header">
 
                 <h3 class="card-title">
 
-                    <i class="fas fa-file-invoice-dollar mr-2"></i>
+                    <i class="fas fa-box mr-2"></i>
 
-                    Invoice Information
+                    Invoice Item Information
 
                 </h3>
 
@@ -75,381 +172,312 @@
 
                 <div class="row">
 
-                    <div class="col-md-4">
 
-                        <strong>
-                            Invoice Number
-                        </strong>
-
-                        <div class="mt-1">
-                            {{ $supplierInvoice->invoice_number }}
-                        </div>
-
-                    </div>
-
-
-                    <div class="col-md-4">
-
-                        <strong>
-                            Supplier
-                        </strong>
-
-                        <div class="mt-1">
-                            {{ $supplierInvoice->supplier->name ?? '-' }}
-                        </div>
-
-                    </div>
-
-
-                    <div class="col-md-4">
-
-                        <strong>
-                            Purchase Order
-                        </strong>
-
-                        <div class="mt-1">
-                            {{ $supplierInvoice->purchaseOrder->po_number ?? '-' }}
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-        {{-- ============================================================
-         SELECTED PO ITEM SUMMARY
-    ============================================================ --}}
-        <div class="card card-outline card-success mb-4 d-none" id="poItemSummaryCard">
-
-            <div class="card-header">
-
-                <h3 class="card-title">
-
-                    <i class="fas fa-box-open mr-2"></i>
-
-                    Purchase Order Item Summary
-
-                </h3>
-
-            </div>
-
-
-            <div class="card-body">
-
-                <div class="row">
-
-                    {{-- Ordered Qty --}}
-                    <div class="col-md-2 mb-2">
-
-                        <small class="text-muted d-block">
-                            Ordered Qty
-                        </small>
-
-                        <strong id="summary_ordered_qty">
-                            -
-                        </strong>
-
-                    </div>
-
-
-                    {{-- Received Qty --}}
-                    <div class="col-md-2 mb-2">
-
-                        <small class="text-muted d-block">
-                            Received Qty
-                        </small>
-
-                        <strong id="summary_received_qty" class="text-success">
-                            -
-                        </strong>
-
-                    </div>
-
-
-                    {{-- Already Invoiced --}}
-                    <div class="col-md-2 mb-2">
-
-                        <small class="text-muted d-block">
-                            Already Invoiced
-                        </small>
-
-                        <strong id="summary_invoiced_qty">
-                            -
-                        </strong>
-
-                    </div>
-
-
-                    {{-- Remaining --}}
-                    <div class="col-md-2 mb-2">
-
-                        <small class="text-muted d-block">
-                            Remaining Invoiceable
-                        </small>
-
-                        <strong id="summary_remaining_qty" class="text-primary">
-                            -
-                        </strong>
-
-                    </div>
-
-
-                    {{-- PO Unit Price --}}
-                    <div class="col-md-2 mb-2">
-
-                        <small class="text-muted d-block">
-                            PO Unit Price
-                        </small>
-
-                        <strong id="summary_unit_price">
-                            -
-                        </strong>
-
-                    </div>
-
-
-                    {{-- Unit --}}
-                    <div class="col-md-2 mb-2">
-
-                        <small class="text-muted d-block">
-                            Unit
-                        </small>
-
-                        <strong id="summary_unit">
-                            -
-                        </strong>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-        {{-- ============================================================
-         ADD ITEM FORM
-    ============================================================ --}}
-        <form action="{{ route('supplier-invoices.items.store', $supplierInvoice) }}"
-            method="POST" id="invoiceItemForm">
-
-            @csrf
-
-
-            <div class="card shadow-sm">
-
-                <div class="card-header">
-
-                    <h3 class="card-title">
-
-                        <i class="fas fa-box mr-2"></i>
-
-                        Invoice Item Information
-
-                    </h3>
-
-                </div>
-
-
-                <div class="card-body">
-
-                    <div class="row">
-
-
-                        {{-- =====================================================
-                         PURCHASE ORDER ITEM
+                    {{-- =====================================================
+                         ITEM
                     ===================================================== --}}
-                        <div class="col-md-6">
+                    <div class="col-md-6">
 
-                            <div class="form-group">
+                        <div class="form-group">
 
-                                <label>
+                            <label for="item_id">
 
-                                    Purchase Order Item
+                                Item
 
-                                    <span class="text-danger">
-                                        *
-                                    </span>
+                                <span class="text-danger">
+                                    *
+                                </span>
 
-                                </label>
+                            </label>
 
 
-                                <select name="purchase_order_item_id" id="purchase_order_item_id"
-                                    class="form-control no-clear @error('purchase_order_item_id') is-invalid @enderror"
-                                    required>
+                            <select
+                                name="item_id"
+                                id="item_id"
+                                class="form-control no-clear
+                                    @error('item_id') is-invalid @enderror"
+                                required
+                            >
 
-                                    <option value="">
-                                        Select Item
+                                <option value="">
+                                    -- Select Item --
+                                </option>
+
+
+                                @foreach ($items as $item)
+
+                                    <option
+                                        value="{{ $item->id }}"
+
+                                        data-unit="{{
+                                            $item->unit->name ?? ''
+                                        }}"
+
+                                        data-model="{{
+                                            $item->productModel->model_name
+                                                ?? $item->productModel->name
+                                                ?? ''
+                                        }}"
+
+                                        @selected(
+                                            old('item_id') == $item->id
+                                        )
+                                    >
+
+                                        {{ $item->item_code }}
+
+                                        -
+
+                                        {{ $item->item_name }}
+
+                                        @if ($item->productModel)
+
+                                            [{{ $item->productModel->model_name
+                                                ?? $item->productModel->name
+                                                ?? 'Model'
+                                            }}]
+
+                                        @else
+
+                                            [Common]
+
+                                        @endif
+
                                     </option>
 
+                                @endforeach
 
-                                    @foreach ($poItems as $poItem)
-                                        <option value="{{ $poItem->id }}" data-ordered="{{ $poItem->ordered_quantity }}"
-                                            data-received="{{ $poItem->received_qty }}"
-                                            data-invoiced="{{ $poItem->already_invoiced_qty }}"
-                                            data-remaining="{{ $poItem->remaining_invoiceable_qty }}"
-                                            data-price="{{ $poItem->unit_price }}"
-                                            data-unit="{{ $poItem->item->unit->name ?? '' }}" @selected(old('purchase_order_item_id') == $poItem->id)>
-
-                                            {{ $poItem->item->item_code }}
-                                            -
-                                            {{ $poItem->item->item_name }}
-
-                                        </option>
-                                    @endforeach
-
-                                </select>
+                            </select>
 
 
-                                @error('purchase_order_item_id')
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-                                @enderror
+                            @error('item_id')
 
-                            </div>
+                                <div class="invalid-feedback">
+                                    {{ $message }}
+                                </div>
 
-                        </div>
+                            @enderror
 
 
-                        {{-- =====================================================
-                         INVOICE QUANTITY
-                    ===================================================== --}}
-                        <div class="col-md-3">
-
-                            <div class="form-group">
-
-                                <label>
-
-                                    Invoice Quantity
-
-                                    <span class="text-danger">
-                                        *
-                                    </span>
-
-                                </label>
-
-
-                                <input type="number" name="quantity" id="quantity" value="{{ old('quantity') }}"
-                                    step="0.001" min="0.001"
-                                    class="form-control @error('quantity') is-invalid @enderror" required>
-
-
-                                @error('quantity')
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-
-
-                                <small id="quantityHelp" class="form-text text-muted">
-                                </small>
-
-                            </div>
-
-                        </div>
-
-
-                        {{-- =====================================================
-                         UNIT PRICE
-                    ===================================================== --}}
-                        <div class="col-md-3">
-
-                            <div class="form-group">
-
-                                <label>
-
-                                    Unit Price
-
-                                    <span class="text-danger">
-                                        *
-                                    </span>
-
-                                </label>
-
-
-                                <input type="number" name="unit_price" id="unit_price" value="{{ old('unit_price') }}"
-                                    step="0.0001" min="0"
-                                    class="form-control @error('unit_price') is-invalid @enderror" required>
-
-
-                                @error('unit_price')
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-
-
-                                <small class="form-text text-muted">
-                                    Defaults to the Purchase Order unit price.
-                                </small>
-
-                            </div>
-
-                        </div>
-
-
-                        {{-- =====================================================
-                         LINE TOTAL
-                    ===================================================== --}}
-                        <div class="col-md-4">
-
-                            <div class="form-group">
-
-                                <label>
-                                    Line Total
-                                </label>
-
-
-                                <input type="text" id="line_total" class="form-control font-weight-bold"
-                                    value="0.0000" readonly>
-
-                            </div>
-
-                        </div>
-
-
-                        {{-- =====================================================
-                         REMARKS
-                    ===================================================== --}}
-                        <div class="col-md-8">
-
-                            <div class="form-group">
-
-                                <label>
-                                    Remarks
-                                </label>
-
-
-                                <textarea name="remarks" rows="2" class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
-
-
-                                @error('remarks')
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-
-                            </div>
+                            <small
+                                id="itemHelp"
+                                class="form-text text-muted"
+                            >
+                                Select the exact item shown on the
+                                supplier invoice.
+                            </small>
 
                         </div>
 
                     </div>
 
+
+                    {{-- =====================================================
+                         UNIT
+                    ===================================================== --}}
+                    <div class="col-md-2">
+
+                        <div class="form-group">
+
+                            <label>
+                                Unit
+                            </label>
+
+                            <input
+                                type="text"
+                                id="unit_display"
+                                class="form-control"
+                                value="-"
+                                readonly
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    {{-- =====================================================
+                         INVOICE QUANTITY
+                    ===================================================== --}}
+                    <div class="col-md-2">
+
+                        <div class="form-group">
+
+                            <label for="quantity">
+
+                                Invoice Qty
+
+                                <span class="text-danger">
+                                    *
+                                </span>
+
+                            </label>
+
+
+                            <input
+                                type="number"
+                                name="quantity"
+                                id="quantity"
+                                value="{{ old('quantity') }}"
+                                step="0.001"
+                                min="0.001"
+                                class="form-control
+                                    @error('quantity') is-invalid @enderror"
+                                required
+                            >
+
+
+                            @error('quantity')
+
+                                <div class="invalid-feedback">
+                                    {{ $message }}
+                                </div>
+
+                            @enderror
+
+                        </div>
+
+                    </div>
+
+
+                    {{-- =====================================================
+                         UNIT PRICE
+                    ===================================================== --}}
+                    <div class="col-md-2">
+
+                        <div class="form-group">
+
+                            <label for="unit_price">
+
+                                Unit Price
+
+                                <span class="text-danger">
+                                    *
+                                </span>
+
+                            </label>
+
+
+                            <input
+                                type="number"
+                                name="unit_price"
+                                id="unit_price"
+                                value="{{ old('unit_price') }}"
+                                step="0.0001"
+                                min="0"
+                                class="form-control
+                                    @error('unit_price') is-invalid @enderror"
+                                required
+                            >
+
+
+                            @error('unit_price')
+
+                                <div class="invalid-feedback">
+                                    {{ $message }}
+                                </div>
+
+                            @enderror
+
+                        </div>
+
+                    </div>
+
+
+                    {{-- =====================================================
+                         LINE TOTAL
+                    ===================================================== --}}
+                    <div class="col-md-4">
+
+                        <div class="form-group">
+
+                            <label>
+                                Line Total
+                            </label>
+
+
+                            <input
+                                type="text"
+                                id="line_total"
+                                class="form-control font-weight-bold"
+                                value="0.0000"
+                                readonly
+                            >
+
+                            <small class="form-text text-muted">
+                                Invoice Qty × Unit Price
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    {{-- =====================================================
+                         REMARKS
+                    ===================================================== --}}
+                    <div class="col-md-8">
+
+                        <div class="form-group">
+
+                            <label for="remarks">
+                                Remarks
+                            </label>
+
+
+                            <textarea
+                                name="remarks"
+                                id="remarks"
+                                rows="2"
+                                class="form-control
+                                    @error('remarks') is-invalid @enderror"
+                                placeholder="Optional remarks"
+                            >{{ old('remarks') }}</textarea>
+
+
+                            @error('remarks')
+
+                                <div class="invalid-feedback">
+                                    {{ $message }}
+                                </div>
+
+                            @enderror
+
+                        </div>
+
+                    </div>
+
+
                 </div>
 
+            </div>
 
-                <div class="card-footer text-right">
 
-                    <button type="submit" class="btn btn-primary" id="addInvoiceItemButton">
+            <div class="card-footer">
+
+                <div class="d-flex justify-content-between">
+
+                    <a
+                        href="{{ route(
+                            'supplier-invoices.show',
+                            $supplierInvoice
+                        ) }}"
+                        class="btn btn-secondary"
+                    >
+
+                        <i class="fas fa-times mr-1"></i>
+                        Cancel
+
+                    </a>
+
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                        id="addInvoiceItemButton"
+                    >
 
                         <i class="fas fa-plus mr-1"></i>
-
                         Add Invoice Item
 
                     </button>
@@ -458,15 +486,16 @@
 
             </div>
 
-        </form>
+        </div>
 
-    </div>
+    </form>
+
+</div>
+
+@endsection
 
 
-    {{-- ============================================================
-     JAVASCRIPT
-============================================================ --}}
-    @push('scripts')
+@push('scripts')
 
 <script>
 
@@ -478,8 +507,8 @@ $(document).ready(function () {
     |--------------------------------------------------------------------------
     */
 
-    const $itemSelect =
-        $('#purchase_order_item_id');
+    const $item =
+        $('#item_id');
 
     const $quantity =
         $('#quantity');
@@ -490,30 +519,8 @@ $(document).ready(function () {
     const $lineTotal =
         $('#line_total');
 
-    const $summaryCard =
-        $('#poItemSummaryCard');
-
-    const $quantityHelp =
-        $('#quantityHelp');
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Format Quantity
-    |--------------------------------------------------------------------------
-    */
-
-    function formatQuantity(value) {
-
-        return Number(value || 0)
-            .toLocaleString(
-                'en-US',
-                {
-                    minimumFractionDigits: 3,
-                    maximumFractionDigits: 3
-                }
-            );
-    }
+    const $unitDisplay =
+        $('#unit_display');
 
 
     /*
@@ -522,449 +529,79 @@ $(document).ready(function () {
     |--------------------------------------------------------------------------
     */
 
-    function calculateLineTotal() {
-
+    function calculateLineTotal()
+    {
         const quantity =
             parseFloat(
                 $quantity.val()
             ) || 0;
 
-        const price =
+        const unitPrice =
             parseFloat(
                 $unitPrice.val()
             ) || 0;
 
-        const total =
-            quantity * price;
+        const lineTotal =
+            quantity * unitPrice;
+
 
         $lineTotal.val(
-            total.toFixed(4)
+            lineTotal.toFixed(4)
         );
     }
 
 
     /*
     |--------------------------------------------------------------------------
-    | Validate Invoice Quantity
+    | Display Selected Item Information
     |--------------------------------------------------------------------------
     */
 
-   function validateQuantity() {
-
-    const $option =
-        $itemSelect.find(
-            'option:selected'
-        );
-
-    const $button =
-        $('#addInvoiceItemButton');
-
-
-    if (!$option.val()) {
-
-        $quantity[0].setCustomValidity('');
-
-        $quantity.removeClass('is-invalid');
-
-        $button.prop('disabled', false);
-
-        return;
-    }
-
-
-    const remaining =
-        parseFloat(
-            $option.attr(
-                'data-remaining'
-            )
-        ) || 0;
-
-
-    const entered =
-        parseFloat(
-            $quantity.val()
-        ) || 0;
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Quantity Greater Than Remaining
-    |--------------------------------------------------------------------------
-    */
-
-    if (entered > remaining) {
-
-        $quantity[0].setCustomValidity(
-            'Invoice quantity cannot exceed the remaining invoiceable quantity of '
-            + formatQuantity(remaining)
-            + '.'
-        );
-
-        $quantity.addClass(
-            'is-invalid'
-        );
-
-        $quantityHelp
-            .removeClass(
-                'text-muted text-success'
-            )
-            .addClass(
-                'text-danger'
-            )
-            .text(
-                'This exceeds the remaining invoiceable quantity of '
-                + formatQuantity(remaining)
-                + '.'
-            );
-
-        $button.prop(
-            'disabled',
-            true
-        );
-
-        return;
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Quantity Must Be Greater Than Zero
-    |--------------------------------------------------------------------------
-    */
-
-    if (entered <= 0) {
-
-        $quantity[0].setCustomValidity(
-            'Invoice quantity must be greater than zero.'
-        );
-
-        $quantity.addClass(
-            'is-invalid'
-        );
-
-        $button.prop(
-            'disabled',
-            true
-        );
-
-        return;
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Valid
-    |--------------------------------------------------------------------------
-    */
-
-    $quantity[0].setCustomValidity('');
-
-    $quantity.removeClass(
-        'is-invalid'
-    );
-
-    $quantityHelp
-        .removeClass(
-            'text-danger'
-        )
-        .addClass(
-            'text-muted'
-        )
-        .text(
-            'Maximum invoiceable quantity: '
-            + formatQuantity(remaining)
-            + ' '
-            + (
-                $option.attr('data-unit')
-                || ''
-            )
-        );
-
-    $button.prop(
-        'disabled',
-        false
-    );
-}
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Load Selected Purchase Order Item
-    |--------------------------------------------------------------------------
-    */
-
-    function loadItemInformation(
-        resetInputs = false
-    ) {
-
-        const $option =
-            $itemSelect.find(
+    function loadItemInformation()
+    {
+        const $selectedOption =
+            $item.find(
                 'option:selected'
             );
 
+        if (!$selectedOption.val()) {
 
-        /*
-        |--------------------------------------------------------------------------
-        | Nothing Selected
-        |--------------------------------------------------------------------------
-        */
-
-        if (!$option.val()) {
-
-            $summaryCard.addClass(
-                'd-none'
-            );
-
-            $quantityHelp.text('');
-
-            $quantity.removeAttr(
-                'max'
-            );
-
-            if (resetInputs) {
-
-                $quantity.val('');
-
-                $unitPrice.val('');
-            }
-
-            calculateLineTotal();
+            $unitDisplay.val('-');
 
             return;
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Read Option Data
-        |--------------------------------------------------------------------------
-        */
-
-        const ordered =
-            parseFloat(
-                $option.attr(
-                    'data-ordered'
-                )
-            ) || 0;
-
-        const received =
-            parseFloat(
-                $option.attr(
-                    'data-received'
-                )
-            ) || 0;
-
-        const invoiced =
-            parseFloat(
-                $option.attr(
-                    'data-invoiced'
-                )
-            ) || 0;
-
-        const remaining =
-            parseFloat(
-                $option.attr(
-                    'data-remaining'
-                )
-            ) || 0;
-
-        const price =
-            parseFloat(
-                $option.attr(
-                    'data-price'
-                )
-            ) || 0;
-
         const unit =
-            $option.attr(
-                'data-unit'
-            ) || '';
+            $selectedOption.data('unit')
+            || '-';
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Show Summary Card
-        |--------------------------------------------------------------------------
-        */
-
-        $summaryCard.removeClass(
-            'd-none'
+        $unitDisplay.val(
+            unit
         );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Summary Values
-        |--------------------------------------------------------------------------
-        */
-
-        $('#summary_ordered_qty')
-            .text(
-                formatQuantity(
-                    ordered
-                )
-            );
-
-        $('#summary_received_qty')
-            .text(
-                formatQuantity(
-                    received
-                )
-            );
-
-        $('#summary_invoiced_qty')
-            .text(
-                formatQuantity(
-                    invoiced
-                )
-            );
-
-        $('#summary_remaining_qty')
-            .text(
-                formatQuantity(
-                    remaining
-                )
-            );
-
-        $('#summary_unit_price')
-            .text(
-                price.toFixed(4)
-            );
-
-        $('#summary_unit')
-            .text(
-                unit || '-'
-            );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Maximum Quantity
-        |--------------------------------------------------------------------------
-        */
-
-        $quantity.attr(
-            'max',
-            remaining
-        );
-
-
-        $quantityHelp.text(
-            'Maximum invoiceable quantity: '
-            + formatQuantity(
-                remaining
-            )
-            + ' '
-            + unit
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Auto Fill Values
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            resetInputs
-            ||
-            !$quantity.val()
-        ) {
-
-            $quantity.val(
-                remaining.toFixed(3)
-            );
-        }
-
-
-        if (
-            resetInputs
-            ||
-            !$unitPrice.val()
-        ) {
-
-            $unitPrice.val(
-                price.toFixed(4)
-            );
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Calculate
-        |--------------------------------------------------------------------------
-        */
-
-        calculateLineTotal();
-
-        validateQuantity();
     }
 
 
     /*
     |--------------------------------------------------------------------------
-    | Normal Select Change
+    | Item Changed
     |--------------------------------------------------------------------------
     */
 
-    $itemSelect.on(
-        'change',
+    $item.on(
+        'change select2:select',
         function () {
 
-            loadItemInformation(
-                true
-            );
+            loadItemInformation();
+
         }
     );
 
 
     /*
     |--------------------------------------------------------------------------
-    | Select2 Selection
-    |--------------------------------------------------------------------------
-    */
-
-    $itemSelect.on(
-        'select2:select',
-        function () {
-
-            loadItemInformation(
-                true
-            );
-        }
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Select2 Clear
-    |--------------------------------------------------------------------------
-    */
-
-    $itemSelect.on(
-        'select2:clear',
-        function () {
-
-            $summaryCard.addClass(
-                'd-none'
-            );
-
-            $quantity.val('');
-
-            $unitPrice.val('');
-
-            $lineTotal.val(
-                '0.0000'
-            );
-
-            $quantityHelp.text('');
-        }
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Quantity Change
+    | Quantity Changed
     |--------------------------------------------------------------------------
     */
 
@@ -974,14 +611,13 @@ $(document).ready(function () {
 
             calculateLineTotal();
 
-            validateQuantity();
         }
     );
 
 
     /*
     |--------------------------------------------------------------------------
-    | Unit Price Change
+    | Unit Price Changed
     |--------------------------------------------------------------------------
     */
 
@@ -990,6 +626,7 @@ $(document).ready(function () {
         function () {
 
             calculateLineTotal();
+
         }
     );
 
@@ -998,25 +635,14 @@ $(document).ready(function () {
     |--------------------------------------------------------------------------
     | Initial Load
     |--------------------------------------------------------------------------
-    |
-    | Important when:
-    |
-    | - Select2 starts with an existing selected option
-    | - returning after validation error
-    |
     */
 
-    if ($itemSelect.val()) {
+    loadItemInformation();
 
-        loadItemInformation(
-            false
-        );
-    }
+    calculateLineTotal();
 
 });
 
 </script>
 
 @endpush
-
-@endsection

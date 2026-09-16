@@ -14,8 +14,8 @@
                     Create Supplier Invoice
                 </h2>
 
-                <p class="text-muted mb-0">
-                    Create a supplier invoice against a partially received or received Purchase Order.
+               <p class="text-muted mb-0">
+                    Enter the supplier invoice first. Purchase Order will be created from the invoice items later.
                 </p>
             </div>
 
@@ -76,72 +76,16 @@
                     <div class="row">
 
 
-                        {{-- Purchase Order --}}
-                        <div class="col-md-6">
-
-                            <div class="form-group">
-
-                                <label for="purchase_order_id">
-
-                                    Purchase Order
-
-                                    <span class="text-danger">*</span>
-
-                                </label>
-
-                                <select name="purchase_order_id" id="purchase_order_id"
-                                    class="form-control @error('purchase_order_id') is-invalid @enderror" required>
-
-                                    <option value="">
-                                        -- Select Purchase Order --
-                                    </option>
 
 
-                                    @foreach ($purchaseOrders as $purchaseOrder)
-
-                                        <option value="{{ $purchaseOrder->id }}"
-                                            data-supplier-id="{{ $purchaseOrder->supplier_id }}" @selected(
-                                                old('purchase_order_id')
-                                                == $purchaseOrder->id
-                                            )>
-
-                                            {{ $purchaseOrder->po_number }}
-
-                                            -
-
-                                            {{ $purchaseOrder->supplier->name ?? 'Unknown Supplier' }}
-
-                                            ({{ ucwords(str_replace('_', ' ', $purchaseOrder->status)) }})
-
-                                        </option>
-
-                                    @endforeach
-
-                                </select>
 
 
-                                @error('purchase_order_id')
-
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-
-                                @enderror
 
 
-                                <small class="form-text text-muted">
-
-                                    Only partially received and received Purchase Orders are shown.
-
-                                </small>
-
-                            </div>
-
-                        </div>
 
 
                         {{-- Supplier --}}
-                        <div class="col-md-6">
+                        <div class="col-md-12">
 
                             <div class="form-group">
 
@@ -193,9 +137,7 @@
 
 
                                 <small class="form-text text-muted">
-
-                                    Automatically selected from the Purchase Order.
-
+                                    Select the supplier who issued this invoice.
                                 </small>
 
                             </div>
@@ -464,110 +406,130 @@
 
     {{-- Auto Select Supplier From PO + Generate Invoice Number --}}
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function () {
 
-        // jQuery is guaranteed loaded by the time DOMContentLoaded fires,
-        // since the jQuery <script> tag executes synchronously before this.
-        const $purchaseOrderSelect = $('#purchase_order_id');
-        const $supplierSelect      = $('#supplier_id');
-        const $invoiceDateInput    = $('#invoice_date');
-        const $invoiceNumberInput  = $('#invoice_number');
-        const $regenerateBtn       = $('#regenerate_invoice_number_btn');
+    const $supplierSelect     = $('#supplier_id');
+    const $invoiceDateInput   = $('#invoice_date');
+    const $invoiceNumberInput = $('#invoice_number');
+    const $regenerateBtn      = $('#regenerate_invoice_number_btn');
 
-        let invoiceNumberManuallyEdited = false;
+    let invoiceNumberManuallyEdited = false;
 
 
-        function selectPoSupplier()
-        {
-            const selectedOption = $purchaseOrderSelect.find('option:selected');
-
-            if (!selectedOption.val()) {
-                $supplierSelect.val(null).trigger('change');
-                return;
-            }
-
-            const supplierId = selectedOption.data('supplier-id');
-
-            if (supplierId) {
-                // .trigger('change') here so Select2 UI updates AND our
-                // supplier change handler below fires too
-                $supplierSelect.val(supplierId).trigger('change');
-            }
+    function generateInvoiceNumber(force = false)
+    {
+        if (invoiceNumberManuallyEdited && !force) {
+            return;
         }
 
+        const supplierId  = $supplierSelect.val();
+        const invoiceDate = $invoiceDateInput.val();
 
-        function generateInvoiceNumber(force = false)
-        {
-            if (invoiceNumberManuallyEdited && !force) {
-                return;
-            }
+        if (!supplierId || !invoiceDate) {
+            return;
+        }
 
-            const supplierId  = $supplierSelect.val();
-            const invoiceDate = $invoiceDateInput.val();
+        $.ajax({
+            url: '{{ route('supplier-invoices.generate-number') }}',
+            method: 'POST',
 
-            if (!supplierId || !invoiceDate) {
-                return;
-            }
+            data: {
+                supplier_id: supplierId,
+                invoice_date: invoiceDate,
+                _token: '{{ csrf_token() }}',
+            },
 
-            $.ajax({
-                url: '{{ route('supplier-invoices.generate-number') }}',
-                method: 'POST',
-                data: {
-                    supplier_id: supplierId,
-                    invoice_date: invoiceDate,
-                    _token: '{{ csrf_token() }}',
-                },
-                success: function (data) {
-                    if (data.invoice_number) {
-                        $invoiceNumberInput.val(data.invoice_number);
+            success: function (data) {
 
-                        if (force) {
-                            invoiceNumberManuallyEdited = false;
-                        }
+                if (data.invoice_number) {
+
+                    $invoiceNumberInput.val(
+                        data.invoice_number
+                    );
+
+                    if (force) {
+                        invoiceNumberManuallyEdited = false;
                     }
-                },
-                error: function (xhr) {
-                    console.error('Invoice number generation failed:', xhr);
-                },
-            });
-        }
+                }
+            },
 
-
-        $purchaseOrderSelect.on('change', selectPoSupplier);
-        $supplierSelect.on('change', () => generateInvoiceNumber());
-        $invoiceDateInput.on('change', () => generateInvoiceNumber());
-
-
-        // Once the user types in the field themselves, stop auto-overwriting it
-        $invoiceNumberInput.on('input', function () {
-            invoiceNumberManuallyEdited = true;
+            error: function (xhr) {
+                console.error(
+                    'Invoice number generation failed:',
+                    xhr
+                );
+            },
         });
+    }
 
 
-        $regenerateBtn.on('click', function () {
-            generateInvoiceNumber(true);
-        });
+    /*
+    |--------------------------------------------------------------------------
+    | Supplier Changed
+    |--------------------------------------------------------------------------
+    */
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Handle old() value after validation error
-        |--------------------------------------------------------------------------
-        */
-
-        if ($invoiceNumberInput.val()) {
-            invoiceNumberManuallyEdited = true;
-        }
-
-        if ($purchaseOrderSelect.val()) {
-            selectPoSupplier();
-        }
-
-        if (!$invoiceNumberInput.val() && $supplierSelect.val() && $invoiceDateInput.val()) {
-            generateInvoiceNumber();
-        }
-
+    $supplierSelect.on('change', function () {
+        generateInvoiceNumber();
     });
-    </script>
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Invoice Date Changed
+    |--------------------------------------------------------------------------
+    */
+
+    $invoiceDateInput.on('change', function () {
+        generateInvoiceNumber();
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Manual Invoice Number
+    |--------------------------------------------------------------------------
+    */
+
+    $invoiceNumberInput.on('input', function () {
+        invoiceNumberManuallyEdited = true;
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Regenerate Number
+    |--------------------------------------------------------------------------
+    */
+
+    $regenerateBtn.on('click', function () {
+
+        invoiceNumberManuallyEdited = false;
+
+        generateInvoiceNumber(true);
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Restore Old Value / Initial Generation
+    |--------------------------------------------------------------------------
+    */
+
+    if ($invoiceNumberInput.val()) {
+
+        invoiceNumberManuallyEdited = true;
+
+    } else if (
+        $supplierSelect.val()
+        &&
+        $invoiceDateInput.val()
+    ) {
+
+        generateInvoiceNumber();
+    }
+
+});
+</script>
 
 @endsection

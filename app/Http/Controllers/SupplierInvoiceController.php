@@ -42,27 +42,16 @@ class SupplierInvoiceController extends Controller
     */
 
     public function create()
-    {
-        $suppliers = Supplier::where('status', true)
-            ->orderBy('name')
-            ->get();
+{
+    $suppliers = Supplier::where('status', true)
+        ->orderBy('name')
+        ->get();
 
-        $purchaseOrders = PurchaseOrder::with('supplier')
-            ->whereIn('status', [
-                'partially_received',
-                'received',
-            ])
-            ->orderByDesc('order_date')
-            ->get();
-
-        return view(
-            'supplier-invoices.create',
-            compact(
-                'suppliers',
-                'purchaseOrders'
-            )
-        );
-    }
+    return view(
+        'supplier-invoices.create',
+        compact('suppliers')
+    );
+}
 
 
     /*
@@ -115,222 +104,169 @@ class SupplierInvoiceController extends Controller
 
         return $prefix . '-' . $date->format('Ymd') . '-' . $sequence;
     }
-    public function store(Request $request)
-    {
-        /*
-        |--------------------------------------------------------------------------
-        | Validation
-        |--------------------------------------------------------------------------
-        */
+   public function store(Request $request)
+{
+    /*
+    |--------------------------------------------------------------------------
+    | Validation
+    |--------------------------------------------------------------------------
+    */
 
-        $validated = $request->validate([
+    $validated = $request->validate([
 
-            'purchase_order_id' => [
-                'required',
-                'exists:purchase_orders,id',
-            ],
+        'supplier_id' => [
+            'required',
+            'exists:suppliers,id',
+        ],
 
-            'supplier_id' => [
-                'required',
-                'exists:suppliers,id',
-            ],
+        'invoice_number' => [
+            'required',
+            'string',
+            'max:100',
+        ],
 
-            'invoice_number' => [
-                'required',
-                'string',
-                'max:100',
-            ],
+        'invoice_date' => [
+            'required',
+            'date',
+        ],
 
-            'invoice_date' => [
-                'required',
-                'date',
-            ],
+        'due_date' => [
+            'nullable',
+            'date',
+            'after_or_equal:invoice_date',
+        ],
 
-            'due_date' => [
-                'nullable',
-                'date',
-                'after_or_equal:invoice_date',
-            ],
+        'tax_amount' => [
+            'nullable',
+            'numeric',
+            'min:0',
+        ],
 
-            'tax_amount' => [
-                'nullable',
-                'numeric',
-                'min:0',
-            ],
+        'discount_amount' => [
+            'nullable',
+            'numeric',
+            'min:0',
+        ],
 
-            'discount_amount' => [
-                'nullable',
-                'numeric',
-                'min:0',
-            ],
+        'remarks' => [
+            'nullable',
+            'string',
+        ],
 
-            'remarks' => [
-                'nullable',
-                'string',
-            ],
-
-        ]);
+    ]);
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Purchase Order
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Supplier
+    |--------------------------------------------------------------------------
+    */
 
-        $purchaseOrder = PurchaseOrder::findOrFail(
-            $validated['purchase_order_id']
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Only Partially Received / Received PO
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            !in_array(
-                $purchaseOrder->status,
-                [
-                    'partially_received',
-                    'received',
-                ]
-            )
-        ) {
-
-            return back()
-                ->withInput()
-                ->withErrors([
-
-                    'purchase_order_id' =>
-                    'Supplier invoices can only be created for partially received or received Purchase Orders.',
-
-                ]);
-        }
+    $supplier = Supplier::findOrFail(
+        $validated['supplier_id']
+    );
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Supplier Must Match PO Supplier
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Prevent Duplicate Supplier Invoice Number
+    |--------------------------------------------------------------------------
+    */
 
-        if (
-            (int) $validated['supplier_id']
-            !== (int) $purchaseOrder->supplier_id
-        ) {
-
-            return back()
-                ->withInput()
-                ->withErrors([
-
-                    'supplier_id' =>
-                    'The selected supplier does not match the Purchase Order supplier.',
-
-                ]);
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Prevent Duplicate Supplier Invoice Number
-        |--------------------------------------------------------------------------
-        */
-
-        $invoiceExists = SupplierInvoice::where(
-            'supplier_id',
-            $validated['supplier_id']
+    $invoiceExists = SupplierInvoice::where(
+        'supplier_id',
+        $supplier->id
+    )
+        ->where(
+            'invoice_number',
+            $validated['invoice_number']
         )
-            ->where(
-                'invoice_number',
-                $validated['invoice_number']
-            )
-            ->exists();
+        ->exists();
 
 
-        if ($invoiceExists) {
+    if ($invoiceExists) {
 
-            return back()
-                ->withInput()
-                ->withErrors([
+        return back()
+            ->withInput()
+            ->withErrors([
 
-                    'invoice_number' =>
+                'invoice_number' =>
                     'This invoice number already exists for the selected supplier.',
 
-                ]);
-        }
+            ]);
+    }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Save Invoice Header
-        |--------------------------------------------------------------------------
-        |
-        | Totals remain zero until invoice items are added.
-        |
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Create Supplier Invoice Header
+    |--------------------------------------------------------------------------
+    |
+    | The Purchase Order does not exist yet.
+    | It will be created later from the Supplier Invoice items.
+    |--------------------------------------------------------------------------
+    */
 
-        $supplierInvoice = SupplierInvoice::create([
+    $supplierInvoice = SupplierInvoice::create([
 
-            'invoice_number' =>
+        'invoice_number' =>
             $validated['invoice_number'],
 
-            'supplier_id' =>
-            $purchaseOrder->supplier_id,
+        'supplier_id' =>
+            $supplier->id,
 
-            'purchase_order_id' =>
-            $purchaseOrder->id,
+        'purchase_order_id' =>
+            null,
 
-            'invoice_date' =>
+        'invoice_date' =>
             $validated['invoice_date'],
 
-            'due_date' =>
+        'due_date' =>
             $validated['due_date'] ?? null,
 
-            'subtotal' =>
+        'subtotal' =>
             0,
 
-            'tax_amount' =>
+        'tax_amount' =>
             $validated['tax_amount'] ?? 0,
 
-            'discount_amount' =>
+        'discount_amount' =>
             $validated['discount_amount'] ?? 0,
 
-            'total_amount' =>
+        'total_amount' =>
             0,
 
-            'paid_amount' =>
+        'paid_amount' =>
             0,
 
-            'balance_amount' =>
+        'balance_amount' =>
             0,
 
-            'status' =>
+        'status' =>
             'draft',
 
-            'remarks' =>
+        'remarks' =>
             $validated['remarks'] ?? null,
 
-        ]);
+    ]);
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Redirect
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Redirect
+    |--------------------------------------------------------------------------
+    */
 
-        return redirect()
-            ->route(
-                'supplier-invoices.show',
-                $supplierInvoice
-            )
-            ->with(
-                'success',
-                'Supplier invoice header created successfully. You can now add invoice items.'
-            );
-    }
+    return redirect()
+        ->route(
+            'supplier-invoices.show',
+            $supplierInvoice
+        )
+        ->with(
+            'success',
+            'Supplier invoice created successfully. You can now add the invoice items.'
+        );
+}
     public function edit(SupplierInvoice $supplierInvoice)
     {
         $suppliers = Supplier::where('status', true)

@@ -4,11 +4,11 @@
     {{-- Brand Logo --}}
     {{-- ===================================================== --}}
 
-    <a href="{{ url('/dashboard') }}" class="brand-link">
+    <a href="{{ url('/dashboard') }}" class="brand-link text-center">
 
         <span class="brand-text font-weight-light">
-            <i class="fas fa-industry nav-icon"></i>
-            <strong>PURCHASE</strong> PLANNER
+            <i class="fas fa-industry nav-icon mr-2"></i>
+            <strong>PMS</strong> SANKO
         </span>
 
     </a>

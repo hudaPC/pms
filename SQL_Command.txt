@@ -1,0 +1,234 @@
+
+
+
+/* ============================================================
+   PURCHASE MANAGEMENT
+   TRANSACTION DATA RESET
+   ------------------------------------------------------------
+   KEEP:
+   - Items
+   - Product Models
+   - Product Model Items
+   - Categories
+   - Units
+   - Suppliers
+   - Item Suppliers
+   - Warehouses
+   - Item Purchase Settings
+   - Users
+   ============================================================ */
+
+
+/* ============================================================
+   1. PURCHASE RETURNS
+   ============================================================ */
+
+DELETE FROM purchase_return_items;
+ALTER TABLE purchase_return_items AUTO_INCREMENT = 1;
+
+DELETE FROM purchase_returns;
+ALTER TABLE purchase_returns AUTO_INCREMENT = 1;
+
+
+/* ============================================================
+   2. SUPPLIER PAYMENTS
+   ============================================================ */
+
+DELETE FROM supplier_payments;
+ALTER TABLE supplier_payments AUTO_INCREMENT = 1;
+
+
+/* ============================================================
+   3. SUPPLIER INVOICES
+   ============================================================ */
+
+DELETE FROM supplier_invoice_items;
+ALTER TABLE supplier_invoice_items AUTO_INCREMENT = 1;
+
+DELETE FROM supplier_invoices;
+ALTER TABLE supplier_invoices AUTO_INCREMENT = 1;
+
+
+/* ============================================================
+   4. GOODS RECEIPTS
+   ============================================================ */
+
+DELETE FROM goods_receipt_items;
+ALTER TABLE goods_receipt_items AUTO_INCREMENT = 1;
+
+DELETE FROM goods_receipts;
+ALTER TABLE goods_receipts AUTO_INCREMENT = 1;
+
+
+/* ============================================================
+   5. PURCHASE ORDERS
+   ============================================================ */
+
+DELETE FROM purchase_order_items;
+ALTER TABLE purchase_order_items AUTO_INCREMENT = 1;
+
+DELETE FROM purchase_orders;
+ALTER TABLE purchase_orders AUTO_INCREMENT = 1;
+
+
+/* ============================================================
+   6. PRODUCTION / MATERIAL USAGE
+   ============================================================ */
+
+DELETE FROM usage_logs;
+ALTER TABLE usage_logs AUTO_INCREMENT = 1;
+
+DELETE FROM production_plans;
+ALTER TABLE production_plans AUTO_INCREMENT = 1;
+
+
+/* ============================================================
+   7. STOCK ADJUSTMENTS
+   ============================================================ */
+
+DELETE FROM stock_adjustments;
+ALTER TABLE stock_adjustments AUTO_INCREMENT = 1;
+
+
+/* ============================================================
+   8. STOCK MOVEMENT / LEDGER
+   ============================================================ */
+
+DELETE FROM stock_movements;
+ALTER TABLE stock_movements AUTO_INCREMENT = 1;
+
+
+/* ************************************* 
+This much for deleting
+********** */
+
+SELECT 'purchase_returns' AS table_name, COUNT(*) AS rows_count
+FROM purchase_returns
+
+UNION ALL
+
+SELECT 'purchase_return_items', COUNT(*)
+FROM purchase_return_items
+
+UNION ALL
+
+SELECT 'supplier_payments', COUNT(*)
+FROM supplier_payments
+
+UNION ALL
+
+SELECT 'supplier_invoices', COUNT(*)
+FROM supplier_invoices
+
+UNION ALL
+
+SELECT 'supplier_invoice_items', COUNT(*)
+FROM supplier_invoice_items
+
+UNION ALL
+
+SELECT 'goods_receipts', COUNT(*)
+FROM goods_receipts
+
+UNION ALL
+
+SELECT 'goods_receipt_items', COUNT(*)
+FROM goods_receipt_items
+
+UNION ALL
+
+SELECT 'purchase_orders', COUNT(*)
+FROM purchase_orders
+
+UNION ALL
+
+SELECT 'purchase_order_items', COUNT(*)
+FROM purchase_order_items
+
+UNION ALL
+
+SELECT 'usage_logs', COUNT(*)
+FROM usage_logs
+
+UNION ALL
+
+SELECT 'production_plans', COUNT(*)
+FROM production_plans
+
+UNION ALL
+
+SELECT 'stock_adjustments', COUNT(*)
+FROM stock_adjustments
+
+UNION ALL
+
+SELECT 'stock_movements', COUNT(*)
+FROM stock_movements;
+
+
+/* *********************
+Every result should be:
+
+0
+
+*/
+
+SELECT
+    i.item_code,
+    i.item_name,
+    pmi.old_part_no,
+    pmi.revision,
+    pmi.quantity,
+    s.name AS supplier_name,
+    isup.unit_price,
+    isup.lead_time_days,
+    isup.minimum_order_qty
+FROM product_models pm
+INNER JOIN product_model_items pmi
+    ON pmi.product_model_id = pm.id
+INNER JOIN items i
+    ON i.id = pmi.item_id
+LEFT JOIN item_suppliers isup
+    ON isup.item_id = i.id
+   AND isup.is_preferred = 1
+   AND isup.status = 1
+LEFT JOIN suppliers s
+    ON s.id = isup.supplier_id
+WHERE pm.model_code = 'VS-0814H1'
+ORDER BY i.item_code;
+
+***************************
+SELECT
+    i.item_code,
+    i.item_name,
+    pmi.old_part_no,
+    pmi.revision,
+    pmi.quantity,
+    s.name AS supplier_name,
+    isup.unit_price,
+    isup.lead_time_days,
+    isup.minimum_order_qty
+FROM product_models pm
+INNER JOIN product_model_items pmi
+    ON pmi.product_model_id = pm.id
+INNER JOIN items i
+    ON i.id = pmi.item_id
+LEFT JOIN item_suppliers isup
+    ON isup.item_id = i.id
+   AND isup.status = 1
+   AND isup.id = (
+        SELECT isup2.id
+        FROM item_suppliers isup2
+        WHERE isup2.item_id = i.id
+          AND isup2.status = 1
+        ORDER BY isup2.is_preferred DESC,   -- preferred first
+                 isup2.supplier_id = i.default_supplier_id DESC, -- then default supplier
+                 isup2.unit_price ASC        -- then cheapest as tiebreaker
+        LIMIT 1
+   )
+LEFT JOIN suppliers s
+    ON s.id = isup.supplier_id
+WHERE pm.model_code = 'TM-2528H1-850'
+ORDER BY i.item_code;
+
+

@@ -1,0 +1,10 @@
+<footer class="main-footer">
+
+    <strong>
+        Copyright &copy; {{ date('Y') }}
+        Dental Doctor Hub.
+    </strong>
+
+    All rights reserved.
+
+</footer>

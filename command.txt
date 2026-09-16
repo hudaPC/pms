@@ -1,0 +1,98 @@
+php artisan make:request StoreSpecializationRequest
+php artisan make:request UpdateSpecializationRequest
+
+php artisan optimize:clear
+composer dump-autoload
+
+php artisan make:migration create_patients_table
+php artisan make:migration create_production_plans_table
+*******************
+
+php artisan make:command BackfillStockMovements
+This creates: app/Console/Commands/BackfillStockMovements.php
+
+php artisan stock:backfill-movements
+********************
+
+php artisan make:request StorePatientRequest
+php artisan make:request UpdatePatientRequest
+
+php artisan make:migration add_appointment_id_to_patient_visits_table --table=patient_visits
+
+composer require barryvdh/laravel-dompdf
+
+php artisan vendor:publish --provider="Barryvdh\DomPDF\ServiceProvider"
+
+php artisan route:clear
+php artisan config:clear
+php artisan cache:clear
+php artisan view:clear
+php artisan route:cache
+
+php.ini file
+**************
+[Date]
+; Defines the default timezone used by the date functions
+; https://php.net/date.timezone
+date.timezone = Asia/Dhaka
+
+Number to words
+**********************
+composer require kwn/number-to-words
+
+Install Laravel Excel
+*********************
+composer require maatwebsite/excel
+
+php artisan make:export BillingReportExport --model=Billing
+
+ php artisan make:controller ProductModelController --resource
+
+Load Helper Automatically
+*************************
+  "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        },
+         "files": [
+        "app/helpers.php"
+    ]
+  }
+
+composer dump-autoload
+===========================
+create a folder
+***************
+PS E:\Xamp_huda\htdocs\laravel_projects\dentalhub> mkdir public\uploads\settings
+    Directory: E:\Xamp_huda\htdocs\laravel_projects\dentalhub\public\uploads
+
+    *****************
+    Install Full Calendar
+    **********************
+    run below inside project root cmd
+
+npm install @fullcalendar/core@6.1.21 @fullcalendar/daygrid@6.1.21 @fullcalendar/timegrid@6.1.21 @fullcalendar/interaction@6.1.21 @fullcalendar/bootstrap5@6.1.21
+
+find route
+php artisan route:list | findstr dashboard
+
+php artisan route:list --name=specializations
+php artisan route:list --name=doctors
+php artisan route:list --name=doctor-schedules
+
+
+<pre>{{ print_r($medicine->toArray(), true) }}</pre> 
+
+php artisan route:list --name=patient.appointments
+
+
+php artisan route:list | findstr "requirements"
+
+DELETE FROM your_table_name;
+ALTER TABLE your_table_name AUTO_INCREMENT = 1;
+
+***********************
+PS E:\Xamp_huda\htdocs\laravel_projects\purchaseplan> php -l app/Services/ItemPurchasePlanningService.php
+No syntax errors detected in app/Services/ItemPurchasePlanningService.php
+PS E:\Xamp_huda\htdocs\laravel_projects\purchaseplan> 
+**************************

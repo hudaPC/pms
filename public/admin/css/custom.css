@@ -1,0 +1,80 @@
+/* Select2 - selected value box (closed state) */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    font-size: 14px;
+}
+
+/* Select2 - multi select (tags) box */
+.select2-container--default .select2-selection--multiple .select2-selection__rendered {
+    font-size: 14px;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    font-size: 13px;
+}
+
+/* Select2 - dropdown list (open state) */
+.select2-dropdown {
+    font-size: 14px;
+}
+
+.select2-results__option {
+    font-size: 14px;
+    padding: 8px 12px;
+}
+
+/* Search box inside dropdown */
+.select2-search--dropdown .select2-search__field {
+    font-size: 14px;
+}
+
+/* Toastr - wider toast messages */
+#toast-container > .toast {
+    width: 400px;
+    max-width: 90vw;
+    word-wrap: break-word;
+}
+/* TABLE HEADER TEXT */
+.thead-small {
+    font-size: 0.8em;
+}
+
+/* TABLE BODY TEXT */
+/* Custom table font sizes */
+
+/* Smaller table headers */
+.table-head-small th {
+    font-size: 1.0rem;   /* adjust as needed */
+    font-weight: 900;     /* keep headers bold */
+}
+
+/* Smaller table body text */
+.table-body-small td {
+    font-size: 0.85rem;   /* adjust as needed */
+}
+
+/* Extra small variant */
+.table-head-xs th {
+    font-size: 0.65rem;
+}
+
+.table-body-xs td {
+    font-size: 0.65rem;
+}
+
+/* Reduce row height and increase cell width */
+.table-compact td {
+    padding-top: 0.25rem;   /* reduce vertical padding */
+    padding-bottom: 0.25rem;
+    font-size: 0.85rem;     /* optional: slightly smaller text */
+}
+
+.table-compact th {
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+    font-size: 0.9rem;
+}
+
+/* Increase width for specific column */
+.table-wide td.text-right {
+    min-width: 180px;       /* adjust width as needed */
+}

@@ -100,20 +100,20 @@ class PurchaseOrderController extends Controller
                 'production_plan_id',
                 $productionPlan->id
             )
-            ->where(
-                'supplier_id',
-                $supplier->id
-            )
-            ->whereIn(
-                'status',
-                [
-                    'draft',
-                    'confirmed',
-                    'partially_received',
-                    'received',
-                ]
-            )
-            ->first();
+                ->where(
+                    'supplier_id',
+                    $supplier->id
+                )
+                ->whereIn(
+                    'status',
+                    [
+                        'draft',
+                        'confirmed',
+                        'partially_received',
+                        'received',
+                    ]
+                )
+                ->first();
 
 
         if ($existingProductionPo) {
@@ -125,8 +125,8 @@ class PurchaseOrderController extends Controller
                 ->with(
                     'warning',
                     'An active Purchase Order already exists for this Production Plan and supplier: '
-                        . $existingProductionPo->po_number
-                        . '.'
+                    . $existingProductionPo->po_number
+                    . '.'
                 );
         }
 
@@ -169,7 +169,7 @@ class PurchaseOrderController extends Controller
     */
 
         $productionQuantity =
-            (float)
+            (float) 
             $productionPlan->required_quantity;
 
 
@@ -216,7 +216,7 @@ class PurchaseOrderController extends Controller
         */
 
             $bomQuantity =
-                (float)
+                (float) 
                 $modelItem->quantity;
 
 
@@ -232,13 +232,13 @@ class PurchaseOrderController extends Controller
         |--------------------------------------------------------------------------
         */
 
- $planning =
-    $itemPurchasePlanningService
-        ->calculate(
-            $item,
-            $requiredQuantity,
-            $requiredQuantity
-        );
+            $planning =
+                $itemPurchasePlanningService
+                    ->calculate(
+                        $item,
+                        $requiredQuantity,
+                        $requiredQuantity
+                    );
 
 
             /*
@@ -280,10 +280,10 @@ class PurchaseOrderController extends Controller
         */
 
             if (
-                (int)
+                (int) 
                 $planningSupplier->id
                 !==
-                (int)
+                (int) 
                 $supplier->id
             ) {
                 continue;
@@ -343,8 +343,8 @@ class PurchaseOrderController extends Controller
                 max(
                     0,
                     $requiredQuantity
-                        -
-                        $inventoryPosition
+                    -
+                    $inventoryPosition
                 );
 
 
@@ -496,12 +496,12 @@ class PurchaseOrderController extends Controller
 
             $requiredPoDate =
                 $productionPlan
-                ->requirement_date
-                ->copy()
-                ->startOfDay()
-                ->subDays(
-                    $leadTimeDays
-                );
+                    ->requirement_date
+                    ->copy()
+                    ->startOfDay()
+                    ->subDays(
+                        $leadTimeDays
+                    );
 
 
             /*
@@ -516,14 +516,14 @@ class PurchaseOrderController extends Controller
 
             $effectiveOrderDate =
                 $requiredPoDate
-                ->copy();
+                    ->copy();
 
 
             if (
                 $effectiveOrderDate
-                ->lt(
-                    now()->startOfDay()
-                )
+                    ->lt(
+                        now()->startOfDay()
+                    )
             ) {
                 $effectiveOrderDate =
                     now()->startOfDay();
@@ -538,7 +538,7 @@ class PurchaseOrderController extends Controller
 
             $unitPrice =
                 $planning['supplier_unit_price'] !== null
-                ? (float)
+                ? (float) 
                 $planning['supplier_unit_price']
                 : 0;
 
@@ -575,64 +575,64 @@ class PurchaseOrderController extends Controller
             $productionPoItems[] = [
 
                 'item' =>
-                $item,
+                    $item,
 
                 'item_id' =>
-                $item->id,
+                    $item->id,
 
                 'item_code' =>
-                $item->item_code,
+                    $item->item_code,
 
                 'item_name' =>
-                $item->item_name,
+                    $item->item_name,
 
                 'unit' =>
-                $item->unit,
+                    $item->unit,
 
                 'bom_quantity' =>
-                $bomQuantity,
+                    $bomQuantity,
 
                 'required_quantity' =>
-                $requiredQuantity,
+                    $requiredQuantity,
 
                 'current_stock' =>
-                $currentStock,
+                    $currentStock,
 
                 'confirmed_on_order' =>
-                $confirmedOnOrder,
+                    $confirmedOnOrder,
 
                 'inventory_position' =>
-                $inventoryPosition,
+                    $inventoryPosition,
 
                 'production_shortage' =>
-                $productionShortage,
+                    $productionShortage,
 
                 'planning_recovery_quantity' =>
-                $planningRecovery,
+                    $planningRecovery,
 
                 'recommended_quantity' =>
-                $recommendedQuantity,
+                    $recommendedQuantity,
 
                 'minimum_order_qty' =>
-                $minimumOrderQty,
+                    $minimumOrderQty,
 
                 'supplier_item_code' =>
-                $supplierItemCode,
+                    $supplierItemCode,
 
                 'unit_price' =>
-                $unitPrice,
+                    $unitPrice,
 
                 'line_total' =>
-                $lineTotal,
+                    $lineTotal,
 
                 'lead_time_days' =>
-                $leadTimeDays,
+                    $leadTimeDays,
 
                 'required_po_date' =>
-                $requiredPoDate,
+                    $requiredPoDate,
 
                 'effective_order_date' =>
-                $effectiveOrderDate,
+                    $effectiveOrderDate,
             ];
         }
 
@@ -671,9 +671,9 @@ class PurchaseOrderController extends Controller
             collect(
                 $productionPoItems
             )
-            ->sum(
-                'line_total'
-            );
+                ->sum(
+                    'line_total'
+                );
 
 
         /*
@@ -686,9 +686,9 @@ class PurchaseOrderController extends Controller
             collect(
                 $productionPoItems
             )
-            ->min(
-                'required_po_date'
-            );
+                ->min(
+                    'required_po_date'
+                );
 
 
         $earliestRequiredPoDate =
@@ -705,14 +705,14 @@ class PurchaseOrderController extends Controller
 
         $orderDate =
             $earliestRequiredPoDate
-            ->copy();
+                ->copy();
 
 
         if (
             $orderDate
-            ->lt(
-                now()->startOfDay()
-            )
+                ->lt(
+                    now()->startOfDay()
+                )
         ) {
             $orderDate =
                 now()->startOfDay();
@@ -732,19 +732,17 @@ class PurchaseOrderController extends Controller
             collect(
                 $productionPoItems
             )
-            ->map(
-                function ($line) use (
-                    $orderDate
-                ) {
-                    return $orderDate
-                        ->copy()
-                        ->addDays(
-                            (int)
-                            $line['lead_time_days']
-                        );
-                }
-            )
-            ->max();
+                ->map(
+                    function ($line) use ($orderDate) {
+                        return $orderDate
+                            ->copy()
+                            ->addDays(
+                                (int) 
+                                $line['lead_time_days']
+                            );
+                    }
+                )
+                ->max();
 
 
         $expectedDeliveryDate =
@@ -777,10 +775,10 @@ class PurchaseOrderController extends Controller
                 'like',
                 $prefix . '%'
             )
-            ->orderByDesc(
-                'id'
-            )
-            ->first();
+                ->orderByDesc(
+                    'id'
+                )
+                ->first();
 
 
         $nextNumber = 1;
@@ -788,7 +786,7 @@ class PurchaseOrderController extends Controller
 
         if ($lastPo) {
             $lastSequence =
-                (int)
+                (int) 
                 substr(
                     $lastPo->po_number,
                     -4
@@ -837,11 +835,11 @@ class PurchaseOrderController extends Controller
                 'id',
                 $supplier->id
             )
-            ->where(
-                'status',
-                true
-            )
-            ->get();
+                ->where(
+                    'status',
+                    true
+                )
+                ->get();
 
 
         /*
@@ -881,8 +879,8 @@ class PurchaseOrderController extends Controller
             . $productionPlan->reference
             . ' for Product Model '
             . $productionPlan
-            ->productModel
-            ->model_code;
+                ->productModel
+                ->model_code;
 
 
         /*
@@ -1024,23 +1022,7 @@ class PurchaseOrderController extends Controller
                         'planned_order_date'
                     );
             }
-            /*
-|--------------------------------------------------------------------------
-| Prevent Early Purchase Order Creation
-|--------------------------------------------------------------------------
-|
-| A Purchase Planning recommendation may be visible in advance,
-| but the PO must not be created before its planned order date.
-|
-| Example:
-|
-| Today              = 26-Aug-2026
-| Planned Order Date = 29-Nov-2026
-|
-| Result:
-| Block creation.
-|
-*/
+
 
             if ($plannedOrderDate) {
 
@@ -1075,12 +1057,12 @@ class PurchaseOrderController extends Controller
                         ->with(
                             'warning',
                             'This Purchase Order is scheduled for '
-                                . $plannedDate->format('d-M-Y')
-                                . '. It cannot be created yet. '
-                                . $daysUntilOrder
-                                . ' day'
-                                . ($daysUntilOrder === 1 ? '' : 's')
-                                . ' remaining.'
+                            . $plannedDate->format('d-M-Y')
+                            . '. It cannot be created yet. '
+                            . $daysUntilOrder
+                            . ' day'
+                            . ($daysUntilOrder === 1 ? '' : 's')
+                            . ' remaining.'
                         );
                 }
             }
@@ -1107,17 +1089,17 @@ class PurchaseOrderController extends Controller
 
                 $planningSuppliers =
                     $planningItem->suppliers()
-                    ->where(
-                        'item_suppliers.status',
-                        true
-                    )
-                    ->orderByDesc(
-                        'item_suppliers.is_preferred'
-                    )
-                    ->orderBy(
-                        'suppliers.name'
-                    )
-                    ->get();
+                        ->where(
+                            'item_suppliers.status',
+                            true
+                        )
+                        ->orderByDesc(
+                            'item_suppliers.is_preferred'
+                        )
+                        ->orderBy(
+                            'suppliers.name'
+                        )
+                        ->get();
             }
 
 
@@ -1129,15 +1111,15 @@ class PurchaseOrderController extends Controller
 
             $preferredSupplier =
                 $planningSuppliers
-                ->first(
-                    function ($supplier) {
+                    ->first(
+                        function ($supplier) {
 
-                        return (bool)
-                        $supplier
-                            ->pivot
-                            ->is_preferred;
-                    }
-                );
+                            return (bool) 
+                                $supplier
+                                    ->pivot
+                                    ->is_preferred;
+                        }
+                    );
 
 
             /*
@@ -1173,8 +1155,8 @@ class PurchaseOrderController extends Controller
 
                 if (
                     $preferredSupplier
-                    ->pivot
-                    ->lead_time_days !== null
+                        ->pivot
+                        ->lead_time_days !== null
                 ) {
 
                     $planningSupplierLeadTimeDays =
@@ -1183,11 +1165,11 @@ class PurchaseOrderController extends Controller
                             ->lead_time_days;
                 } elseif (
                     $planningItem
-                    ->purchaseSettings
+                        ->purchaseSettings
                     &&
                     $planningItem
-                    ->purchaseSettings
-                    ->lead_time_days !== null
+                        ->purchaseSettings
+                        ->lead_time_days !== null
                 ) {
 
                     $planningSupplierLeadTimeDays =
@@ -1209,8 +1191,8 @@ class PurchaseOrderController extends Controller
 
                 $planningSupplierUnitPrice =
                     $preferredSupplier
-                    ->pivot
-                    ->unit_price !== null
+                        ->pivot
+                        ->unit_price !== null
                     ? (float) $preferredSupplier
                         ->pivot
                         ->unit_price
@@ -1225,8 +1207,8 @@ class PurchaseOrderController extends Controller
 
                 $planningSupplierMinimumOrderQty =
                     $preferredSupplier
-                    ->pivot
-                    ->minimum_order_qty !== null
+                        ->pivot
+                        ->minimum_order_qty !== null
                     ? (float) $preferredSupplier
                         ->pivot
                         ->minimum_order_qty
@@ -1254,10 +1236,10 @@ class PurchaseOrderController extends Controller
                         Carbon::parse(
                             $plannedOrderDate
                         )
-                        ->addDays(
-                            $planningSupplierLeadTimeDays
-                        )
-                        ->format('Y-m-d');
+                            ->addDays(
+                                $planningSupplierLeadTimeDays
+                            )
+                            ->format('Y-m-d');
                 }
             }
         }
@@ -1286,10 +1268,10 @@ class PurchaseOrderController extends Controller
                 'like',
                 $datePrefix . '%'
             )
-            ->orderByDesc(
-                'po_number'
-            )
-            ->first();
+                ->orderByDesc(
+                    'po_number'
+                )
+                ->first();
 
 
         if ($lastPurchaseOrder) {
@@ -1491,9 +1473,9 @@ class PurchaseOrderController extends Controller
 
         $planningRecommendedQty =
             isset(
-                $validated['planning_recommended_qty']
-            )
-            ? (float)
+            $validated['planning_recommended_qty']
+        )
+            ? (float) 
             $validated['planning_recommended_qty']
             : null;
 
@@ -1534,7 +1516,7 @@ class PurchaseOrderController extends Controller
             throw \Illuminate\Validation\ValidationException::withMessages([
 
                 'planning_item_id' =>
-                'Purchase Planning item information is missing.',
+                    'Purchase Planning item information is missing.',
 
             ]);
         }
@@ -1549,7 +1531,7 @@ class PurchaseOrderController extends Controller
             throw \Illuminate\Validation\ValidationException::withMessages([
 
                 'production_plan_id' =>
-                'Production Plan information is missing.',
+                    'Production Plan information is missing.',
 
             ]);
         }
@@ -1564,7 +1546,7 @@ class PurchaseOrderController extends Controller
             throw \Illuminate\Validation\ValidationException::withMessages([
 
                 'production_plan_supplier_id' =>
-                'Production Plan supplier information is missing.',
+                    'Production Plan supplier information is missing.',
 
             ]);
         }
@@ -1591,7 +1573,7 @@ class PurchaseOrderController extends Controller
             throw \Illuminate\Validation\ValidationException::withMessages([
 
                 'supplier_id' =>
-                'The selected supplier does not match the Production Plan consolidation supplier.',
+                    'The selected supplier does not match the Production Plan consolidation supplier.',
 
             ]);
         }
@@ -1640,12 +1622,12 @@ class PurchaseOrderController extends Controller
                     ->with(
                         'warning',
                         'This Purchase Order is scheduled for '
-                            . $plannedDate->format('d-M-Y')
-                            . '. It cannot be created yet. '
-                            . $daysUntilOrder
-                            . ' day'
-                            . ($daysUntilOrder === 1 ? '' : 's')
-                            . ' remaining.'
+                        . $plannedDate->format('d-M-Y')
+                        . '. It cannot be created yet. '
+                        . $daysUntilOrder
+                        . ' day'
+                        . ($daysUntilOrder === 1 ? '' : 's')
+                        . ' remaining.'
                     );
             }
         }
@@ -1677,20 +1659,20 @@ class PurchaseOrderController extends Controller
                     'production_plan_id',
                     $productionPlanId
                 )
-                ->where(
-                    'supplier_id',
-                    $productionPlanSupplierId
-                )
-                ->whereIn(
-                    'status',
-                    [
-                        'draft',
-                        'confirmed',
-                        'partially_received',
-                        'received',
-                    ]
-                )
-                ->first();
+                    ->where(
+                        'supplier_id',
+                        $productionPlanSupplierId
+                    )
+                    ->whereIn(
+                        'status',
+                        [
+                            'draft',
+                            'confirmed',
+                            'partially_received',
+                            'received',
+                        ]
+                    )
+                    ->first();
 
 
             if ($existingProductionPo) {
@@ -1703,8 +1685,8 @@ class PurchaseOrderController extends Controller
                     ->with(
                         'warning',
                         'An active Purchase Order already exists for this Production Plan and supplier: '
-                            . $existingProductionPo->po_number
-                            . '.'
+                        . $existingProductionPo->po_number
+                        . '.'
                     );
             }
         }
@@ -1786,19 +1768,7 @@ class PurchaseOrderController extends Controller
 
         $purchaseOrder =
             DB::transaction(
-                function () use (
-                    $validated,
-                    $planningSource,
-
-                    $planningItemId,
-                    $planningRecommendedQty,
-                    $planningPlannedOrderDate,
-
-                    $productionPlanId,
-                    $productionPlanSupplierId,
-
-                    $itemPurchasePlanningService
-                ) {
+                function () use ($validated, $planningSource, $planningItemId, $planningRecommendedQty, $planningPlannedOrderDate, $productionPlanId, $productionPlanSupplierId, $itemPurchasePlanningService) {
 
                     /*
                 |--------------------------------------------------------------------------
@@ -1851,7 +1821,7 @@ class PurchaseOrderController extends Controller
                             throw \Illuminate\Validation\ValidationException::withMessages([
 
                                 'planning_recommended_qty' =>
-                                'Purchase Planning did not provide a valid recommended quantity.',
+                                    'Purchase Planning did not provide a valid recommended quantity.',
 
                             ]);
                         }
@@ -1868,29 +1838,27 @@ class PurchaseOrderController extends Controller
                                 'id',
                                 $planningItemId
                             )
-                            ->where(
-                                'status',
-                                true
-                            )
-                            ->whereHas(
-                                'suppliers',
-                                function ($query) use (
-                                    $purchaseOrder
-                                ) {
+                                ->where(
+                                    'status',
+                                    true
+                                )
+                                ->whereHas(
+                                    'suppliers',
+                                    function ($query) use ($purchaseOrder) {
 
-                                    $query
-                                        ->where(
-                                            'suppliers.id',
-                                            $purchaseOrder
-                                                ->supplier_id
-                                        )
-                                        ->where(
-                                            'item_suppliers.status',
-                                            true
-                                        );
-                                }
-                            )
-                            ->first();
+                                        $query
+                                            ->where(
+                                                'suppliers.id',
+                                                $purchaseOrder
+                                                    ->supplier_id
+                                            )
+                                            ->where(
+                                                'item_suppliers.status',
+                                                true
+                                            );
+                                    }
+                                )
+                                ->first();
 
 
                         if (!$item) {
@@ -1898,7 +1866,7 @@ class PurchaseOrderController extends Controller
                             throw \Illuminate\Validation\ValidationException::withMessages([
 
                                 'supplier_id' =>
-                                'The planned item is not available from the selected supplier.',
+                                    'The planned item is not available from the selected supplier.',
 
                             ]);
                         }
@@ -1912,16 +1880,16 @@ class PurchaseOrderController extends Controller
 
                         $supplier =
                             $item->suppliers()
-                            ->where(
-                                'suppliers.id',
-                                $purchaseOrder
-                                    ->supplier_id
-                            )
-                            ->where(
-                                'item_suppliers.status',
-                                true
-                            )
-                            ->first();
+                                ->where(
+                                    'suppliers.id',
+                                    $purchaseOrder
+                                        ->supplier_id
+                                )
+                                ->where(
+                                    'item_suppliers.status',
+                                    true
+                                )
+                                ->first();
 
 
                         if (!$supplier) {
@@ -1929,7 +1897,7 @@ class PurchaseOrderController extends Controller
                             throw \Illuminate\Validation\ValidationException::withMessages([
 
                                 'supplier_id' =>
-                                'No active supplier-item configuration was found for this planned item.',
+                                    'No active supplier-item configuration was found for this planned item.',
 
                             ]);
                         }
@@ -1950,7 +1918,7 @@ class PurchaseOrderController extends Controller
                             );
 
 
-                       
+
 
 
                         /*
@@ -1961,10 +1929,10 @@ class PurchaseOrderController extends Controller
 
                         $unitPrice =
                             $supplier
-                            ->pivot
-                            ->unit_price
+                                ->pivot
+                                ->unit_price
                             !== null
-                            ? (float)
+                            ? (float) 
                             $supplier
                                 ->pivot
                                 ->unit_price
@@ -1980,25 +1948,25 @@ class PurchaseOrderController extends Controller
                         PurchaseOrderItem::create([
 
                             'purchase_order_id' =>
-                            $purchaseOrder->id,
+                                $purchaseOrder->id,
 
                             'item_id' =>
-                            $item->id,
+                                $item->id,
 
                             'ordered_quantity' =>
-                            $planningRecommendedQty,
+                                $planningRecommendedQty,
 
                             'unit_price' =>
-                            $unitPrice,
+                                $unitPrice,
 
                             'received_quantity' =>
-                            0,
+                                0,
 
                             'planned_order_date' =>
-                            $planningPlannedOrderDate,
+                                $planningPlannedOrderDate,
 
                             'remarks' =>
-                            'Created from Purchase Planning recommendation.',
+                                'Created from Purchase Planning recommendation.',
 
                         ]);
 
@@ -2033,10 +2001,10 @@ class PurchaseOrderController extends Controller
                                 'productModel.modelItems.item.unit',
                                 'productModel.modelItems.item.purchaseSettings',
                             ])
-                            ->lockForUpdate()
-                            ->find(
-                                $productionPlanId
-                            );
+                                ->lockForUpdate()
+                                ->find(
+                                    $productionPlanId
+                                );
 
 
                         if (!$productionPlan) {
@@ -2044,7 +2012,7 @@ class PurchaseOrderController extends Controller
                             throw \Illuminate\Validation\ValidationException::withMessages([
 
                                 'production_plan_id' =>
-                                'The Production Plan could not be found.',
+                                    'The Production Plan could not be found.',
 
                             ]);
                         }
@@ -2066,7 +2034,7 @@ class PurchaseOrderController extends Controller
                             throw \Illuminate\Validation\ValidationException::withMessages([
 
                                 'production_plan_id' =>
-                                'Purchase Orders can only be created for a Confirmed Production Plan.',
+                                    'Purchase Orders can only be created for a Confirmed Production Plan.',
 
                             ]);
                         }
@@ -2083,11 +2051,11 @@ class PurchaseOrderController extends Controller
                                 'id',
                                 $productionPlanSupplierId
                             )
-                            ->where(
-                                'status',
-                                true
-                            )
-                            ->first();
+                                ->where(
+                                    'status',
+                                    true
+                                )
+                                ->first();
 
 
                         if (!$productionSupplier) {
@@ -2095,7 +2063,7 @@ class PurchaseOrderController extends Controller
                             throw \Illuminate\Validation\ValidationException::withMessages([
 
                                 'supplier_id' =>
-                                'The Production Plan supplier is not active.',
+                                    'The Production Plan supplier is not active.',
 
                             ]);
                         }
@@ -2112,7 +2080,7 @@ class PurchaseOrderController extends Controller
                             throw \Illuminate\Validation\ValidationException::withMessages([
 
                                 'supplier_id' =>
-                                'The Purchase Order supplier does not match the Production Plan supplier.',
+                                    'The Purchase Order supplier does not match the Production Plan supplier.',
 
                             ]);
                         }
@@ -2125,7 +2093,7 @@ class PurchaseOrderController extends Controller
                     */
 
                         $productionQuantity =
-                            (float)
+                            (float) 
                             $productionPlan
                                 ->required_quantity;
 
@@ -2173,7 +2141,7 @@ class PurchaseOrderController extends Controller
                         */
 
                             $bomQuantity =
-                                (float)
+                                (float) 
                                 $modelItem->quantity;
 
 
@@ -2190,12 +2158,12 @@ class PurchaseOrderController extends Controller
                         */
 
                             $planning =
-    $itemPurchasePlanningService
-        ->calculate(
-            $item,
-            $requiredQuantity,
-            $requiredQuantity
-        );
+                                $itemPurchasePlanningService
+                                    ->calculate(
+                                        $item,
+                                        $requiredQuantity,
+                                        $requiredQuantity
+                                    );
 
                             if (
                                 !(
@@ -2222,10 +2190,10 @@ class PurchaseOrderController extends Controller
                             if (
                                 !$planningSupplier
                                 ||
-                                (int)
+                                (int) 
                                 $planningSupplier->id
                                 !==
-                                (int)
+                                (int) 
                                 $productionSupplier->id
                             ) {
 
@@ -2240,7 +2208,7 @@ class PurchaseOrderController extends Controller
                         */
 
                             $inventoryPosition =
-                                (float)
+                                (float) 
                                 $planning['inventory_position'];
 
 
@@ -2254,8 +2222,8 @@ class PurchaseOrderController extends Controller
                                 max(
                                     0,
                                     $requiredQuantity
-                                        -
-                                        $inventoryPosition
+                                    -
+                                    $inventoryPosition
                                 );
 
 
@@ -2338,12 +2306,12 @@ class PurchaseOrderController extends Controller
 
                             $requiredPoDate =
                                 $productionPlan
-                                ->requirement_date
-                                ->copy()
-                                ->startOfDay()
-                                ->subDays(
-                                    $leadTimeDays
-                                );
+                                    ->requirement_date
+                                    ->copy()
+                                    ->startOfDay()
+                                    ->subDays(
+                                        $leadTimeDays
+                                    );
 
 
                             /*
@@ -2357,14 +2325,14 @@ class PurchaseOrderController extends Controller
 
                             $effectivePlannedOrderDate =
                                 $requiredPoDate
-                                ->copy()
-                                ->lt(
-                                    now()->startOfDay()
-                                )
+                                    ->copy()
+                                    ->lt(
+                                        now()->startOfDay()
+                                    )
                                 ? now()
-                                ->startOfDay()
+                                    ->startOfDay()
                                 : $requiredPoDate
-                                ->copy();
+                                    ->copy();
 
 
                             /*
@@ -2375,7 +2343,7 @@ class PurchaseOrderController extends Controller
 
                             $unitPrice =
                                 $planning['supplier_unit_price'] !== null
-                                ? (float)
+                                ? (float) 
                                 $planning['supplier_unit_price']
                                 : null;
 
@@ -2393,28 +2361,28 @@ class PurchaseOrderController extends Controller
                             PurchaseOrderItem::create([
 
                                 'purchase_order_id' =>
-                                $purchaseOrder->id,
+                                    $purchaseOrder->id,
 
                                 'item_id' =>
-                                $item->id,
+                                    $item->id,
 
                                 'ordered_quantity' =>
-                                $recommendedQuantity,
+                                    $recommendedQuantity,
 
                                 'unit_price' =>
-                                $unitPrice,
+                                    $unitPrice,
 
                                 'received_quantity' =>
-                                0,
+                                    0,
 
                                 'planned_order_date' =>
-                                $effectivePlannedOrderDate
-                                    ->format('Y-m-d'),
+                                    $effectivePlannedOrderDate
+                                        ->format('Y-m-d'),
 
                                 'remarks' =>
-                                'Created from Production Plan '
+                                    'Created from Production Plan '
                                     . $productionPlan
-                                    ->reference
+                                        ->reference
                                     . '. Production shortage: '
                                     . number_format(
                                         $productionShortage,
@@ -2447,7 +2415,7 @@ class PurchaseOrderController extends Controller
                             throw \Illuminate\Validation\ValidationException::withMessages([
 
                                 'production_plan_id' =>
-                                'No production-driven purchase requirements remain for this supplier. Stock or purchase-order quantities may have changed since the preview was opened.',
+                                    'No production-driven purchase requirements remain for this supplier. Stock or purchase-order quantities may have changed since the preview was opened.',
 
                             ]);
                         }
@@ -2466,7 +2434,7 @@ class PurchaseOrderController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages([
 
                         'planning_source' =>
-                        'Invalid Purchase Order source.',
+                            'Invalid Purchase Order source.',
 
                     ]);
                 }
@@ -2671,16 +2639,16 @@ class PurchaseOrderController extends Controller
         $purchaseOrder->update([
 
             'supplier_id' =>
-            $validated['supplier_id'],
+                $validated['supplier_id'],
 
             'order_date' =>
-            $validated['order_date'],
+                $validated['order_date'],
 
             'expected_delivery_date' =>
-            $validated['expected_delivery_date'] ?? null,
+                $validated['expected_delivery_date'] ?? null,
 
             'remarks' =>
-            $validated['remarks'] ?? null,
+                $validated['remarks'] ?? null,
 
         ]);
 
@@ -2735,7 +2703,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'confirm' =>
-                'The purchase order cannot be confirmed because it has no items.',
+                    'The purchase order cannot be confirmed because it has no items.',
             ]);
         }
 
@@ -2750,7 +2718,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'confirm' =>
-                'Expected Delivery Date is required before confirming the purchase order.',
+                    'Expected Delivery Date is required before confirming the purchase order.',
             ]);
         }
 
@@ -2763,12 +2731,12 @@ class PurchaseOrderController extends Controller
 
         if (
             $purchaseOrder->expected_delivery_date
-            ->lt($purchaseOrder->order_date)
+                ->lt($purchaseOrder->order_date)
         ) {
 
             return back()->withErrors([
                 'confirm' =>
-                'Expected Delivery Date cannot be earlier than the Order Date.',
+                    'Expected Delivery Date cannot be earlier than the Order Date.',
             ]);
         }
 
@@ -2785,7 +2753,7 @@ class PurchaseOrderController extends Controller
 
                 return back()->withErrors([
                     'confirm' =>
-                    'All purchase order items must have a valid ordered quantity.',
+                        'All purchase order items must have a valid ordered quantity.',
                 ]);
             }
         }
@@ -2843,7 +2811,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'cancel' =>
-                'This Purchase Order has already been cancelled.',
+                    'This Purchase Order has already been cancelled.',
             ]);
         }
 
@@ -2867,7 +2835,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'cancel' =>
-                'This Purchase Order cannot be cancelled because goods have already been received against it.',
+                    'This Purchase Order cannot be cancelled because goods have already been received against it.',
             ]);
         }
 
@@ -2891,7 +2859,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'cancel' =>
-                'This Purchase Order cannot be cancelled in its current status.',
+                    'This Purchase Order cannot be cancelled in its current status.',
             ]);
         }
 

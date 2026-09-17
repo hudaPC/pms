@@ -23,27 +23,50 @@
 
             <div>
 
-                {{-- Confirm Draft PO --}}
-                @if ($purchaseOrder->status === 'draft')
-                    <form action="{{ route('purchase-orders.confirm', $purchaseOrder) }}" method="POST" class="d-inline"
-                        onsubmit="return confirm(
-                  'Confirm this Purchase Order? After confirmation, the PO items will be locked.'
-              );">
+                {{-- Draft PO Actions --}}
+@if ($purchaseOrder->status === 'draft')
 
-                        @csrf
+    {{-- Edit Purchase Order --}}
+    <a
+        href="{{ route('purchase-orders.edit', $purchaseOrder) }}"
+        class="btn btn-warning"
+    >
+        <i class="fas fa-edit mr-1"></i>
 
-                        <button type="submit" class="btn btn-success"
-                            {{ $purchaseOrder->items->isEmpty() ? 'disabled' : '' }}
-                            @if ($purchaseOrder->items->isEmpty()) title="Add at least one item before confirming" @endif>
+        Edit Purchase Order
+    </a>
 
-                            <i class="fas fa-check mr-1"></i>
 
-                            Confirm Purchase Order
+    {{-- Confirm Purchase Order --}}
+    <form
+        action="{{ route('purchase-orders.confirm', $purchaseOrder) }}"
+        method="POST"
+        class="d-inline"
+        onsubmit="return confirm(
+            'Confirm this Purchase Order? After confirmation, the PO items will be locked.'
+        );"
+    >
 
-                        </button>
+        @csrf
 
-                    </form>
-                @endif
+        <button
+            type="submit"
+            class="btn btn-success"
+            {{ $purchaseOrder->items->isEmpty() ? 'disabled' : '' }}
+            @if ($purchaseOrder->items->isEmpty())
+                title="Add at least one item before confirming"
+            @endif
+        >
+
+            <i class="fas fa-check mr-1"></i>
+
+            Confirm Purchase Order
+
+        </button>
+
+    </form>
+
+@endif
 
 
                 {{-- Receive Goods --}}
@@ -254,7 +277,7 @@
                 </h3>
 
                 @if ($purchaseOrder->source !== 'production-plan' && $purchaseOrder->status === 'draft')
-                    <a href="{{ route('purchase-order-items.create', $purchaseOrder) }}" class="btn btn-primary btn-sm">
+                    <a href="{{ route('purchase-orders.items.create', $purchaseOrder) }}" class="btn btn-primary btn-sm">
 
                         <i class="fas fa-plus"></i>
                         Add Item
@@ -277,7 +300,9 @@
 
                                 <th>#</th>
 
-                                <th>Item Code</th>
+<th>Product Model</th>
+
+<th>Item Code</th>
 
                                 <th>Item Name</th>
 
@@ -309,12 +334,30 @@
                                 <tr>
 
                                     <td>
-                                        {{ $loop->iteration }}
-                                    </td>
+    {{ $loop->iteration }}
+</td>
 
-                                    <td>
-                                        {{ $poItem->item->item_code ?? '-' }}
-                                    </td>
+<td>
+    @if ($poItem->productModel)
+
+        <span class="badge badge-info">
+
+            {{ $poItem->productModel->model_code }}
+
+        </span>
+
+    @else
+
+        <span class="text-muted">
+            -
+        </span>
+
+    @endif
+</td>
+
+<td>
+    {{ $poItem->item->item_code ?? '-' }}
+</td>
 
                                     <td>
                                         {{ $poItem->item->item_name ?? '-' }}
@@ -406,7 +449,7 @@
 
                                 <tr>
 
-                                    <td colspan="9" class="text-center text-muted py-5">
+                                    <td colspan="10" class="text-center text-muted py-5">
 
                                         No items have been added to this Purchase Order yet.
 

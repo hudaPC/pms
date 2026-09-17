@@ -416,6 +416,17 @@ Route::middleware(['auth'])->group(function () {
         [SupplierInvoiceController::class, 'generateNumber']
     )->name('supplier-invoices.generate-number');
 
+    // create purchase order
+    Route::post(
+        '/supplier-invoices/{supplierInvoice}/create-purchase-order',
+        [
+            SupplierInvoiceController::class,
+            'createPurchaseOrder'
+        ]
+    )->name(
+            'supplier-invoices.create-purchase-order'
+        );
+
     Route::resource(
         'supplier-invoices',
         SupplierInvoiceController::class
@@ -450,8 +461,8 @@ Route::middleware(['auth'])->group(function () {
         '/supplier-invoices/{supplierInvoice}/product-models/{productModel}/items',
         [SupplierInvoiceItemController::class, 'itemsByProductModel']
     )->name(
-        'supplier-invoices.product-model-items'
-    );
+            'supplier-invoices.product-model-items'
+        );
 
 
 

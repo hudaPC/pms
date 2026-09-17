@@ -11,6 +11,7 @@ class PurchaseOrderItem extends Model
     use HasFactory;
     protected $fillable = [
         'purchase_order_id',
+        'product_model_id',
         'item_id',
         'ordered_quantity',
         'unit_price',
@@ -23,7 +24,7 @@ class PurchaseOrderItem extends Model
         'ordered_quantity' => 'decimal:3',
         'unit_price' => 'decimal:4',
         'received_quantity' => 'decimal:3',
-          'planned_order_date' => 'date',
+        'planned_order_date' => 'date',
     ];
 
 
@@ -48,5 +49,15 @@ class PurchaseOrderItem extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
+    }
+    /*
+|--------------------------------------------------------------------------
+| Product Model
+|--------------------------------------------------------------------------
+*/
+
+    public function productModel(): BelongsTo
+    {
+        return $this->belongsTo(ProductModel::class);
     }
 }

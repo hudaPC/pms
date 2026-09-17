@@ -57,8 +57,62 @@
 
                 @endif
 
-                {{-- Cancel Supplier Invoice --}}
-                @if ($supplierInvoice->status === 'unpaid')
+
+                {{-- Create Purchase Order --}}
+@if (
+    in_array(
+        $supplierInvoice->status,
+        [
+            'unpaid',
+            'partially_paid',
+            'paid',
+        ]
+    )
+    &&
+    !$supplierInvoice->purchase_order_id
+    &&
+    $supplierInvoice->items->isNotEmpty()
+)
+
+    <form
+        action="{{ route(
+            'supplier-invoices.create-purchase-order',
+            $supplierInvoice
+        ) }}"
+        method="POST"
+        class="mr-2"
+        onsubmit="return confirm(
+            'Create Purchase Order from this Supplier Invoice? PO quantities and prices will be copied from the invoice items.'
+        );"
+    >
+
+        @csrf
+
+        <button
+            type="submit"
+            class="btn btn-primary"
+        >
+
+            <i class="fas fa-file-signature mr-1"></i>
+
+            Create Purchase Order
+
+        </button>
+
+    </form>
+
+@endif
+
+{{-- Cancel Supplier Invoice --}}
+@if (
+    $supplierInvoice->status === 'unpaid'
+    &&
+    (
+        !$supplierInvoice->purchaseOrder
+        ||
+        $supplierInvoice->purchaseOrder->status === 'draft'
+    )
+)
                     <button type="button" class="btn btn-danger mr-2" id="btnCancelInvoice"
                         data-url="{{ route('supplier-invoices.cancel', $supplierInvoice) }}"
                         data-invoice="{{ $supplierInvoice->invoice_number }}">

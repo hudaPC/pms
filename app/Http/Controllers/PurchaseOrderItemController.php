@@ -28,6 +28,17 @@ class PurchaseOrderItemController extends Controller
             403,
             'Items can only be added to draft purchase orders.'
         );
+        /*
+|--------------------------------------------------------------------------
+| Supplier Invoice PO Items Are Locked
+|--------------------------------------------------------------------------
+*/
+
+abort_if(
+    $purchaseOrder->source === 'supplier-invoice',
+    403,
+    'Items for a Supplier Invoice Purchase Order must come from the Supplier Invoice and cannot be added manually.'
+);
 
 
         $purchaseOrder->load('supplier');
@@ -559,7 +570,17 @@ class PurchaseOrderItemController extends Controller
         404
     );
 
+/*
+|--------------------------------------------------------------------------
+| Supplier Invoice PO Item Cannot Be Edited
+|--------------------------------------------------------------------------
+*/
 
+abort_if(
+    $purchaseOrder->source === 'supplier-invoice',
+    403,
+    'This Purchase Order was created from a Supplier Invoice. Its items cannot be edited manually.'
+);
     /*
     |--------------------------------------------------------------------------
     | Planning Generated Item Cannot Be Edited
@@ -649,6 +670,17 @@ class PurchaseOrderItemController extends Controller
             $purchaseOrderItem->purchase_order_id !== $purchaseOrder->id,
             404
         );
+        /*
+|--------------------------------------------------------------------------
+| Supplier Invoice PO Item Cannot Be Updated
+|--------------------------------------------------------------------------
+*/
+
+abort_if(
+    $purchaseOrder->source === 'supplier-invoice',
+    403,
+    'This Purchase Order was created from a Supplier Invoice. Its items cannot be updated manually.'
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -802,6 +834,17 @@ abort_if(
             $purchaseOrderItem->purchase_order_id !== $purchaseOrder->id,
             404
         );
+        /*
+|--------------------------------------------------------------------------
+| Supplier Invoice PO Item Cannot Be Deleted
+|--------------------------------------------------------------------------
+*/
+
+abort_if(
+    $purchaseOrder->source === 'supplier-invoice',
+    403,
+    'This Purchase Order was created from a Supplier Invoice. Its items cannot be deleted manually.'
+);
 
 /*
 |--------------------------------------------------------------------------

@@ -7,8 +7,8 @@
     <div class="container-fluid py-4">
 
         {{-- ============================================================
-         PAGE HEADER
-    ============================================================ --}}
+        PAGE HEADER
+        ============================================================ --}}
         <div class="d-flex justify-content-between align-items-center mb-4">
 
             <div>
@@ -35,8 +35,8 @@
 
 
         {{-- ============================================================
-         VALIDATION ERRORS
-    ============================================================ --}}
+        VALIDATION ERRORS
+        ============================================================ --}}
         @if ($errors->any())
 
             <div class="alert alert-danger">
@@ -61,8 +61,8 @@
 
 
         {{-- ============================================================
-         INVOICE INFORMATION
-    ============================================================ --}}
+        INVOICE INFORMATION
+        ============================================================ --}}
         <div class="card card-primary card-outline mb-4">
 
             <div class="card-header">
@@ -119,8 +119,8 @@
 
                         <strong>
                             {{ $supplierInvoice->invoice_date
-                                ? \Carbon\Carbon::parse($supplierInvoice->invoice_date)->format('d-M-Y')
-                                : '-' }}
+        ? \Carbon\Carbon::parse($supplierInvoice->invoice_date)->format('d-M-Y')
+        : '-' }}
                         </strong>
 
                     </div>
@@ -133,8 +133,8 @@
 
 
         {{-- ============================================================
-         ADD INVOICE ITEM
-    ============================================================ --}}
+        ADD INVOICE ITEM
+        ============================================================ --}}
         <form action="{{ route('supplier-invoices.items.store', $supplierInvoice) }}" method="POST" id="invoiceItemForm">
 
             @csrf
@@ -161,8 +161,8 @@
 
 
                         {{-- =====================================================
-     PRODUCT MODEL
-===================================================== --}}
+                        PRODUCT MODEL
+                        ===================================================== --}}
                         <div class="col-md-4">
 
                             <div class="form-group">
@@ -177,10 +177,8 @@
 
                                 </label>
 
-                                <select name="product_model_id" id="product_model_id"
-                                    class="form-control no-clear
-         @error('product_model_id') is-invalid @enderror"
-                                    required>
+                                <select name="product_model_id" id="product_model_id" class="form-control no-clear
+                 @error('product_model_id') is-invalid @enderror" required>
 
                                     <option value="">
                                         -- Select Product Model --
@@ -211,8 +209,8 @@
 
 
                         {{-- =====================================================
-     ITEM
-===================================================== --}}
+                        ITEM
+                        ===================================================== --}}
                         <div class="col-md-4">
 
                             <div class="form-group">
@@ -227,10 +225,8 @@
 
                                 </label>
 
-                                <select name="item_id" id="item_id"
-                                    class="form-control no-clear
-                @error('item_id') is-invalid @enderror"
-                                    required disabled>
+                                <select name="item_id" id="item_id" class="form-control no-clear
+                        @error('item_id') is-invalid @enderror" required disabled>
 
                                     <option value="">
                                         -- Select Product Model First --
@@ -254,8 +250,8 @@
 
 
                         {{-- =====================================================
-                         UNIT
-                    ===================================================== --}}
+                        UNIT
+                        ===================================================== --}}
                         <div class="col-md-4">
 
                             <div class="form-group">
@@ -271,9 +267,93 @@
                         </div>
 
 
+
                         {{-- =====================================================
-                         INVOICE QUANTITY
-                    ===================================================== --}}
+                        PRODUCTION REQUIREMENT REFERENCE
+                        ===================================================== --}}
+
+                        <div class="col-md-12">
+
+                            <div id="productionRequirementReference" class="alert alert-info" style="display: none;">
+
+                                <div class="mb-2">
+
+                                    <strong>
+                                        <i class="fas fa-industry mr-1"></i>
+                                        Production Requirement Reference
+                                    </strong>
+
+                                    <small class="text-muted ml-2">
+                                        Reference only — enter the actual Supplier Invoice Qty below.
+                                    </small>
+
+                                </div>
+
+
+                                <div class="row">
+
+                                    <div class="col-md-2">
+                                        <small class="text-muted d-block">
+                                            Required
+                                        </small>
+
+                                        <strong id="productionRequiredQty">
+                                            0.000
+                                        </strong>
+                                    </div>
+
+
+                                    <div class="col-md-2">
+                                        <small class="text-muted d-block">
+                                            Current Stock
+                                        </small>
+
+                                        <strong id="productionCurrentStock">
+                                            0.000
+                                        </strong>
+                                    </div>
+
+
+                                    <div class="col-md-2">
+                                        <small class="text-muted d-block">
+                                            On Order
+                                        </small>
+
+                                        <strong id="productionOnOrder">
+                                            0.000
+                                        </strong>
+                                    </div>
+
+
+                                    <div class="col-md-3">
+                                        <small class="text-muted d-block">
+                                            Inventory Position
+                                        </small>
+
+                                        <strong id="productionInventoryPosition">
+                                            0.000
+                                        </strong>
+                                    </div>
+
+
+                                    <div class="col-md-3">
+                                        <small class="text-muted d-block">
+                                            Production Shortage
+                                        </small>
+
+                                        <strong id="productionShortage" class="text-danger">
+                                            0.000
+                                        </strong>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                        {{-- =====================================================
+                        INVOICE QUANTITY
+                        ===================================================== --}}
                         <div class="col-md-2">
 
                             <div class="form-group">
@@ -290,10 +370,8 @@
 
 
                                 <input type="number" name="quantity" id="quantity" value="{{ old('quantity') }}"
-                                    step="0.001" min="0.001"
-                                    class="form-control
-                                    @error('quantity') is-invalid @enderror"
-                                    required>
+                                    step="0.001" min="0.001" class="form-control
+                                            @error('quantity') is-invalid @enderror" required>
 
 
                                 @error('quantity')
@@ -308,8 +386,8 @@
 
 
                         {{-- =====================================================
-                         UNIT PRICE
-                    ===================================================== --}}
+                        UNIT PRICE
+                        ===================================================== --}}
                         <div class="col-md-2">
 
                             <div class="form-group">
@@ -326,10 +404,8 @@
 
 
                                 <input type="number" name="unit_price" id="unit_price" value="{{ old('unit_price') }}"
-                                    step="0.0001" min="0"
-                                    class="form-control
-                                    @error('unit_price') is-invalid @enderror"
-                                    required>
+                                    step="0.0001" min="0" class="form-control
+                                            @error('unit_price') is-invalid @enderror" required>
 
 
                                 @error('unit_price')
@@ -344,8 +420,8 @@
 
 
                         {{-- =====================================================
-                         LINE TOTAL
-                    ===================================================== --}}
+                        LINE TOTAL
+                        ===================================================== --}}
                         <div class="col-md-4">
 
                             <div class="form-group">
@@ -368,8 +444,8 @@
 
 
                         {{-- =====================================================
-                         REMARKS
-                    ===================================================== --}}
+                        REMARKS
+                        ===================================================== --}}
                         <div class="col-md-8">
 
                             <div class="form-group">
@@ -379,9 +455,8 @@
                                 </label>
 
 
-                                <textarea name="remarks" id="remarks" rows="2"
-                                    class="form-control
-                                    @error('remarks') is-invalid @enderror"
+                                <textarea name="remarks" id="remarks" rows="2" class="form-control
+                                            @error('remarks') is-invalid @enderror"
                                     placeholder="Optional remarks">{{ old('remarks') }}</textarea>
 
 
@@ -434,8 +509,11 @@
 
 
 @push('scripts')
+
     <script>
-        $(document).ready(function() {
+
+        $(document).ready(function () {
+
 
             /*
             |--------------------------------------------------------------------------
@@ -464,13 +542,70 @@
 
             /*
             |--------------------------------------------------------------------------
+            | Production Requirement Reference Elements
+            |--------------------------------------------------------------------------
+            */
+
+            const productionReferenceBox =
+                $('#productionRequirementReference');
+
+            const productionRequiredQty =
+                $('#productionRequiredQty');
+
+            const productionCurrentStock =
+                $('#productionCurrentStock');
+
+            const productionOnOrder =
+                $('#productionOnOrder');
+
+            const productionInventoryPosition =
+                $('#productionInventoryPosition');
+
+            const productionShortage =
+                $('#productionShortage');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Reset Production Requirement Reference
+            |--------------------------------------------------------------------------
+            */
+
+            function resetProductionRequirementReference() {
+
+                productionReferenceBox.hide();
+
+                productionRequiredQty.text(
+                    '0.000'
+                );
+
+                productionCurrentStock.text(
+                    '0.000'
+                );
+
+                productionOnOrder.text(
+                    '0.000'
+                );
+
+                productionInventoryPosition.text(
+                    '0.000'
+                );
+
+                productionShortage.text(
+                    '0.000'
+                );
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
             | Product Model Changed
             |--------------------------------------------------------------------------
             */
 
             productModelSelect.on(
                 'change',
-                function() {
+                function () {
 
                     const productModelId =
                         $(this).val();
@@ -483,7 +618,10 @@
                     */
 
                     itemSelect
-                        .prop('disabled', true)
+                        .prop(
+                            'disabled',
+                            true
+                        )
                         .html(
                             '<option value="">-- Loading Items --</option>'
                         );
@@ -491,6 +629,22 @@
                     unitInput.val('');
 
                     unitPriceInput.val('');
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Reset Production Requirement Reference
+                    |--------------------------------------------------------------------------
+                    */
+
+                    resetProductionRequirementReference();
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Reset Line Total
+                    |--------------------------------------------------------------------------
+                    */
 
                     calculateLineTotal();
 
@@ -543,7 +697,14 @@
 
                         dataType: 'json',
 
-                        success: function(response) {
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Success
+                        |--------------------------------------------------------------------------
+                        */
+
+                        success: function (response) {
 
                             itemSelect.empty();
 
@@ -584,26 +745,57 @@
 
                             $.each(
                                 response.items,
-                                function(index, item) {
+                                function (index, item) {
 
                                     const option =
                                         $('<option></option>')
-                                        .val(item.id)
-                                        .text(
-                                            item.item_code +
-                                            ' - ' +
-                                            item.item_name
-                                        )
-                                        .attr(
-                                            'data-unit',
-                                            item.unit ?? ''
-                                        )
-                                        .attr(
-                                            'data-unit-price',
-                                            item.unit_price ?? 0
-                                        );
+                                            .val(
+                                                item.id
+                                            )
+                                            .text(
+                                                item.item_code +
+                                                ' - ' +
+                                                item.item_name
+                                            )
+                                            .attr(
+                                                'data-unit',
+                                                item.unit ?? ''
+                                            )
+                                            .attr(
+                                                'data-unit-price',
+                                                item.unit_price ?? 0
+                                            )
+                                            .attr(
+                                                'data-has-production-requirement',
+                                                item.has_production_requirement
+                                                    ? 1
+                                                    : 0
+                                            )
+                                            .attr(
+                                                'data-required-quantity',
+                                                item.required_quantity ?? 0
+                                            )
+                                            .attr(
+                                                'data-current-stock',
+                                                item.current_stock ?? 0
+                                            )
+                                            .attr(
+                                                'data-on-order-quantity',
+                                                item.on_order_quantity ?? 0
+                                            )
+                                            .attr(
+                                                'data-inventory-position',
+                                                item.inventory_position ?? 0
+                                            )
+                                            .attr(
+                                                'data-shortage-quantity',
+                                                item.shortage_quantity ?? 0
+                                            );
 
-                                    itemSelect.append(option);
+
+                                    itemSelect.append(
+                                        option
+                                    );
                                 }
                             );
 
@@ -615,7 +807,13 @@
                         },
 
 
-                        error: function() {
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Error
+                        |--------------------------------------------------------------------------
+                        */
+
+                        error: function () {
 
                             itemSelect.html(
                                 '<option value="">-- Unable to Load Items --</option>'
@@ -630,7 +828,24 @@
 
                             unitPriceInput.val('');
 
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Reset Production Requirement Reference
+                            |--------------------------------------------------------------------------
+                            */
+
+                            resetProductionRequirementReference();
+
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Reset Line Total
+                            |--------------------------------------------------------------------------
+                            */
+
                             calculateLineTotal();
+
 
                             alert(
                                 'Unable to load items for the selected Product Model.'
@@ -651,7 +866,7 @@
 
             itemSelect.on(
                 'change',
-                function() {
+                function () {
 
                     const selectedOption =
                         $(this).find(
@@ -659,11 +874,19 @@
                         );
 
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | No Item Selected
+                    |--------------------------------------------------------------------------
+                    */
+
                     if (!$(this).val()) {
 
                         unitInput.val('');
 
                         unitPriceInput.val('');
+
+                        resetProductionRequirementReference();
 
                         calculateLineTotal();
 
@@ -678,7 +901,9 @@
                     */
 
                     const unit =
-                        selectedOption.data('unit');
+                        selectedOption.data(
+                            'unit'
+                        );
 
                     unitInput.val(
                         unit ?? ''
@@ -703,6 +928,106 @@
                     );
 
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Production Requirement Reference
+                    |--------------------------------------------------------------------------
+                    */
+
+                    const hasProductionRequirement =
+                        parseInt(
+                            selectedOption.attr(
+                                'data-has-production-requirement'
+                            ) || 0
+                        ) === 1;
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Has Production Requirement
+                    |--------------------------------------------------------------------------
+                    */
+
+                    if (hasProductionRequirement) {
+
+                        const requiredQuantity =
+                            parseFloat(
+                                selectedOption.attr(
+                                    'data-required-quantity'
+                                ) || 0
+                            );
+
+                        const currentStock =
+                            parseFloat(
+                                selectedOption.attr(
+                                    'data-current-stock'
+                                ) || 0
+                            );
+
+                        const onOrderQuantity =
+                            parseFloat(
+                                selectedOption.attr(
+                                    'data-on-order-quantity'
+                                ) || 0
+                            );
+
+                        const inventoryPosition =
+                            parseFloat(
+                                selectedOption.attr(
+                                    'data-inventory-position'
+                                ) || 0
+                            );
+
+                        const shortageQuantity =
+                            parseFloat(
+                                selectedOption.attr(
+                                    'data-shortage-quantity'
+                                ) || 0
+                            );
+
+
+                        productionRequiredQty.text(
+                            requiredQuantity.toFixed(3)
+                        );
+
+                        productionCurrentStock.text(
+                            currentStock.toFixed(3)
+                        );
+
+                        productionOnOrder.text(
+                            onOrderQuantity.toFixed(3)
+                        );
+
+                        productionInventoryPosition.text(
+                            inventoryPosition.toFixed(3)
+                        );
+
+                        productionShortage.text(
+                            shortageQuantity.toFixed(3)
+                        );
+
+
+                        productionReferenceBox.show();
+
+                    } else {
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | No Production Requirement For Selected Model
+                        |--------------------------------------------------------------------------
+                        */
+
+                        resetProductionRequirementReference();
+                    }
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Line Total
+                    |--------------------------------------------------------------------------
+                    */
+
                     calculateLineTotal();
                 }
             );
@@ -715,6 +1040,7 @@
             */
 
             function calculateLineTotal() {
+
                 const quantity =
                     parseFloat(
                         quantityInput.val()
@@ -746,27 +1072,34 @@
             );
 
 
+            /*
+            |--------------------------------------------------------------------------
+            | Unit Price Changed
+            |--------------------------------------------------------------------------
+            */
+
             unitPriceInput.on(
-    'input',
-    calculateLineTotal
-);
+                'input',
+                calculateLineTotal
+            );
 
 
-/*
-|--------------------------------------------------------------------------
-| Load Items For Preselected Product Model
-|--------------------------------------------------------------------------
-*/
+            /*
+            |--------------------------------------------------------------------------
+            | Load Items For Preselected Product Model
+            |--------------------------------------------------------------------------
+            */
 
-if (productModelSelect.val()) {
+            if (productModelSelect.val()) {
 
-    productModelSelect.trigger(
-        'change'
-    );
-
-}
+                productModelSelect.trigger(
+                    'change'
+                );
+            }
 
 
         });
+
     </script>
+
 @endpush

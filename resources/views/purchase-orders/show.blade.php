@@ -24,49 +24,41 @@
             <div>
 
                 {{-- Draft PO Actions --}}
-@if ($purchaseOrder->status === 'draft')
+                @if ($purchaseOrder->status === 'draft')
 
-    {{-- Edit Purchase Order --}}
-    <a
-        href="{{ route('purchase-orders.edit', $purchaseOrder) }}"
-        class="btn btn-warning"
-    >
-        <i class="fas fa-edit mr-1"></i>
+                    @if ($purchaseOrder->source !== 'supplier-invoice')
 
-        Edit Purchase Order
-    </a>
+                        <a href="{{ route('purchase-orders.edit', $purchaseOrder) }}"
+                            class="btn btn-warning">
+
+                            <i class="fas fa-edit"></i>
+                            Edit Purchase Order
+
+                        </a>
+
+                    @endif
 
 
-    {{-- Confirm Purchase Order --}}
-    <form
-        action="{{ route('purchase-orders.confirm', $purchaseOrder) }}"
-        method="POST"
-        class="d-inline"
-        onsubmit="return confirm(
-            'Confirm this Purchase Order? After confirmation, the PO items will be locked.'
-        );"
-    >
+                        {{-- Confirm Purchase Order --}}
+                        <form action="{{ route('purchase-orders.confirm', $purchaseOrder) }}" method="POST" class="d-inline"
+                            onsubmit="return confirm(
+                        'Confirm this Purchase Order? After confirmation, the PO items will be locked.'
+                    );">
 
-        @csrf
+                            @csrf
 
-        <button
-            type="submit"
-            class="btn btn-success"
-            {{ $purchaseOrder->items->isEmpty() ? 'disabled' : '' }}
-            @if ($purchaseOrder->items->isEmpty())
-                title="Add at least one item before confirming"
-            @endif
-        >
+                            <button type="submit" class="btn btn-success" {{ $purchaseOrder->items->isEmpty() ? 'disabled' : '' }}
+                                @if ($purchaseOrder->items->isEmpty()) title="Add at least one item before confirming" @endif>
 
-            <i class="fas fa-check mr-1"></i>
+                                <i class="fas fa-check mr-1"></i>
 
-            Confirm Purchase Order
+                                Confirm Purchase Order
 
-        </button>
+                            </button>
 
-    </form>
+                        </form>
 
-@endif
+                @endif
 
 
                 {{-- Receive Goods --}}
@@ -81,37 +73,36 @@
 
 
                     @if ($hasOutstandingItems)
-                        <a href="{{ route('goods-receipts.create', [
+                            <a href="{{ route('goods-receipts.create', [
                             'purchase_order_id' => $purchaseOrder->id,
-                        ]) }}"
-                            class="btn btn-success">
+                        ]) }}" class="btn btn-success">
 
-                            <i class="fas fa-truck-loading mr-1"></i>
+                                <i class="fas fa-truck-loading mr-1"></i>
 
-                            Receive Goods
+                                Receive Goods
 
-                        </a>
+                            </a>
                     @endif
 
                 @endif
                 {{-- Cancel Purchase Order --}}
                 @if (in_array($purchaseOrder->status, ['draft', 'confirmed'], true))
-                    <form action="{{ route('purchase-orders.cancel', $purchaseOrder) }}" method="POST" class="d-inline"
-                        onsubmit="return confirm(
-            'Cancel this Purchase Order? This action will mark the Purchase Order as Cancelled.'
-        );">
+                        <form action="{{ route('purchase-orders.cancel', $purchaseOrder) }}" method="POST" class="d-inline"
+                            onsubmit="return confirm(
+                        'Cancel this Purchase Order? This action will mark the Purchase Order as Cancelled.'
+                    );">
 
-                        @csrf
+                            @csrf
 
-                        <button type="submit" class="btn btn-danger">
+                            <button type="submit" class="btn btn-danger">
 
-                            <i class="fas fa-ban mr-1"></i>
+                                <i class="fas fa-ban mr-1"></i>
 
-                            Cancel Purchase Order
+                                Cancel Purchase Order
 
-                        </button>
+                            </button>
 
-                    </form>
+                        </form>
                 @endif
 
 
@@ -276,7 +267,18 @@
 
                 </h3>
 
-                @if ($purchaseOrder->source !== 'production-plan' && $purchaseOrder->status === 'draft')
+                @if (
+                        !in_array(
+                            $purchaseOrder->source,
+                            [
+                                'production-plan',
+                                'supplier-invoice',
+                            ],
+                            true
+                        )
+                        &&
+                        $purchaseOrder->status === 'draft'
+                    )
                     <a href="{{ route('purchase-orders.items.create', $purchaseOrder) }}" class="btn btn-primary btn-sm">
 
                         <i class="fas fa-plus"></i>
@@ -300,9 +302,9 @@
 
                                 <th>#</th>
 
-<th>Product Model</th>
+                                <th>Product Model</th>
 
-<th>Item Code</th>
+                                <th>Item Code</th>
 
                                 <th>Item Name</th>
 
@@ -334,30 +336,30 @@
                                 <tr>
 
                                     <td>
-    {{ $loop->iteration }}
-</td>
+                                        {{ $loop->iteration }}
+                                    </td>
 
-<td>
-    @if ($poItem->productModel)
+                                    <td>
+                                        @if ($poItem->productModel)
 
-        <span class="badge badge-info">
+                                            <span class="badge badge-info">
 
-            {{ $poItem->productModel->model_code }}
+                                                {{ $poItem->productModel->model_code }}
 
-        </span>
+                                            </span>
 
-    @else
+                                        @else
 
-        <span class="text-muted">
-            -
-        </span>
+                                            <span class="text-muted">
+                                                -
+                                            </span>
 
-    @endif
-</td>
+                                        @endif
+                                    </td>
 
-<td>
-    {{ $poItem->item->item_code ?? '-' }}
-</td>
+                                    <td>
+                                        {{ $poItem->item->item_code ?? '-' }}
+                                    </td>
 
                                     <td>
                                         {{ $poItem->item->item_name ?? '-' }}
@@ -392,13 +394,25 @@
                                     </td>
                                     <td class="text-center">
 
-                                        @if ($purchaseOrder->status === 'draft' && $poItem->planned_order_date !== null)
+                                        @if (
+                                                $purchaseOrder->status === 'draft'
+                                                &&
+                                                (
+                                                    $poItem->planned_order_date !== null
+                                                    ||
+                                                    $purchaseOrder->source === 'supplier-invoice'
+                                                )
+                                            )
                                             {{-- Planning Generated Item --}}
                                             <span class="badge badge-info">
 
                                                 <i class="fas fa-lock mr-1"></i>
 
-                                                Planning Locked
+                                                @if ($purchaseOrder->source === 'supplier-invoice')
+                                                    Invoice Locked
+                                                @else
+                                                    Planning Locked
+                                                @endif
 
                                             </span>
                                         @elseif ($purchaseOrder->status === 'draft')
@@ -565,8 +579,7 @@
 
                                     <td>
 
-                                        <a href="{{ route('goods-receipts.show', $goodsReceipt) }}"
-                                            class="btn btn-sm btn-info">
+                                        <a href="{{ route('goods-receipts.show', $goodsReceipt) }}" class="btn btn-sm btn-info">
 
                                             <i class="fas fa-eye"></i>
 

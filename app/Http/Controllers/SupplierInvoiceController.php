@@ -149,9 +149,25 @@ class SupplierInvoiceController extends Controller
 |--------------------------------------------------------------------------
 */
 
-    public function createPurchaseOrder(
-        SupplierInvoice $supplierInvoice
-    ) {
+   public function createPurchaseOrder(
+    Request $request,
+    SupplierInvoice $supplierInvoice
+) {
+    /*
+|--------------------------------------------------------------------------
+| Validate Purchase Order Details
+|--------------------------------------------------------------------------
+*/
+
+$validated = $request->validate([
+
+    'expected_delivery_date' => [
+        'required',
+        'date',
+        'after_or_equal:today',
+    ],
+
+]);
         /*
     |--------------------------------------------------------------------------
     | Invoice Status
@@ -223,7 +239,10 @@ class SupplierInvoiceController extends Controller
 
         $purchaseOrder =
             DB::transaction(
-                function () use ($supplierInvoice) {
+               function () use (
+    $supplierInvoice,
+    $validated
+) {
 
                     /*
                 |--------------------------------------------------------------------------
@@ -289,8 +308,8 @@ class SupplierInvoiceController extends Controller
                             'order_date' =>
                             now()->toDateString(),
 
-                            'expected_delivery_date' =>
-                            null,
+                           'expected_delivery_date' =>
+    $validated['expected_delivery_date'],
 
                             'status' =>
                             'draft',
@@ -1165,15 +1184,15 @@ class SupplierInvoiceController extends Controller
                 ]);
             }
             /*
-|--------------------------------------------------------------------------
-| Protect Linked Purchase Order
-|--------------------------------------------------------------------------
-|
-| Once the linked Purchase Order has been confirmed or goods have
-| started being received, the Supplier Invoice cannot be cancelled
-| independently.
-|
-*/
+            |--------------------------------------------------------------------------
+            | Protect Linked Purchase Order
+            |--------------------------------------------------------------------------
+            |
+            | Once the linked Purchase Order has been confirmed or goods have
+            | started being received, the Supplier Invoice cannot be cancelled
+            | independently.
+            |
+            */
 
             if ($invoice->purchase_order_id) {
 

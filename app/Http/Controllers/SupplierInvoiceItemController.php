@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Item;
 use App\Models\ProductModelItem;
+use App\Services\ItemPurchasePlanningService;
 
 class SupplierInvoiceItemController extends Controller
 {
@@ -19,8 +20,10 @@ class SupplierInvoiceItemController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function create(SupplierInvoice $supplierInvoice)
-    {
+    public function create(
+        SupplierInvoice $supplierInvoice,
+        ItemPurchasePlanningService $itemPurchasePlanningService
+    ) {
         /*
     |--------------------------------------------------------------------------
     | Only Draft Invoice Can Be Modified
@@ -34,17 +37,144 @@ class SupplierInvoiceItemController extends Controller
         );
 
 
-   /*
-|--------------------------------------------------------------------------
-| Load Supplier + Production Plan
-|--------------------------------------------------------------------------
-*/
+        /*
+     |--------------------------------------------------------------------------
+     | Load Supplier + Production Plan
+     |--------------------------------------------------------------------------
+     */
 
-$supplierInvoice->load([
-    'supplier',
-    'productionPlan.productModel',
-]);
+        $supplierInvoice->load([
+            'supplier',
+            'productionPlan.productModel',
+        ]);
+        /*
+        |--------------------------------------------------------------------------
+        | Production Requirement Reference
+        |--------------------------------------------------------------------------
+        */
 
+        $productionRequirementReferences = collect();
+        if (
+            $supplierInvoice->productionPlan
+            &&
+            $supplierInvoice->productionPlan->productModel
+        ) {
+
+            $productionPlan =
+                $supplierInvoice->productionPlan;
+
+            $productionQuantity =
+                (float) $productionPlan->required_quantity;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Load BOM Items
+            |--------------------------------------------------------------------------
+            */
+
+            $productionPlan->productModel->load([
+                'modelItems.item.purchaseSettings',
+                'modelItems.item.suppliers',
+            ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Build Production Requirement References
+            |--------------------------------------------------------------------------
+            */
+
+            foreach (
+                $productionPlan->productModel->modelItems
+                as $modelItem
+            ) {
+
+                if (!$modelItem->item) {
+                    continue;
+                }
+
+                $item =
+                    $modelItem->item;
+
+                $bomQuantity =
+                    (float) $modelItem->quantity;
+
+                $requiredQuantity =
+                    $productionQuantity * $bomQuantity;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Use Existing Purchase Planning Service
+                |--------------------------------------------------------------------------
+                */
+
+                $planning =
+                    $itemPurchasePlanningService->calculate(
+                        $item,
+                        $requiredQuantity,
+                        $requiredQuantity
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Stock Position
+                |--------------------------------------------------------------------------
+                */
+
+                $currentStock =
+                    (float) (
+                        $planning['current_stock']
+                        ?? $item->current_stock
+                    );
+
+                $onOrderQuantity =
+                    (float) (
+                        $planning['on_order_quantity']
+                        ?? 0
+                    );
+
+                $inventoryPosition =
+                    $currentStock
+                    + $onOrderQuantity;
+
+                $shortageQuantity =
+                    max(
+                        0,
+                        $requiredQuantity
+                        - $inventoryPosition
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Reference By Item ID
+                |--------------------------------------------------------------------------
+                */
+
+                $productionRequirementReferences->put(
+                    $item->id,
+                    [
+                        'required_quantity' =>
+                            $requiredQuantity,
+
+                        'current_stock' =>
+                            $currentStock,
+
+                        'on_order_quantity' =>
+                            $onOrderQuantity,
+
+                        'inventory_position' =>
+                            $inventoryPosition,
+
+                        'shortage_quantity' =>
+                            $shortageQuantity,
+                    ]
+                );
+            }
+        }
 
         /*
 |--------------------------------------------------------------------------
@@ -57,8 +187,8 @@ $supplierInvoice->load([
                 'status',
                 true
             )
-            ->orderBy('model_code')
-            ->get();
+                ->orderBy('model_code')
+                ->get();
 
         /*
     |--------------------------------------------------------------------------
@@ -70,15 +200,17 @@ $supplierInvoice->load([
             'supplier-invoices.items.create',
             compact(
                 'supplierInvoice',
-                'productModels'
+                'productModels',
+                'productionRequirementReferences'
             )
         );
     }
 
-    public function itemsByProductModel(
-        SupplierInvoice $supplierInvoice,
-        ProductModel $productModel
-    ) {
+ public function itemsByProductModel(
+    SupplierInvoice $supplierInvoice,
+    ProductModel $productModel,
+    ItemPurchasePlanningService $itemPurchasePlanningService
+) {
         /*
     |--------------------------------------------------------------------------
     | Invoice Must Be Draft
@@ -90,7 +222,33 @@ $supplierInvoice->load([
             403,
             'Only draft supplier invoices can be modified.'
         );
+        /*
+        |--------------------------------------------------------------------------
+        | Load Production Plan
+        |--------------------------------------------------------------------------
+        */
 
+        $supplierInvoice->load(
+            'productionPlan'
+        );
+        /*
+|--------------------------------------------------------------------------
+| Production Plan Reference
+|--------------------------------------------------------------------------
+*/
+
+$productionPlan =
+    $supplierInvoice->productionPlan;
+
+$productionQuantity =
+    $productionPlan
+        ? (float) $productionPlan->required_quantity
+        : 0;
+
+$productionPlanProductModelId =
+    $productionPlan
+        ? (int) $productionPlan->product_model_id
+        : null;
 
         /*
     |--------------------------------------------------------------------------
@@ -103,13 +261,13 @@ $supplierInvoice->load([
 
         $existingItemIds =
             $supplierInvoice
-            ->items()
-            ->where(
-                'product_model_id',
-                $productModel->id
-            )
-            ->pluck('item_id')
-            ->toArray();
+                ->items()
+                ->where(
+                    'product_model_id',
+                    $productModel->id
+                )
+                ->pluck('item_id')
+                ->toArray();
 
 
         /*
@@ -120,23 +278,23 @@ $supplierInvoice->load([
 
         $modelItems =
             $productModel
-            ->modelItems()
-            ->with([
-                'item.unit',
-                'item.suppliers' => function ($query) use ($supplierInvoice) {
+                ->modelItems()
+                ->with([
+                    'item.unit',
+                    'item.suppliers' => function ($query) use ($supplierInvoice) {
 
-                    $query
-                        ->where(
-                            'suppliers.id',
-                            $supplierInvoice->supplier_id
-                        )
-                        ->wherePivot(
-                            'status',
-                            true
-                        );
-                },
-            ])
-            ->get();
+                        $query
+                            ->where(
+                                'suppliers.id',
+                                $supplierInvoice->supplier_id
+                            )
+                            ->wherePivot(
+                                'status',
+                                true
+                            );
+                    },
+                ])
+                ->get();
 
 
         /*
@@ -173,37 +331,143 @@ $supplierInvoice->load([
 
                 return
                     $modelItem->item
-                    ->suppliers
-                    ->isNotEmpty();
+                        ->suppliers
+                        ->isNotEmpty();
             })
-            ->map(function ($modelItem) {
+            ->map(function ($modelItem) use (
+    $productionPlan,
+    $productionQuantity,
+    $productionPlanProductModelId,
+    $productModel,
+    $itemPurchasePlanningService
+) {
 
                 $item =
                     $modelItem->item;
 
                 $supplier =
                     $item->suppliers->first();
+                    /*
+|--------------------------------------------------------------------------
+| Production Requirement Reference
+|--------------------------------------------------------------------------
+*/
+
+$requiredQuantity = 0;
+$currentStock = 0;
+$onOrderQuantity = 0;
+$inventoryPosition = 0;
+$shortageQuantity = 0;
+
+$hasProductionRequirement =
+    $productionPlan
+    &&
+    $productionPlanProductModelId === (int) $productModel->id;
+
+
+if ($hasProductionRequirement) {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Production Required Quantity
+    |--------------------------------------------------------------------------
+    */
+
+    $bomQuantity =
+        (float) $modelItem->quantity;
+
+    $requiredQuantity =
+        $productionQuantity * $bomQuantity;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Existing Purchase Planning Service
+    |--------------------------------------------------------------------------
+    */
+
+    $planning =
+        $itemPurchasePlanningService->calculate(
+            $item,
+            $requiredQuantity,
+            $requiredQuantity
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Stock Position
+    |--------------------------------------------------------------------------
+    */
+
+    $currentStock =
+        (float) (
+            $planning['current_stock']
+            ?? $item->current_stock
+        );
+
+    $onOrderQuantity =
+        (float) (
+            $planning['on_order_quantity']
+            ?? 0
+        );
+
+    $inventoryPosition =
+        $currentStock
+        + $onOrderQuantity;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Production Shortage
+    |--------------------------------------------------------------------------
+    */
+
+    $shortageQuantity =
+        max(
+            0,
+            $requiredQuantity
+            - $inventoryPosition
+        );
+}
 
 
                 return [
 
                     'id' =>
-                    $item->id,
+                        $item->id,
 
                     'item_code' =>
-                    $item->item_code,
+                        $item->item_code,
 
                     'item_name' =>
-                    $item->item_name,
+                        $item->item_name,
 
                     'unit' =>
-                    $item->unit->name ?? '',
+                        $item->unit->name ?? '',
 
                     'unit_price' =>
-                    (float) (
-                        $supplier->pivot->unit_price
-                        ?? 0
-                    ),
+                        (float) (
+                            $supplier->pivot->unit_price
+                            ?? 0
+                        ),
+                        'has_production_requirement' =>
+    $hasProductionRequirement,
+
+'required_quantity' =>
+    $requiredQuantity,
+
+'current_stock' =>
+    $currentStock,
+
+'on_order_quantity' =>
+    $onOrderQuantity,
+
+'inventory_position' =>
+    $inventoryPosition,
+
+'shortage_quantity' =>
+    $shortageQuantity,
 
                 ];
             })
@@ -220,6 +484,8 @@ $supplierInvoice->load([
             'items' => $items,
         ]);
     }
+
+
     /*
     |--------------------------------------------------------------------------
     | Store Invoice Item
@@ -291,11 +557,11 @@ $supplierInvoice->load([
                 'product_model_id',
                 $validated['product_model_id']
             )
-            ->where(
-                'item_id',
-                $validated['item_id']
-            )
-            ->exists();
+                ->where(
+                    'item_id',
+                    $validated['item_id']
+                )
+                ->exists();
 
         if (!$itemBelongsToModel) {
 
@@ -303,7 +569,7 @@ $supplierInvoice->load([
                 ->withInput()
                 ->withErrors([
                     'item_id' =>
-                    'The selected item does not belong to the selected Product Model BOM.',
+                        'The selected item does not belong to the selected Product Model BOM.',
                 ]);
         }
         /*
@@ -317,15 +583,15 @@ $supplierInvoice->load([
                 'supplier_invoice_id',
                 $supplierInvoice->id
             )
-            ->where(
-                'product_model_id',
-                $validated['product_model_id']
-            )
-            ->where(
-                'item_id',
-                $validated['item_id']
-            )
-            ->exists();
+                ->where(
+                    'product_model_id',
+                    $validated['product_model_id']
+                )
+                ->where(
+                    'item_id',
+                    $validated['item_id']
+                )
+                ->exists();
 
 
         if ($alreadyExists) {
@@ -335,7 +601,7 @@ $supplierInvoice->load([
                 ->withErrors([
 
                     'item_id' =>
-                    'This item already exists on this supplier invoice. Please edit the existing line instead.',
+                        'This item already exists on this supplier invoice. Please edit the existing line instead.',
 
                 ]);
         }
@@ -363,13 +629,7 @@ $supplierInvoice->load([
     |--------------------------------------------------------------------------
     */
 
-        DB::transaction(function () use (
-            $supplierInvoice,
-            $validated,
-            $quantity,
-            $unitPrice,
-            $lineTotal
-        ) {
+        DB::transaction(function () use ($supplierInvoice, $validated, $quantity, $unitPrice, $lineTotal) {
 
             /*
         |--------------------------------------------------------------------------
@@ -386,24 +646,24 @@ $supplierInvoice->load([
                 'supplier_invoice_id' => $supplierInvoice->id,
 
                 'product_model_id' =>
-                $validated['product_model_id'],
+                    $validated['product_model_id'],
 
                 'item_id' =>
-                $validated['item_id'],
+                    $validated['item_id'],
 
                 'purchase_order_item_id' => null,
 
                 'quantity' =>
-                $quantity,
+                    $quantity,
 
                 'unit_price' =>
-                $unitPrice,
+                    $unitPrice,
 
                 'line_total' =>
-                $lineTotal,
+                    $lineTotal,
 
                 'remarks' =>
-                $validated['remarks'] ?? null,
+                    $validated['remarks'] ?? null,
 
             ]);
 
@@ -429,8 +689,8 @@ $supplierInvoice->load([
             $totalAmount = max(
                 0,
                 $subtotal
-                    + (float) $supplierInvoice->tax_amount
-                    - (float) $supplierInvoice->discount_amount
+                + (float) $supplierInvoice->tax_amount
+                - (float) $supplierInvoice->discount_amount
             );
 
 
@@ -443,7 +703,7 @@ $supplierInvoice->load([
             $balanceAmount = max(
                 0,
                 $totalAmount
-                    - (float) $supplierInvoice->paid_amount
+                - (float) $supplierInvoice->paid_amount
             );
 
 
@@ -456,13 +716,13 @@ $supplierInvoice->load([
             $supplierInvoice->update([
 
                 'subtotal' =>
-                $subtotal,
+                    $subtotal,
 
                 'total_amount' =>
-                $totalAmount,
+                    $totalAmount,
 
                 'balance_amount' =>
-                $balanceAmount,
+                    $balanceAmount,
 
             ]);
         });
@@ -537,7 +797,7 @@ $supplierInvoice->load([
 
         abort_if(
             $supplierInvoiceItem->supplier_invoice_id
-                !== $supplierInvoice->id,
+            !== $supplierInvoice->id,
             404
         );
 
@@ -566,17 +826,17 @@ $supplierInvoice->load([
 
         $supplierItem =
             $supplierInvoiceItem
-            ->item
-            ->suppliers()
-            ->where(
-                'suppliers.id',
-                $supplierInvoice->supplier_id
-            )
-            ->wherePivot(
-                'status',
-                true
-            )
-            ->first();
+                ->item
+                ->suppliers()
+                ->where(
+                    'suppliers.id',
+                    $supplierInvoice->supplier_id
+                )
+                ->wherePivot(
+                    'status',
+                    true
+                )
+                ->first();
 
 
         $supplierUnitPrice =
@@ -627,7 +887,7 @@ $supplierInvoice->load([
 
         abort_if(
             $supplierInvoiceItem->supplier_invoice_id
-                !== $supplierInvoice->id,
+            !== $supplierInvoice->id,
             404
         );
 
@@ -682,14 +942,7 @@ $supplierInvoice->load([
     |--------------------------------------------------------------------------
     */
 
-        DB::transaction(function () use (
-            $supplierInvoice,
-            $supplierInvoiceItem,
-            $validated,
-            $quantity,
-            $unitPrice,
-            $lineTotal
-        ) {
+        DB::transaction(function () use ($supplierInvoice, $supplierInvoiceItem, $validated, $quantity, $unitPrice, $lineTotal) {
 
             /*
         |--------------------------------------------------------------------------
@@ -700,16 +953,16 @@ $supplierInvoice->load([
             $supplierInvoiceItem->update([
 
                 'quantity' =>
-                $quantity,
+                    $quantity,
 
                 'unit_price' =>
-                $unitPrice,
+                    $unitPrice,
 
                 'line_total' =>
-                $lineTotal,
+                    $lineTotal,
 
                 'remarks' =>
-                $validated['remarks'] ?? null,
+                    $validated['remarks'] ?? null,
 
             ]);
 
@@ -735,8 +988,8 @@ $supplierInvoice->load([
             $totalAmount = max(
                 0,
                 $subtotal
-                    + (float) $supplierInvoice->tax_amount
-                    - (float) $supplierInvoice->discount_amount
+                + (float) $supplierInvoice->tax_amount
+                - (float) $supplierInvoice->discount_amount
             );
 
 
@@ -749,7 +1002,7 @@ $supplierInvoice->load([
             $balanceAmount = max(
                 0,
                 $totalAmount
-                    - (float) $supplierInvoice->paid_amount
+                - (float) $supplierInvoice->paid_amount
             );
 
 
@@ -762,13 +1015,13 @@ $supplierInvoice->load([
             $supplierInvoice->update([
 
                 'subtotal' =>
-                $subtotal,
+                    $subtotal,
 
                 'total_amount' =>
-                $totalAmount,
+                    $totalAmount,
 
                 'balance_amount' =>
-                $balanceAmount,
+                    $balanceAmount,
 
             ]);
         });
@@ -815,7 +1068,7 @@ $supplierInvoice->load([
 
         abort_if(
             $supplierInvoiceItem->supplier_invoice_id
-                !== $supplierInvoice->id,
+            !== $supplierInvoice->id,
             404
         );
 
@@ -858,8 +1111,8 @@ $supplierInvoice->load([
             $totalAmount = max(
                 0,
                 $subtotal
-                    + (float) $supplierInvoice->tax_amount
-                    - (float) $supplierInvoice->discount_amount
+                + (float) $supplierInvoice->tax_amount
+                - (float) $supplierInvoice->discount_amount
             );
 
 
@@ -872,7 +1125,7 @@ $supplierInvoice->load([
             $balanceAmount = max(
                 0,
                 $totalAmount
-                    - (float) $supplierInvoice->paid_amount
+                - (float) $supplierInvoice->paid_amount
             );
 
 
@@ -885,13 +1138,13 @@ $supplierInvoice->load([
             $supplierInvoice->update([
 
                 'subtotal' =>
-                $subtotal,
+                    $subtotal,
 
                 'total_amount' =>
-                $totalAmount,
+                    $totalAmount,
 
                 'balance_amount' =>
-                $balanceAmount,
+                    $balanceAmount,
 
             ]);
         });

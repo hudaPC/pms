@@ -196,15 +196,15 @@
                             </label>
 
                             <input
-                                type="number"
-                                name="received_quantity"
-                                step="0.001"
-                                min="0.001"
-                                max="{{ $outstandingQuantity }}"
-                                value="{{ old('received_quantity') }}"
-                                class="form-control @error('received_quantity') is-invalid @enderror"
-                                required
-                            >
+    type="number"
+    name="received_quantity"
+    step="0.001"
+    min="0.001"
+    max="{{ $outstandingQuantity }}"
+    value="{{ old('received_quantity', $outstandingQuantity) }}"
+    class="form-control @error('received_quantity') is-invalid @enderror"
+    required
+>
 
                             @error('received_quantity')
 

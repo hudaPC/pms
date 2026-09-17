@@ -39,33 +39,27 @@ class GoodsReceiptItemController extends Controller
 
         /*
         |--------------------------------------------------------------------------
+        | Goods Receipt Must Be Active
+        |--------------------------------------------------------------------------
+        */
+
+        abort_if(
+            $goodsReceipt->status === 'voided',
+            403,
+            'Voided Goods Receipts cannot receive goods.'
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
         | Make Sure PO Item Belongs To This GRN's PO
         |--------------------------------------------------------------------------
         */
 
         abort_if(
             $purchaseOrderItem->purchase_order_id
-                !== $goodsReceipt->purchase_order_id,
+            !== $goodsReceipt->purchase_order_id,
             404
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Only Receivable PO Statuses
-        |--------------------------------------------------------------------------
-        */
-
-        abort_if(
-            !in_array(
-                $goodsReceipt->purchaseOrder->status,
-                [
-                    'confirmed',
-                    'partially_received',
-                ]
-            ),
-            403,
-            'This Purchase Order can no longer receive goods.'
         );
 
 
@@ -159,11 +153,20 @@ class GoodsReceiptItemController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        DB::transaction(function () use (
-            $validated,
-            $goodsReceipt,
-            $purchaseOrderItem
-        ) {
+        DB::transaction(function () use ($validated, $goodsReceipt, $purchaseOrderItem) {
+            /*
+            |--------------------------------------------------------------------------
+            | Goods Receipt Must Be Active
+            |--------------------------------------------------------------------------
+            */
+
+            if ($goodsReceipt->status === 'voided') {
+
+                abort(
+                    403,
+                    'Voided Goods Receipts cannot receive goods.'
+                );
+            }
 
             /*
             |--------------------------------------------------------------------------
@@ -214,13 +217,15 @@ class GoodsReceiptItemController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            if (!in_array(
-                $purchaseOrder->status,
-                [
-                    'confirmed',
-                    'partially_received',
-                ]
-            )) {
+            if (
+                !in_array(
+                    $purchaseOrder->status,
+                    [
+                        'confirmed',
+                        'partially_received',
+                    ]
+                )
+            ) {
 
                 abort(
                     403,

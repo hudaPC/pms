@@ -177,7 +177,34 @@
                         </div>
 
                     </div>
+<div class="col-md-3 mb-3">
 
+    <strong>Production Plan</strong>
+
+    <div class="mt-1">
+
+        @if ($supplierInvoice->productionPlan)
+
+            <a href="{{ route(
+                'production-plans.requirements',
+                $supplierInvoice->productionPlan
+            ) }}">
+
+                {{ $supplierInvoice->productionPlan->reference }}
+
+            </a>
+
+        @else
+
+            <span class="text-muted">
+                Manual / Not Linked
+            </span>
+
+        @endif
+
+    </div>
+
+</div>
 
                     <div class="col-md-3 mb-3">
 

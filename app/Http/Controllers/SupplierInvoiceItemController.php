@@ -34,13 +34,16 @@ class SupplierInvoiceItemController extends Controller
         );
 
 
-        /*
-    |--------------------------------------------------------------------------
-    | Load Supplier
-    |--------------------------------------------------------------------------
-    */
+   /*
+|--------------------------------------------------------------------------
+| Load Supplier + Production Plan
+|--------------------------------------------------------------------------
+*/
 
-        $supplierInvoice->load('supplier');
+$supplierInvoice->load([
+    'supplier',
+    'productionPlan.productModel',
+]);
 
 
         /*

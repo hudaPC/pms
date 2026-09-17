@@ -11,9 +11,10 @@ class SupplierInvoice extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'invoice_number',
+  protected $fillable = [
+    'invoice_number',
     'supplier_id',
+    'production_plan_id',
     'purchase_order_id',
     'invoice_date',
     'due_date',
@@ -49,6 +50,10 @@ class SupplierInvoice extends Model
     {
         return $this->belongsTo(Supplier::class);
     }
+    public function productionPlan(): BelongsTo
+{
+    return $this->belongsTo(ProductionPlan::class);
+}
 
     public function purchaseOrder(): BelongsTo
     {

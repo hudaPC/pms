@@ -179,7 +179,7 @@
 
                                 <select name="product_model_id" id="product_model_id"
                                     class="form-control no-clear
-                                         @error('product_model_id') is-invalid @enderror"
+         @error('product_model_id') is-invalid @enderror"
                                     required>
 
                                     <option value="">
@@ -187,7 +187,7 @@
                                     </option>
 
                                     @foreach ($productModels as $productModel)
-                                        <option value="{{ $productModel->id }}">
+                                        <option value="{{ $productModel->id }}" @selected(old('product_model_id', $supplierInvoice->productionPlan?->product_model_id) == $productModel->id)>
 
                                             {{ $productModel->model_code }}
 
@@ -746,16 +746,26 @@
             );
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Unit Price Changed
-            |--------------------------------------------------------------------------
-            */
-
             unitPriceInput.on(
-                'input',
-                calculateLineTotal
-            );
+    'input',
+    calculateLineTotal
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Load Items For Preselected Product Model
+|--------------------------------------------------------------------------
+*/
+
+if (productModelSelect.val()) {
+
+    productModelSelect.trigger(
+        'change'
+    );
+
+}
+
 
         });
     </script>

@@ -910,12 +910,6 @@ class ProductionPlanController extends Controller
             'productModel.modelItems.item.suppliers',
         ]);
 
-
-
-
-
-
-
         /*
     |--------------------------------------------------------------------------
     | Production Quantity
@@ -969,10 +963,10 @@ class ProductionPlanController extends Controller
         */
 
             $planning = $itemPurchasePlanningService->calculate(
-    $item,
-    $requiredQuantity,
-    $requiredQuantity
-);
+                $item,
+                $requiredQuantity,
+                $requiredQuantity
+            );
 
 
             /*
@@ -1206,8 +1200,8 @@ class ProductionPlanController extends Controller
         |
         */
 
-           $recommendedPurchaseQuantity =
-    $basePurchaseQuantity;
+            $recommendedPurchaseQuantity =
+                $basePurchaseQuantity;
 
             /*
 |--------------------------------------------------------------------------
@@ -1236,8 +1230,8 @@ class ProductionPlanController extends Controller
 
             $isProductionOrderOverdue =
                 $productionOrderDate->lt($today);
-                $isProductionOrderDueToday =
-    $productionOrderDate->equalTo($today);
+            $isProductionOrderDueToday =
+                $productionOrderDate->equalTo($today);
 
             $effectiveProductionOrderDate =
                 $isProductionOrderOverdue
@@ -1254,8 +1248,8 @@ class ProductionPlanController extends Controller
         | Do NOT round to MOQ multiples.
         |
         */
-$minimumOrderQty =
-    (float) $planning['minimum_order_qty'];
+            $minimumOrderQty =
+                (float) $planning['minimum_order_qty'];
 
 
             /*
@@ -1284,7 +1278,7 @@ $minimumOrderQty =
                 'has_purchase_settings' =>
                 true,
                 'is_production_order_due_today' =>
-    $isProductionOrderDueToday,
+                $isProductionOrderDueToday,
 
 
                 /*
@@ -1606,7 +1600,7 @@ $minimumOrderQty =
             ->values();
 
 
- /*
+        /*
         |--------------------------------------------------------------------------
         | Pagination
         |--------------------------------------------------------------------------
@@ -1646,111 +1640,111 @@ $minimumOrderQty =
             ]
         );
     }
-public function materialIssue(ProductionPlan $productionPlan, Request $request)
-{
-    /*
+    public function materialIssue(ProductionPlan $productionPlan, Request $request)
+    {
+        /*
  |--------------------------------------------------------------------------
  | Cancelled Production Plan Cannot Open Material Issue
  |--------------------------------------------------------------------------
  */
 
-    if ($productionPlan->status === 'cancelled') {
+        if ($productionPlan->status === 'cancelled') {
 
-        return redirect()
-            ->route(
-                'production-plans.requirements',
-                $productionPlan
-            )
-            ->with(
-                'warning',
-                'A cancelled Production Plan cannot issue materials.'
-            );
-    }
+            return redirect()
+                ->route(
+                    'production-plans.requirements',
+                    $productionPlan
+                )
+                ->with(
+                    'warning',
+                    'A cancelled Production Plan cannot issue materials.'
+                );
+        }
 
 
-    /*
+        /*
 |--------------------------------------------------------------------------
 | Load Production Plan BOM
 |--------------------------------------------------------------------------
 */
 
-    $productionPlan->load([
-        'productModel.modelItems.item.unit',
-    ]);
+        $productionPlan->load([
+            'productModel.modelItems.item.unit',
+        ]);
 
 
-    /*
+        /*
 |--------------------------------------------------------------------------
 | Product Model Required
 |--------------------------------------------------------------------------
 */
 
-    if (!$productionPlan->productModel) {
-        return redirect()
-            ->route(
-                'production-plans.index'
-            )
-            ->with(
-                'warning',
-                'No Product Model was found for this Production Plan.'
-            );
-    }
+        if (!$productionPlan->productModel) {
+            return redirect()
+                ->route(
+                    'production-plans.index'
+                )
+                ->with(
+                    'warning',
+                    'No Product Model was found for this Production Plan.'
+                );
+        }
 
 
-    /*
+        /*
 |--------------------------------------------------------------------------
 | Production Quantity
 |--------------------------------------------------------------------------
 */
 
-    $productionQuantity =
-        (float)
-        $productionPlan->required_quantity;
+        $productionQuantity =
+            (float)
+            $productionPlan->required_quantity;
 
 
-    /*
+        /*
 |--------------------------------------------------------------------------
 | Material Issue Rows
 |--------------------------------------------------------------------------
 */
 
-    $materialIssueRows = [];
+        $materialIssueRows = [];
 
 
-    foreach (
-        $productionPlan
-            ->productModel
-            ->modelItems
-        as $modelItem
-    ) {
+        foreach (
+            $productionPlan
+                ->productModel
+                ->modelItems
+            as $modelItem
+        ) {
 
-        $item =
-            $modelItem->item;
-
-
-        if (!$item) {
-            continue;
-        }
+            $item =
+                $modelItem->item;
 
 
-        /*
+            if (!$item) {
+                continue;
+            }
+
+
+            /*
     |--------------------------------------------------------------------------
     | Required Material
     |--------------------------------------------------------------------------
     */
 
-        $bomQuantity =
-            (float)
-            $modelItem->quantity;
+            $bomQuantity =
+                (float)
+                $modelItem->quantity;
 
 
-        $requiredQuantity =
-            $productionQuantity
-            *
-            $bomQuantity;
+            $requiredQuantity =
+                $productionQuantity
+                *
+                $bomQuantity;
 
 
-        /*
+            /*
     |--------------------------------------------------------------------------
     | Already Issued
     |--------------------------------------------------------------------------
@@ -1761,93 +1755,93 @@ public function materialIssue(ProductionPlan $productionPlan, Request $request)
     |
     */
 
-        $alreadyIssued =
-            (float)
-            UsageLog::where(
-                'production_plan_id',
-                $productionPlan->id
-            )
-                ->where(
-                    'item_id',
-                    $item->id
+            $alreadyIssued =
+                (float)
+                UsageLog::where(
+                    'production_plan_id',
+                    $productionPlan->id
                 )
-                ->where(
-                    'source',
-                    'production-plan'
-                )
-                ->where(
-                    'status',
-                    'active'
-                )
-                ->sum(
-                    'quantity'
-                );
+                    ->where(
+                        'item_id',
+                        $item->id
+                    )
+                    ->where(
+                        'source',
+                        'production-plan'
+                    )
+                    ->where(
+                        'status',
+                        'active'
+                    )
+                    ->sum(
+                        'quantity'
+                    );
 
 
-        /*
+            /*
     |--------------------------------------------------------------------------
     | Remaining To Issue
     |--------------------------------------------------------------------------
     */
 
-        $remainingToIssue =
-            max(
-                0,
-                $requiredQuantity
-                    -
-                    $alreadyIssued
-            );
+            $remainingToIssue =
+                max(
+                    0,
+                    $requiredQuantity
+                        -
+                        $alreadyIssued
+                );
 
 
-        /*
+            /*
     |--------------------------------------------------------------------------
     | Current Physical Stock
     |--------------------------------------------------------------------------
     */
 
-        $currentStock =
-            (float)
-            $item->current_stock;
+            $currentStock =
+                (float)
+                $item->current_stock;
 
 
-        /*
+            /*
     |--------------------------------------------------------------------------
     | Issue Status
     |--------------------------------------------------------------------------
     */
 
-        if (
-            $remainingToIssue <= 0
-        ) {
+            if (
+                $remainingToIssue <= 0
+            ) {
 
-            $issueStatus =
-                'fully-issued';
-        } elseif (
-            $alreadyIssued > 0
-        ) {
+                $issueStatus =
+                    'fully-issued';
+            } elseif (
+                $alreadyIssued > 0
+            ) {
 
-            $issueStatus =
-                'partially-issued';
-        } else {
+                $issueStatus =
+                    'partially-issued';
+            } else {
 
-            $issueStatus =
-                'not-issued';
-        }
+                $issueStatus =
+                    'not-issued';
+            }
 
 
-        /*
+            /*
     |--------------------------------------------------------------------------
     | Stock Availability
     |--------------------------------------------------------------------------
     */
 
-        $canFullyIssue =
-            $currentStock
-            >=
-            $remainingToIssue;
+            $canFullyIssue =
+                $currentStock
+                >=
+                $remainingToIssue;
 
 
-        /*
+            /*
     |--------------------------------------------------------------------------
     | Suggested Issue Quantity
     |--------------------------------------------------------------------------
@@ -1856,148 +1850,148 @@ public function materialIssue(ProductionPlan $productionPlan, Request $request)
     |
     */
 
-        $suggestedIssueQuantity =
-            min(
-                $remainingToIssue,
-                $currentStock
-            );
+            $suggestedIssueQuantity =
+                min(
+                    $remainingToIssue,
+                    $currentStock
+                );
 
 
-        /*
+            /*
     |--------------------------------------------------------------------------
     | Build Row
     |--------------------------------------------------------------------------
     */
 
-        $materialIssueRows[] = [
+            $materialIssueRows[] = [
 
-            'item' =>
-            $item,
+                'item' =>
+                $item,
 
-            'item_code' =>
-            $item->item_code,
+                'item_code' =>
+                $item->item_code,
 
-            'item_name' =>
-            $item->item_name,
+                'item_name' =>
+                $item->item_name,
 
-            'unit' =>
-            $item->unit,
+                'unit' =>
+                $item->unit,
 
-            'bom_quantity' =>
-            $bomQuantity,
+                'bom_quantity' =>
+                $bomQuantity,
 
-            'required_quantity' =>
-            $requiredQuantity,
+                'required_quantity' =>
+                $requiredQuantity,
 
-            'already_issued' =>
-            $alreadyIssued,
+                'already_issued' =>
+                $alreadyIssued,
 
-            'remaining_to_issue' =>
-            $remainingToIssue,
+                'remaining_to_issue' =>
+                $remainingToIssue,
 
-            'current_stock' =>
-            $currentStock,
+                'current_stock' =>
+                $currentStock,
 
-            'suggested_issue_quantity' =>
-            $suggestedIssueQuantity,
+                'suggested_issue_quantity' =>
+                $suggestedIssueQuantity,
 
-            'can_fully_issue' =>
-            $canFullyIssue,
+                'can_fully_issue' =>
+                $canFullyIssue,
 
-            'issue_status' =>
-            $issueStatus,
-        ];
-    }
+                'issue_status' =>
+                $issueStatus,
+            ];
+        }
 
 
-    /*
+        /*
 |--------------------------------------------------------------------------
 | Summary Counts (from FULL dataset, before pagination)
 |--------------------------------------------------------------------------
 */
 
-    $totalItems =
-        count($materialIssueRows);
+        $totalItems =
+            count($materialIssueRows);
 
-    $fullyIssuedItems =
-        collect($materialIssueRows)
+        $fullyIssuedItems =
+            collect($materialIssueRows)
             ->where('issue_status', 'fully-issued')
             ->count();
 
-    $partiallyIssuedItems =
-        collect($materialIssueRows)
+        $partiallyIssuedItems =
+            collect($materialIssueRows)
             ->where('issue_status', 'partially-issued')
             ->count();
 
-    $notIssuedItems =
-        collect($materialIssueRows)
+        $notIssuedItems =
+            collect($materialIssueRows)
             ->where('issue_status', 'not-issued')
             ->count();
 
-    $insufficientStockItems =
-        collect($materialIssueRows)
+        $insufficientStockItems =
+            collect($materialIssueRows)
             ->filter(function ($row) {
                 return $row['remaining_to_issue'] > 0 && !$row['can_fully_issue'];
             })
             ->count();
 
-    $hasRemainingMaterials =
-        collect($materialIssueRows)
+        $hasRemainingMaterials =
+            collect($materialIssueRows)
             ->contains(function ($row) {
                 return $row['remaining_to_issue'] > 0.000001;
             });
 
 
-    /*
+        /*
 |--------------------------------------------------------------------------
 | Paginate Material Issue Rows
 |--------------------------------------------------------------------------
 */
 
-    $perPage =
-        15;
+        $perPage =
+            15;
 
-    $currentPage =
-        LengthAwarePaginator::resolveCurrentPage('page');
+        $currentPage =
+            LengthAwarePaginator::resolveCurrentPage('page');
 
-    $materialIssueRowsCollection =
-        collect($materialIssueRows);
+        $materialIssueRowsCollection =
+            collect($materialIssueRows);
 
-    $materialIssueRows =
-        new LengthAwarePaginator(
-            $materialIssueRowsCollection
-                ->forPage($currentPage, $perPage)
-                ->values(),
-            $materialIssueRowsCollection->count(),
-            $perPage,
-            $currentPage,
-            [
-                'path' => $request->url(),
-                'query' => $request->query(),
-            ]
-        );
+        $materialIssueRows =
+            new LengthAwarePaginator(
+                $materialIssueRowsCollection
+                    ->forPage($currentPage, $perPage)
+                    ->values(),
+                $materialIssueRowsCollection->count(),
+                $perPage,
+                $currentPage,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
 
 
-    /*
+        /*
 |--------------------------------------------------------------------------
 | Return View
 |--------------------------------------------------------------------------
 */
 
-    return view(
-        'production-plans.material-issue',
-        compact(
-            'productionPlan',
-            'materialIssueRows',
-            'totalItems',
-            'fullyIssuedItems',
-            'partiallyIssuedItems',
-            'notIssuedItems',
-            'insufficientStockItems',
-            'hasRemainingMaterials'
-        )
-    );
-}
+        return view(
+            'production-plans.material-issue',
+            compact(
+                'productionPlan',
+                'materialIssueRows',
+                'totalItems',
+                'fullyIssuedItems',
+                'partiallyIssuedItems',
+                'notIssuedItems',
+                'insufficientStockItems',
+                'hasRemainingMaterials'
+            )
+        );
+    }
 
 
     public function postMaterialIssue(ProductionPlan $productionPlan)

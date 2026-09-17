@@ -565,7 +565,7 @@
                                                 -
                                             </span>
                                         @elseif (($requirement['planning_recovery_quantity'] ?? 0) > 0)
-                                           <span class="text-secondary font-weight-bold">
+                                            <span class="text-secondary font-weight-bold">
                                                 {{ number_format($requirement['planning_recovery_quantity'], 3) }}
                                             </span>
                                         @else
@@ -607,17 +607,12 @@
                                             <span class="text-muted">
                                                 -
                                             </span>
-
-                                        @elseif (($requirement['production_shortage'] ?? 0) <= 0)
-
+                                        @elseif (($requirement['shortage_quantity'] ?? 0) <= 0)
                                             <span class="text-muted">
                                                 -
                                             </span>
-
                                         @elseif (!empty($requirement['production_order_date']))
-
                                             {{ $requirement['production_order_date']->format('d-M-Y') }}
-
                                         @else
                                             -
                                         @endif
@@ -633,27 +628,19 @@
                                                 <i class="fas fa-lock mr-1"></i>
                                                 Closed
                                             </span>
-
-                                        @elseif (($requirement['production_shortage'] ?? 0) <= 0)
-
+                                        @elseif (($requirement['shortage_quantity'] ?? 0) <= 0)
                                             <span class="badge badge-secondary">
                                                 No Purchase
                                             </span>
-
                                         @elseif (!empty($requirement['is_production_order_overdue']))
-
                                             <span class="badge badge-danger">
                                                 Overdue
                                             </span>
-
                                         @elseif (!empty($requirement['is_production_order_due_today']))
-
                                             <span class="badge badge-warning">
                                                 Order Now
                                             </span>
-
                                         @else
-
                                             <span class="badge badge-success">
                                                 Scheduled
                                             </span>
@@ -1001,14 +988,14 @@
 
                                         <div class="text-right mt-3">
 
-                                            <a href="{{ route('production-plans.purchase-orders.create', [
-                                                'productionPlan' => $productionPlan,
-                                                'supplier' => $group['supplier'],
+                                            <a href="{{ route('supplier-invoices.create', [
+                                                'supplier' => $group['supplier']->id,
+                                                'production_plan' => $productionPlan->id,
                                             ]) }}"
-                                                class="btn btn-success">
+                                                class="btn btn-primary">
 
-                                                <i class="fas fa-file-invoice mr-1"></i>
-                                                Create Consolidated PO
+                                                <i class="fas fa-file-invoice-dollar mr-1"></i>
+                                                Create Supplier Invoice
 
                                             </a>
 

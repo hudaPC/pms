@@ -128,7 +128,7 @@
 
 
                         {{-- Buttons --}}
-                        <div class="col-md-3">
+                        <div class="col-md-3 mt-2">
 
                             <div class="form-group mb-0">
 

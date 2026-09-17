@@ -14,7 +14,7 @@
                     Create Supplier Invoice
                 </h2>
 
-               <p class="text-muted mb-0">
+                <p class="text-muted mb-0">
                     Enter the supplier invoice first. Purchase Order will be created from the invoice items later.
                 </p>
             </div>
@@ -37,11 +37,9 @@
                 <ul class="mb-0 mt-2">
 
                     @foreach ($errors->all() as $error)
-
                         <li>
                             {{ $error }}
                         </li>
-
                     @endforeach
 
                 </ul>
@@ -54,6 +52,8 @@
         <form action="{{ route('supplier-invoices.store') }}" method="POST">
 
             @csrf
+            <input type="hidden" name="production_plan_id"
+                value="{{ old('production_plan_id', $selectedProductionPlanId ?? '') }}">
 
 
             <div class="card card-primary card-outline">
@@ -106,33 +106,24 @@
 
 
                                     @foreach ($suppliers as $supplier)
-
-                                        <option value="{{ $supplier->id }}" @selected(
-                                            old('supplier_id')
-                                            == $supplier->id
-                                        )>
+                                        <option value="{{ $supplier->id }}" @selected(old('supplier_id', $selectedSupplierId ?? null) == $supplier->id)>
 
                                             @if (!empty($supplier->code))
-
                                                 {{ $supplier->code }} -
-
                                             @endif
 
                                             {{ $supplier->name }}
 
                                         </option>
-
                                     @endforeach
 
                                 </select>
 
 
                                 @error('supplier_id')
-
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
-
                                 @enderror
 
 
@@ -160,25 +151,15 @@
 
                                 <div class="input-group">
 
-                                    <input
-                                        type="text"
-                                        name="invoice_number"
-                                        id="invoice_number"
-                                        value="{{ old('invoice_number') }}"
-                                        maxlength="100"
+                                    <input type="text" name="invoice_number" id="invoice_number"
+                                        value="{{ old('invoice_number') }}" maxlength="100"
                                         class="form-control @error('invoice_number') is-invalid @enderror"
-                                        placeholder="Auto-filled from Supplier + Invoice Date, or type your own"
-                                        required
-                                    >
+                                        placeholder="Auto-filled from Supplier + Invoice Date, or type your own" required>
 
                                     <div class="input-group-append">
 
-                                        <button
-                                            type="button"
-                                            id="regenerate_invoice_number_btn"
-                                            class="btn btn-outline-secondary"
-                                            title="Regenerate suggested number"
-                                        >
+                                        <button type="button" id="regenerate_invoice_number_btn"
+                                            class="btn btn-outline-secondary" title="Regenerate suggested number">
                                             <i class="fas fa-sync-alt"></i>
                                         </button>
 
@@ -195,11 +176,9 @@
 
 
                                 @error('invoice_number')
-
                                     <div class="invalid-feedback d-block">
                                         {{ $message }}
                                     </div>
-
                                 @enderror
 
                             </div>
@@ -220,18 +199,15 @@
 
                                 </label>
 
-                                <input type="date" name="invoice_date" id="invoice_date" value="{{ old(
-        'invoice_date',
-        now()->format('Y-m-d')
-    ) }}" class="form-control @error('invoice_date') is-invalid @enderror" required>
+                                <input type="date" name="invoice_date" id="invoice_date"
+                                    value="{{ old('invoice_date', now()->format('Y-m-d')) }}"
+                                    class="form-control @error('invoice_date') is-invalid @enderror" required>
 
 
                                 @error('invoice_date')
-
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
-
                                 @enderror
 
                             </div>
@@ -253,11 +229,9 @@
 
 
                                 @error('due_date')
-
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
-
                                 @enderror
 
                             </div>
@@ -275,15 +249,14 @@
                                 </label>
 
                                 <input type="number" name="tax_amount" id="tax_amount" value="{{ old('tax_amount', 0) }}"
-                                    step="0.0001" min="0" class="form-control @error('tax_amount') is-invalid @enderror">
+                                    step="0.0001" min="0"
+                                    class="form-control @error('tax_amount') is-invalid @enderror">
 
 
                                 @error('tax_amount')
-
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
-
                                 @enderror
 
                             </div>
@@ -306,11 +279,9 @@
 
 
                                 @error('discount_amount')
-
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
-
                                 @enderror
 
                             </div>
@@ -349,17 +320,14 @@
                                     Remarks
                                 </label>
 
-                                <textarea name="remarks" id="remarks" rows="3"
-                                    class="form-control @error('remarks') is-invalid @enderror"
+                                <textarea name="remarks" id="remarks" rows="3" class="form-control @error('remarks') is-invalid @enderror"
                                     placeholder="Optional remarks">{{ old('remarks') }}</textarea>
 
 
                                 @error('remarks')
-
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
-
                                 @enderror
 
                             </div>
@@ -406,130 +374,128 @@
 
     {{-- Auto Select Supplier From PO + Generate Invoice Number --}}
     <script>
-document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
 
-    const $supplierSelect     = $('#supplier_id');
-    const $invoiceDateInput   = $('#invoice_date');
-    const $invoiceNumberInput = $('#invoice_number');
-    const $regenerateBtn      = $('#regenerate_invoice_number_btn');
+            const $supplierSelect = $('#supplier_id');
+            const $invoiceDateInput = $('#invoice_date');
+            const $invoiceNumberInput = $('#invoice_number');
+            const $regenerateBtn = $('#regenerate_invoice_number_btn');
 
-    let invoiceNumberManuallyEdited = false;
+            let invoiceNumberManuallyEdited = false;
 
 
-    function generateInvoiceNumber(force = false)
-    {
-        if (invoiceNumberManuallyEdited && !force) {
-            return;
-        }
-
-        const supplierId  = $supplierSelect.val();
-        const invoiceDate = $invoiceDateInput.val();
-
-        if (!supplierId || !invoiceDate) {
-            return;
-        }
-
-        $.ajax({
-            url: '{{ route('supplier-invoices.generate-number') }}',
-            method: 'POST',
-
-            data: {
-                supplier_id: supplierId,
-                invoice_date: invoiceDate,
-                _token: '{{ csrf_token() }}',
-            },
-
-            success: function (data) {
-
-                if (data.invoice_number) {
-
-                    $invoiceNumberInput.val(
-                        data.invoice_number
-                    );
-
-                    if (force) {
-                        invoiceNumberManuallyEdited = false;
-                    }
+            function generateInvoiceNumber(force = false) {
+                if (invoiceNumberManuallyEdited && !force) {
+                    return;
                 }
-            },
 
-            error: function (xhr) {
-                console.error(
-                    'Invoice number generation failed:',
-                    xhr
-                );
-            },
+                const supplierId = $supplierSelect.val();
+                const invoiceDate = $invoiceDateInput.val();
+
+                if (!supplierId || !invoiceDate) {
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('supplier-invoices.generate-number') }}',
+                    method: 'POST',
+
+                    data: {
+                        supplier_id: supplierId,
+                        invoice_date: invoiceDate,
+                        _token: '{{ csrf_token() }}',
+                    },
+
+                    success: function(data) {
+
+                        if (data.invoice_number) {
+
+                            $invoiceNumberInput.val(
+                                data.invoice_number
+                            );
+
+                            if (force) {
+                                invoiceNumberManuallyEdited = false;
+                            }
+                        }
+                    },
+
+                    error: function(xhr) {
+                        console.error(
+                            'Invoice number generation failed:',
+                            xhr
+                        );
+                    },
+                });
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Supplier Changed
+            |--------------------------------------------------------------------------
+            */
+
+            $supplierSelect.on('change', function() {
+                generateInvoiceNumber();
+            });
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Invoice Date Changed
+            |--------------------------------------------------------------------------
+            */
+
+            $invoiceDateInput.on('change', function() {
+                generateInvoiceNumber();
+            });
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Manual Invoice Number
+            |--------------------------------------------------------------------------
+            */
+
+            $invoiceNumberInput.on('input', function() {
+                invoiceNumberManuallyEdited = true;
+            });
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Regenerate Number
+            |--------------------------------------------------------------------------
+            */
+
+            $regenerateBtn.on('click', function() {
+
+                invoiceNumberManuallyEdited = false;
+
+                generateInvoiceNumber(true);
+            });
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Restore Old Value / Initial Generation
+            |--------------------------------------------------------------------------
+            */
+
+            if ($invoiceNumberInput.val()) {
+
+                invoiceNumberManuallyEdited = true;
+
+            } else if (
+                $supplierSelect.val() &&
+                $invoiceDateInput.val()
+            ) {
+
+                generateInvoiceNumber();
+            }
+
         });
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Supplier Changed
-    |--------------------------------------------------------------------------
-    */
-
-    $supplierSelect.on('change', function () {
-        generateInvoiceNumber();
-    });
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Invoice Date Changed
-    |--------------------------------------------------------------------------
-    */
-
-    $invoiceDateInput.on('change', function () {
-        generateInvoiceNumber();
-    });
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Manual Invoice Number
-    |--------------------------------------------------------------------------
-    */
-
-    $invoiceNumberInput.on('input', function () {
-        invoiceNumberManuallyEdited = true;
-    });
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Regenerate Number
-    |--------------------------------------------------------------------------
-    */
-
-    $regenerateBtn.on('click', function () {
-
-        invoiceNumberManuallyEdited = false;
-
-        generateInvoiceNumber(true);
-    });
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Restore Old Value / Initial Generation
-    |--------------------------------------------------------------------------
-    */
-
-    if ($invoiceNumberInput.val()) {
-
-        invoiceNumberManuallyEdited = true;
-
-    } else if (
-        $supplierSelect.val()
-        &&
-        $invoiceDateInput.val()
-    ) {
-
-        generateInvoiceNumber();
-    }
-
-});
-</script>
+    </script>
 
 @endsection

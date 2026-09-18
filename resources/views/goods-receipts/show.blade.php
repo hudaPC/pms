@@ -386,9 +386,11 @@
 
                                 <th>#</th>
 
-                                <th>Item Code</th>
+<th>Product Model</th>
 
-                                <th>Item Name</th>
+<th>Item Code</th>
+
+<th>Item Name</th>
 
                                 <th>Ordered Qty</th>
 
@@ -428,6 +430,15 @@
                                     <td>
                                         {{ $loop->iteration }}
                                     </td>
+                                    <td>
+    @if ($poItem->productModel)
+        <span class="badge badge-info">
+            {{ $poItem->productModel->model_code }}
+        </span>
+    @else
+        <span class="text-muted">Common</span>
+    @endif
+</td>
 
 
                                     <td>
@@ -539,7 +550,7 @@
 
                                 <tr>
 
-                                    <td colspan="8" class="text-center text-muted py-4">
+                                    <td colspan="9" class="text-center text-muted py-4">
 
                                         No Purchase Order items found.
 
@@ -585,19 +596,21 @@
 
                             <tr>
 
-                                <th>#</th>
+    <th>#</th>
 
-                                <th>Item Code</th>
+    <th>Product Model</th>
 
-                                <th>Item Name</th>
+    <th>Item Code</th>
 
-                                <th>Received Qty</th>
+    <th>Item Name</th>
 
-                                <th>Unit</th>
+    <th>Received Qty</th>
 
-                                <th>Remarks</th>
+    <th>Unit</th>
 
-                            </tr>
+    <th>Remarks</th>
+
+</tr>
 
                         </thead>
 
@@ -608,15 +621,28 @@
                                 <tr>
 
                                     <td>
-                                        {{ $loop->iteration }}
-                                    </td>
+    {{ $loop->iteration }}
+</td>
 
+<td>
+    @if ($receiptItem->purchaseOrderItem?->productModel)
 
-                                    <td>
+        <span class="badge badge-info">
+            {{ $receiptItem->purchaseOrderItem->productModel->model_code }}
+        </span>
 
-                                        {{ $receiptItem->item->item_code ?? '-' }}
+    @else
 
-                                    </td>
+        <span class="text-muted">
+            Common
+        </span>
+
+    @endif
+</td>
+
+<td>
+    {{ $receiptItem->item->item_code ?? '-' }}
+</td>
 
 
                                     <td>
@@ -657,7 +683,7 @@
 
                                 <tr>
 
-                                    <td colspan="6" class="text-center text-muted py-4">
+                                    <td colspan="7" class="text-center text-muted py-4">
 
                                         No received quantities have been entered yet.
 

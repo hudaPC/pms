@@ -73,6 +73,30 @@
 
                 <div class="col-md-3 mb-3">
 
+    <strong>Product Model</strong>
+
+    <div class="mt-1">
+
+        @if ($purchaseOrderItem->productModel)
+
+            <span class="badge badge-info">
+                {{ $purchaseOrderItem->productModel->model_code }}
+            </span>
+
+        @else
+
+            <span class="text-muted">
+                Common
+            </span>
+
+        @endif
+
+    </div>
+
+</div>
+
+                <div class="col-md-3 mb-3">
+
                     <strong>Item Code</strong>
 
                     <div class="mt-1">

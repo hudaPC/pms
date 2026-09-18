@@ -45,49 +45,87 @@
 
             <div class="row">
 
-                <div class="col-md-4">
+    {{-- Product Model --}}
+    <div class="col-md-3">
 
-                    <strong>Item Code</strong>
+        <strong>Product Model</strong>
 
-                    <div class="mt-1">
-                        {{ $purchaseOrderItem->item->item_code }}
-                    </div>
+        <div class="mt-1">
 
-                </div>
+            @if ($purchaseOrderItem->productModel)
 
-                <div class="col-md-4">
+                <span class="badge badge-info">
+                    {{ $purchaseOrderItem->productModel->model_code }}
+                </span>
 
-                    <strong>Item Name</strong>
+            @else
 
-                    <div class="mt-1">
-                        {{ $purchaseOrderItem->item->item_name }}
-                    </div>
+                <span class="text-muted">
+                    Common
+                </span>
 
-                </div>
+            @endif
 
-                <div class="col-md-4">
+        </div>
 
-                    <strong>Supplier MOQ</strong>
+    </div>
 
-                    <div class="mt-1">
 
-                        @if($minimumOrderQty > 0)
+    {{-- Item Code --}}
+    <div class="col-md-3">
 
-                            {{ number_format($minimumOrderQty, 3) }}
+        <strong>Item Code</strong>
 
-                            {{ $purchaseOrderItem->item->unit->name ?? '' }}
+        <div class="mt-1">
+            {{ $purchaseOrderItem->item->item_code }}
+        </div>
 
-                        @else
+    </div>
 
-                            -
 
-                        @endif
+    {{-- Item Name --}}
+    <div class="col-md-3">
 
-                    </div>
+        <strong>Item Name</strong>
 
-                </div>
+        <div class="mt-1">
+            {{ $purchaseOrderItem->item->item_name }}
+        </div>
 
-            </div>
+    </div>
+
+
+    {{-- Supplier MOQ --}}
+    <div class="col-md-3">
+
+        <strong>Supplier MOQ</strong>
+
+        <div class="mt-1">
+
+            @if ($minimumOrderQty > 0)
+
+                {{ number_format(
+                    $minimumOrderQty,
+                    3
+                ) }}
+
+                {{ $purchaseOrderItem->item->unit->name ?? '' }}
+
+                <small class="text-muted">
+                    (Reference Only)
+                </small>
+
+            @else
+
+                -
+
+            @endif
+
+        </div>
+
+    </div>
+
+</div>
 
         </div>
 

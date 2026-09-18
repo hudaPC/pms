@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
-
+use App\Services\ItemPurchasePlanningService;
 use App\Models\Item;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\Supplier;
-
+use App\Models\ProductionPlan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+
 
 class PurchaseOrderItemController extends Controller
 {
@@ -20,8 +21,10 @@ class PurchaseOrderItemController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function create(PurchaseOrder $purchaseOrder)
-    {
+    public function create(
+        PurchaseOrder $purchaseOrder,
+        ItemPurchasePlanningService $itemPurchasePlanningService
+    ) {
 
         abort_if(
             $purchaseOrder->status !== 'draft',
@@ -62,7 +65,7 @@ class PurchaseOrderItemController extends Controller
                 'unit',
                 'purchaseSettings',
                 'productModel',
-
+                'productModelItems',
                 'suppliers' => function ($query) use ($purchaseOrder) {
 
                     $query->where(
@@ -91,6 +94,70 @@ class PurchaseOrderItemController extends Controller
             ->unique('id')
             ->sortBy('model_code')
             ->values();
+        /*
+|--------------------------------------------------------------------------
+| Purchase Planning Information
+|--------------------------------------------------------------------------
+|
+| Reuse the central Purchase Planning Service so Manual PO
+| Production Requirement Reference uses the real:
+|
+| - Current Stock
+| - On Order
+| - Inventory Position
+|
+*/
+
+        $planningInformation = [];
+
+        foreach ($items as $item) {
+
+            $planning = $itemPurchasePlanningService->calculate($item);
+
+            $planningInformation[$item->id] = [
+                'current_stock' =>
+                (float) (
+                    $planning['current_stock']
+                    ?? $item->current_stock
+                ),
+
+                'on_order_quantity' =>
+                (float) (
+                    $planning['on_order_quantity']
+                    ?? 0
+                ),
+
+                'inventory_position' =>
+                (float) (
+                    $planning['inventory_position']
+                    ?? $item->current_stock
+                ),
+            ];
+        }
+
+ 
+        /*
+|--------------------------------------------------------------------------
+| Confirmed Production Plans
+|--------------------------------------------------------------------------
+|
+| These plans are used only to show Production Requirement Reference
+| information on the Manual PO Add Item screen.
+|
+*/
+
+        $confirmedProductionPlans = ProductionPlan::where(
+            'status',
+            'confirmed'
+        )
+            ->whereDate(
+                'requirement_date',
+                '>=',
+                today()
+            )
+            ->get()
+            ->groupBy('product_model_id');
+
 
         /*
     |--------------------------------------------------------------------------
@@ -114,7 +181,9 @@ class PurchaseOrderItemController extends Controller
                 'items',
                 'productModels',
                 'existingItemIds',
-                'existingItems'
+                'existingItems',
+                'confirmedProductionPlans',
+                'planningInformation'
             )
         );
     }
@@ -319,7 +388,7 @@ class PurchaseOrderItemController extends Controller
     |--------------------------------------------------------------------------
     */
 
-       
+
 
 
         /*
@@ -463,6 +532,7 @@ class PurchaseOrderItemController extends Controller
 
         $purchaseOrderItem->load([
             'item.unit',
+            'productModel',
         ]);
 
 
@@ -581,38 +651,26 @@ class PurchaseOrderItemController extends Controller
 
 
         /*
-    |--------------------------------------------------------------------------
-    | Get Supplier Item Settings
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| Ordered Quantity Cannot Be Below Received Quantity
+|--------------------------------------------------------------------------
+|
+| Once goods have physically been received, the ordered quantity
+| must never be reduced below the quantity already received.
+|
+*/
 
-        $supplier = $purchaseOrderItem->item
-            ->suppliers()
-            ->where(
-                'suppliers.id',
-                $purchaseOrder->supplier_id
-            )
-            ->where(
-                'item_suppliers.status',
-                true
-            )
-            ->firstOrFail();
+        $receivedQuantity =
+            (float) $purchaseOrderItem->received_quantity;
 
+        $orderedQuantity =
+            (float) $validated['ordered_quantity'];
 
-        $minimumOrderQty = (float) (
-            $supplier->pivot->minimum_order_qty ?? 0
-        );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Validate Supplier MOQ
-    |--------------------------------------------------------------------------
-    */
 
         if (
-            $minimumOrderQty > 0 &&
-            (float) $validated['ordered_quantity'] < $minimumOrderQty
+            $receivedQuantity > 0
+            &&
+            $orderedQuantity < $receivedQuantity
         ) {
 
             return back()
@@ -620,15 +678,15 @@ class PurchaseOrderItemController extends Controller
                 ->withErrors([
 
                     'ordered_quantity' =>
-                    'The ordered quantity cannot be less than the supplier MOQ of '
-                        . number_format($minimumOrderQty, 0)
-                        . ' '
-                        . ($purchaseOrderItem->item->unit->name ?? 'units')
+                    'Ordered quantity cannot be less than the already received quantity of '
+                        . number_format(
+                            $receivedQuantity,
+                            3
+                        )
                         . '.',
 
                 ]);
         }
-
 
         /*
     |--------------------------------------------------------------------------
@@ -715,6 +773,17 @@ class PurchaseOrderItemController extends Controller
             $purchaseOrderItem->planned_order_date !== null,
             403,
             'This Purchase Order item was created from Purchase Planning and cannot be deleted individually.'
+        );
+        /*
+|--------------------------------------------------------------------------
+| Prevent Deleting Received Item
+|--------------------------------------------------------------------------
+*/
+
+        abort_if(
+            (float) $purchaseOrderItem->received_quantity > 0,
+            403,
+            'This item cannot be deleted because goods have already been received against it.'
         );
         /*
     |--------------------------------------------------------------------------

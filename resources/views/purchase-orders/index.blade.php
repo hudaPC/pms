@@ -18,14 +18,14 @@
             </p>
         </div>
 
-        <!-- <a href="{{ route('purchase-orders.create') }}"
+        <a href="{{ route('purchase-orders.create') }}"
            class="btn btn-primary">
 
             <i class="fas fa-plus mr-1"></i>
 
             Create Purchase Order
 
-        </a> -->
+        </a> 
 
     </div>
 

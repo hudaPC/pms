@@ -738,19 +738,7 @@
             </div>
 
 
-            {{-- ============================================================
-                PURCHASE PLANNING DATA
-            ============================================================ --}}
-
-            @if ($currentSource === 'purchase-planning' && ($planningItem ?? null))
-                <input type="hidden" name="planning_item_id" value="{{ $planningItem->id }}">
-
-                <input type="hidden" name="planning_recommended_qty" value="{{ $recommendedQty ?? 0 }}">
-
-                <input type="hidden" name="planning_planned_order_date" value="{{ $plannedOrderDate ?? '' }}">
-
-                <input type="hidden" name="planning_source" value="purchase-planning">
-            @endif
+            
 
 
 

@@ -306,6 +306,8 @@ Route::middleware(['auth'])->group(function () {
         '/purchase-orders/{purchaseOrder}/items',
         [PurchaseOrderItemController::class, 'store']
     )->name('purchase-orders.items.store');
+   
+   
     Route::get(
         '/purchase-orders/{purchaseOrder}/items/{purchaseOrderItem}/edit',
         [PurchaseOrderItemController::class, 'edit']

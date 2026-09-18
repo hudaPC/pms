@@ -136,7 +136,7 @@
                                 type="number"
                                 name="ordered_quantity"
                                 step="0.001"
-                                min="{{ $minimumOrderQty > 0 ? $minimumOrderQty : '0.001' }}"
+                                min="0.001"
                                 value="{{ old(
                                     'ordered_quantity',
                                     $purchaseOrderItem->ordered_quantity
@@ -152,6 +152,18 @@
                                 </div>
 
                             @enderror
+                            @if ($minimumOrderQty > 0)
+    <small class="form-text text-muted">
+        Supplier MOQ:
+        {{ number_format($minimumOrderQty, 3) }}
+        {{ $purchaseOrderItem->item->unit->name ?? '' }}
+        (reference only)
+    </small>
+@else
+    <small class="form-text text-muted">
+        No supplier MOQ configured.
+    </small>
+@endif
 
                         </div>
 

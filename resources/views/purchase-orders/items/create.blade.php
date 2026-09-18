@@ -89,14 +89,7 @@
             </div>
 
         </div>
-        @if (
-                request('source') === 'purchase-planning'
-                &&
-                request('item_id')
-                &&
-                request('recommended_qty')
-            )
-
+        @if (request('source') === 'purchase-planning' && request('item_id') && request('recommended_qty'))
             <div class="alert alert-info mb-3">
 
                 <div class="row">
@@ -122,10 +115,7 @@
 
                         <div class="mt-1">
 
-                            {{ $purchaseOrder->order_date
-                ? $purchaseOrder->order_date->format('d-M-Y')
-                : '-'
-                            }}
+                            {{ $purchaseOrder->order_date ? $purchaseOrder->order_date->format('d-M-Y') : '-' }}
 
                         </div>
 
@@ -140,10 +130,7 @@
 
                         <div class="mt-1">
 
-                            {{ $purchaseOrder->expected_delivery_date
-                ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
-                : '-'
-                            }}
+                            {{ $purchaseOrder->expected_delivery_date ? $purchaseOrder->expected_delivery_date->format('d-M-Y') : '-' }}
 
                         </div>
 
@@ -158,10 +145,7 @@
 
                         <div class="mt-1">
 
-                            {{ number_format(
-                (float) request('recommended_qty'),
-                3
-            ) }}
+                            {{ number_format((float) request('recommended_qty'), 3) }}
 
                         </div>
 
@@ -170,7 +154,6 @@
                 </div>
 
             </div>
-
         @endif
 
         {{-- Add Item --}}
@@ -197,8 +180,37 @@
 
                     <div class="row">
 
+                        {{-- Product Model --}}
+
+                        <div class="col-md-3">
+
+                            <div class="form-group">
+
+                                <label>
+                                    Product Model
+                                    <span class="text-danger">*</span>
+                                </label>
+
+                                <select name="product_model_id" id="product_model_id" class="form-control" required>
+
+                                    <option value="">
+                                        Select Product Model
+                                    </option>
+
+                                    @foreach ($productModels as $productModel)
+                                        <option value="{{ $productModel->id }}" @selected(old('product_model_id') == $productModel->id)>
+                                            {{ $productModel->model_code }}
+                                        </option>
+                                    @endforeach
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
                         {{-- Item --}}
-                        <div class="col-md-6">
+                        <div class="col-md-5">
 
                             <div class="form-group">
 
@@ -217,24 +229,29 @@
                                     @foreach ($items as $item)
                                         @php
 
-                                            $settings =
-                                                $item->purchaseSettings;
+                                            /*
+                                            |--------------------------------------------------------------------------
+                                            | Supplier Specific Information
+                                            |--------------------------------------------------------------------------
+                                            */
 
-                                            $currentStock =
-                                                (float) $item->current_stock;
+                                            $supplierItem = $item->suppliers->first();
 
-                                            $monthlyUsage =
-                                                (float) ($settings->monthly_usage ?? 0);
+                                            $supplierPrice = $supplierItem?->pivot?->unit_price;
 
-                                            $leadTimeDays =
-                                                (int) ($settings->lead_time_days ?? 0);
+                                            $minimumOrderQty = $supplierItem?->pivot?->minimum_order_qty;
 
-                                            $safetyStock =
-                                                (float) ($settings->safety_stock ?? 0);
+                                            $settings = $item->purchaseSettings;
 
-                                            $normalOrderQuantity =
-                                                (float) ($settings->order_quantity ?? 0);
+                                            $currentStock = (float) $item->current_stock;
 
+                                            $monthlyUsage = (float) ($settings->monthly_usage ?? 0);
+
+                                            $leadTimeDays = (int) ($settings->lead_time_days ?? 0);
+
+                                            $safetyStock = (float) ($settings->safety_stock ?? 0);
+
+                                            $normalOrderQuantity = (float) ($settings->order_quantity ?? 0);
 
                                             /*
                                             |--------------------------------------------------------------------------
@@ -245,10 +262,7 @@
                                             |
                                             */
 
-                                            $leadTimeDemand =
-                                                $monthlyUsage
-                                                * ($leadTimeDays / 30);
-
+                                            $leadTimeDemand = $monthlyUsage * ($leadTimeDays / 30);
 
                                             /*
                                             |--------------------------------------------------------------------------
@@ -256,10 +270,7 @@
                                             |--------------------------------------------------------------------------
                                             */
 
-                                            $reorderPoint =
-                                                $leadTimeDemand
-                                                + $safetyStock;
-
+                                            $reorderPoint = $leadTimeDemand + $safetyStock;
 
                                             /*
                                             |--------------------------------------------------------------------------
@@ -267,9 +278,7 @@
                                             |--------------------------------------------------------------------------
                                             */
 
-                                            $criticalShortage =
-                                                $currentStock < $reorderPoint;
-
+                                            $criticalShortage = $currentStock < $reorderPoint;
 
                                             /*
                                             |--------------------------------------------------------------------------
@@ -287,30 +296,33 @@
                                             |
                                             */
 
-                                            $recommendedQuantity =
-                                                $normalOrderQuantity;
-
+                                            $recommendedQuantity = $normalOrderQuantity;
 
                                             if ($criticalShortage) {
-
-                                                $recommendedQuantity =
-                                                    max(
-                                                        0,
-                                                        $leadTimeDemand
-                                                        + $reorderPoint
-                                                        - $currentStock
-                                                    );
+                                                $recommendedQuantity = max(
+                                                    0,
+                                                    $leadTimeDemand + $reorderPoint - $currentStock,
+                                                );
                                             }
                                         @endphp
 
-                                        <option value="{{ $item->id }}" data-price="{{ $supplierPrice ?? '' }}"
+                                        <option value="{{ $item->id }}"
+                                            data-product-model-id="{{ $item->product_model_id ?? '' }}"
+                                            data-price="{{ $supplierPrice ?? '' }}"
                                             data-moq="{{ $minimumOrderQty ?? '' }}"
                                             data-existing="{{ in_array($item->id, $existingItemIds) ? '1' : '0' }}"
-                                            data-current-stock="{{ $currentStock }}" data-reorder-point="{{ $reorderPoint }}"
+                                            data-current-stock="{{ $currentStock }}"
+                                            data-reorder-point="{{ $reorderPoint }}"
                                             data-normal-order-qty="{{ $normalOrderQuantity }}"
                                             data-recommended-qty="{{ $recommendedQuantity }}"
                                             data-order-type="{{ $criticalShortage ? 'Recovery' : 'Normal' }}"
                                             @selected(old('item_id') == $item->id)>
+
+                                            {@if ($item->productModel)
+                                                [{{ $item->productModel->model_code }}]
+                                            @else
+                                                [Common]
+                                            @endif
 
                                             {{ $item->item_code }}
                                             -
@@ -386,7 +398,7 @@
 
 
                         {{-- Ordered Quantity --}}
-                        <div class="col-md-3">
+                        <div class="col-md-2">
 
                             <div class="form-group">
 
@@ -395,8 +407,8 @@
                                     <span class="text-danger">*</span>
                                 </label>
 
-                                <input type="number" step="0.001" min="0.001" name="ordered_quantity" id="ordered_quantity"
-                                    value="{{ old('ordered_quantity') }}"
+                                <input type="number" step="0.001" min="0.001" name="ordered_quantity"
+                                    id="ordered_quantity" value="{{ old('ordered_quantity') }}"
                                     class="form-control @error('ordered_quantity') is-invalid @enderror" required>
 
                                 @error('ordered_quantity')
@@ -419,7 +431,7 @@
 
 
                         {{-- Unit Price --}}
-                        <div class="col-md-3">
+                        <div class="col-md-2">
 
                             <div class="form-group">
 
@@ -452,8 +464,7 @@
 
                             <label>Remarks</label>
 
-                            <textarea name="remarks" rows="2"
-                                class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
+                            <textarea name="remarks" rows="2" class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
 
                             @error('remarks')
                                 <div class="invalid-feedback">
@@ -516,8 +527,9 @@
 
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
 
+            const productModelSelect = document.getElementById('product_model_id');
             const itemSelect = document.getElementById('item_id');
             const priceInput = document.getElementById('unit_price');
             const quantityInput = document.getElementById('ordered_quantity');
@@ -530,6 +542,78 @@
             const planningReorderPoint = document.getElementById('planningReorderPoint');
             const planningRecommendedQty = document.getElementById('planningRecommendedQty');
             const planningOrderType = document.getElementById('planningOrderType');
+            /*
+    |--------------------------------------------------------------------------
+    | Filter Items By Product Model
+    |--------------------------------------------------------------------------
+    */
+
+            const originalItemOptions =
+                Array.from(itemSelect.options)
+                .slice(1)
+                .map(option => option.cloneNode(true));
+
+
+            function filterItemsByProductModel() {
+
+                const productModelId =
+                    productModelSelect.value;
+
+                /*
+                |--------------------------------------------------------------------------
+                | Reset Item Dropdown
+                |--------------------------------------------------------------------------
+                */
+
+                itemSelect.innerHTML =
+                    '<option value="">Select Item</option>';
+
+
+                if (!productModelId) {
+
+                    $(itemSelect).val('').trigger('change');
+
+                    return;
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Add Matching Items
+                |--------------------------------------------------------------------------
+                */
+
+                originalItemOptions.forEach(function(option) {
+
+                    if (
+                        option.dataset.productModelId ===
+                        productModelId
+                    ) {
+
+                        itemSelect.appendChild(
+                            option.cloneNode(true)
+                        );
+                    }
+
+                });
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Reset Selected Item
+                |--------------------------------------------------------------------------
+                */
+
+                $(itemSelect)
+                    .val('')
+                    .trigger('change');
+            }
+
+
+            productModelSelect.addEventListener(
+                'change',
+                filterItemsByProductModel
+            );
 
             function formatQty(value) {
                 return Number(value).toLocaleString(undefined, {
@@ -571,26 +655,38 @@
                 }
 
                 /*
-                |--------------------------------------------------------------------------
-                | Minimum Order Quantity
-                |--------------------------------------------------------------------------
-                */
+    |--------------------------------------------------------------------------
+    | Supplier MOQ - Reference Only
+    |--------------------------------------------------------------------------
+    |
+    | MOQ is displayed for information only.
+    | It does NOT restrict the operator's manual Ordered Quantity.
+    |
+    */
 
-                if (moq !== undefined && moq !== null && moq !== '' && Number(moq) > 0) {
+                quantityInput.min = '0.001';
+
+                if (
+                    moq !== undefined &&
+                    moq !== null &&
+                    moq !== '' &&
+                    Number(moq) > 0
+                ) {
 
                     const minimum = Number(moq);
-                    quantityInput.min = minimum;
 
                     moqHelp.textContent =
                         'Supplier MOQ: ' +
                         minimum.toLocaleString(undefined, {
                             minimumFractionDigits: 3,
                             maximumFractionDigits: 3
-                        });
+                        }) +
+                        ' (reference only)';
 
                 } else {
-                    quantityInput.min = '0.001';
-                    moqHelp.textContent = 'No supplier MOQ configured.';
+
+                    moqHelp.textContent =
+                        'No supplier MOQ configured.';
                 }
 
                 /*
@@ -630,19 +726,19 @@
                 planningBox.style.display = 'block';
 
                 /*
-    |--------------------------------------------------------------------------
-    | Auto Fill Recommended Purchase Quantity
-    |--------------------------------------------------------------------------
-    |
-    | Whenever the operator selects an item,
-    | use the Purchase Planning recommendation.
-    |
-    | Example:
-    |
-    | Normal Order    = 3,000
-    | Recovery Order  = 9,000
-    |
-    */
+                |--------------------------------------------------------------------------
+                | Auto Fill Recommended Purchase Quantity
+                |--------------------------------------------------------------------------
+                |
+                | Whenever the operator selects an item,
+                | use the Purchase Planning recommendation.
+                |
+                | Example:
+                |
+                | Normal Order    = 3,000
+                | Recovery Order  = 9,000
+                |
+                */
 
                 if (recommendedQty > 0) {
 

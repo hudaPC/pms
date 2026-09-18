@@ -34,11 +34,11 @@ class PurchaseOrderItemController extends Controller
 |--------------------------------------------------------------------------
 */
 
-abort_if(
-    $purchaseOrder->source === 'supplier-invoice',
-    403,
-    'Items for a Supplier Invoice Purchase Order must come from the Supplier Invoice and cannot be added manually.'
-);
+        abort_if(
+            $purchaseOrder->source === 'supplier-invoice',
+            403,
+            'Items for a Supplier Invoice Purchase Order must come from the Supplier Invoice and cannot be added manually.'
+        );
 
 
         $purchaseOrder->load('supplier');
@@ -61,6 +61,7 @@ abort_if(
             ->with([
                 'unit',
                 'purchaseSettings',
+                'productModel',
 
                 'suppliers' => function ($query) use ($purchaseOrder) {
 
@@ -78,6 +79,18 @@ abort_if(
             ->orderBy('item_code')
 
             ->get();
+        /*
+|--------------------------------------------------------------------------
+| Product Models Available For This Supplier
+|--------------------------------------------------------------------------
+*/
+
+        $productModels = $items
+            ->pluck('productModel')
+            ->filter()
+            ->unique('id')
+            ->sortBy('model_code')
+            ->values();
 
         /*
     |--------------------------------------------------------------------------
@@ -99,6 +112,7 @@ abort_if(
             compact(
                 'purchaseOrder',
                 'items',
+                'productModels',
                 'existingItemIds',
                 'existingItems'
             )
@@ -112,405 +126,268 @@ abort_if(
     |--------------------------------------------------------------------------
     */
 
-    public function store(Request $request)
-{
-    /*
+    public function store(
+        Request $request,
+        PurchaseOrder $purchaseOrder
+    ) {
+        /*
+    |--------------------------------------------------------------------------
+    | Purchase Order Must Be Draft
+    |--------------------------------------------------------------------------
+    */
+
+        abort_if(
+            $purchaseOrder->status !== 'draft',
+            403,
+            'Items can only be added to draft purchase orders.'
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Supplier Invoice PO Items Are Locked
+    |--------------------------------------------------------------------------
+    */
+
+        abort_if(
+            $purchaseOrder->source === 'supplier-invoice',
+            403,
+            'Items for a Supplier Invoice Purchase Order must come from the Supplier Invoice and cannot be added manually.'
+        );
+
+
+        /*
     |--------------------------------------------------------------------------
     | Validation
     |--------------------------------------------------------------------------
     */
 
-    $validated = $request->validate([
+        $validated = $request->validate([
 
-        'po_number' => [
-            'required',
-            'string',
-            'max:50',
-            'unique:purchase_orders,po_number',
-        ],
+            'product_model_id' => [
+                'required',
+                'exists:product_models,id',
+            ],
 
-        'supplier_id' => [
-            'required',
-            'exists:suppliers,id',
-        ],
+            'item_id' => [
+                'required',
+                'exists:items,id',
+            ],
 
-        'order_date' => [
-            'required',
-            'date',
-        ],
+            'ordered_quantity' => [
+                'required',
+                'numeric',
+                'min:0.001',
+            ],
 
-        'expected_delivery_date' => [
-            'nullable',
-            'date',
-            'after_or_equal:order_date',
-        ],
+            'unit_price' => [
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
 
-        'remarks' => [
-            'nullable',
-            'string',
-        ],
+            'remarks' => [
+                'nullable',
+                'string',
+            ],
+
+        ]);
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Optional Purchase Planning Data
-        |--------------------------------------------------------------------------
-        */
-
-        'planning_item_id' => [
-            'nullable',
-            'exists:items,id',
-        ],
-
-        'planning_recommended_qty' => [
-            'nullable',
-            'numeric',
-            'min:0.001',
-        ],
-
-        'planning_source' => [
-            'nullable',
-            'string',
-        ],
-
-    ]);
-
-
-    /*
     |--------------------------------------------------------------------------
-    | Planning Information
-    |--------------------------------------------------------------------------
-    |
-    | These fields are NOT columns in purchase_orders.
-    |
-    */
-
-    $planningItemId =
-        $validated['planning_item_id']
-        ?? null;
-
-    $planningRecommendedQty =
-        isset(
-            $validated['planning_recommended_qty']
-        )
-            ? (float) $validated['planning_recommended_qty']
-            : null;
-
-    $planningSource =
-        $validated['planning_source']
-        ?? null;
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Remove Planning Fields From PO Data
+    | Find Selected Item
     |--------------------------------------------------------------------------
     */
 
-    unset(
-        $validated['planning_item_id'],
-        $validated['planning_recommended_qty'],
-        $validated['planning_source']
-    );
+        $item = Item::query()
+            ->whereKey(
+                $validated['item_id']
+            )
+            ->where(
+                'status',
+                true
+            )
+            ->first();
 
 
-    /*
+        if (!$item) {
+
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'item_id' =>
+                    'The selected item is not active or does not exist.',
+                ]);
+        }
+
+
+        /*
     |--------------------------------------------------------------------------
-    | Initial PO Status
+    | Validate Product Model
     |--------------------------------------------------------------------------
+    |
+    | The selected item must belong to the selected Product Model.
+    |
     */
 
-    $validated['status'] = 'draft';
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Database Transaction
-    |--------------------------------------------------------------------------
-    |
-    | For Purchase Planning:
-    |
-    | PO Header + PO Item are created together.
-    |
-    | If anything fails, neither record is saved.
-    |
-    */
-
-    $purchaseOrder = DB::transaction(
-        function () use (
-            $validated,
-            $planningSource,
-            $planningItemId,
-            $planningRecommendedQty
+        if (
+            (int) $item->product_model_id
+            !==
+            (int) $validated['product_model_id']
         ) {
 
-            /*
-            |--------------------------------------------------------------------------
-            | Create Purchase Order Header
-            |--------------------------------------------------------------------------
-            */
-
-            $purchaseOrder =
-                PurchaseOrder::create(
-                    $validated
-                );
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Normal Manual PO
-            |--------------------------------------------------------------------------
-            |
-            | If this PO did NOT come from Purchase Planning,
-            | create only the header.
-            |
-            */
-
-            if (
-                $planningSource !== 'purchase-planning'
-                ||
-                !$planningItemId
-            ) {
-
-                return $purchaseOrder;
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Planning Quantity Is Required
-            |--------------------------------------------------------------------------
-            */
-
-            if (
-                !$planningRecommendedQty
-                ||
-                $planningRecommendedQty <= 0
-            ) {
-
-                throw ValidationException::withMessages([
-
-                    'planning_recommended_qty' =>
-                        'Purchase Planning did not provide a valid recommended quantity.',
-
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'item_id' =>
+                    'The selected item does not belong to the selected Product Model.',
                 ]);
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Find Planning Item
-            |--------------------------------------------------------------------------
-            |
-            | The item must:
-            |
-            | - be active
-            | - belong to the selected PO supplier
-            | - have an active item_suppliers record
-            |
-            */
-
-            $item = Item::where(
-                'id',
-                $planningItemId
-            )
-                ->where(
-                    'status',
-                    true
-                )
-                ->whereHas(
-                    'suppliers',
-                    function ($query) use (
-                        $purchaseOrder
-                    ) {
-
-                        $query
-                            ->where(
-                                'suppliers.id',
-                                $purchaseOrder->supplier_id
-                            )
-                            ->where(
-                                'item_suppliers.status',
-                                true
-                            );
-                    }
-                )
-                ->first();
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Supplier / Item Validation
-            |--------------------------------------------------------------------------
-            */
-
-            if (!$item) {
-
-                throw ValidationException::withMessages([
-
-                    'supplier_id' =>
-                        'The planned item is not available from the selected supplier.',
-
-                ]);
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Supplier Specific Item Information
-            |--------------------------------------------------------------------------
-            |
-            | Reuse the same item_suppliers source used by
-            | PurchaseOrderItemController.
-            |
-            */
-
-            $supplier = $item->suppliers()
-                ->where(
-                    'suppliers.id',
-                    $purchaseOrder->supplier_id
-                )
-                ->where(
-                    'item_suppliers.status',
-                    true
-                )
-                ->first();
-
-
-            if (!$supplier) {
-
-                throw ValidationException::withMessages([
-
-                    'supplier_id' =>
-                        'No active supplier-item configuration was found for this planned item.',
-
-                ]);
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Supplier MOQ
-            |--------------------------------------------------------------------------
-            */
-
-            $minimumOrderQty =
-                (float) (
-                    $supplier
-                        ->pivot
-                        ->minimum_order_qty
-                    ?? 0
-                );
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Validate Planning Qty Against MOQ
-            |--------------------------------------------------------------------------
-            */
-
-            if (
-                $minimumOrderQty > 0
-                &&
-                $planningRecommendedQty
-                < $minimumOrderQty
-            ) {
-
-                throw ValidationException::withMessages([
-
-                    'planning_recommended_qty' =>
-                        'The recommended quantity of '
-                        . number_format(
-                            $planningRecommendedQty,
-                            3
-                        )
-                        . ' is below the supplier MOQ of '
-                        . number_format(
-                            $minimumOrderQty,
-                            3
-                        )
-                        . '.',
-
-                ]);
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Supplier Unit Price
-            |--------------------------------------------------------------------------
-            |
-            | Automatically load price from item_suppliers.
-            |
-            */
-
-            $unitPrice =
-                $supplier
-                    ->pivot
-                    ->unit_price !== null
-                    ? (float)
-                        $supplier
-                            ->pivot
-                            ->unit_price
-                    : null;
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Create Planned PO Item Automatically
-            |--------------------------------------------------------------------------
-            */
-
-            PurchaseOrderItem::create([
-
-                'purchase_order_id' =>
-                    $purchaseOrder->id,
-
-                'item_id' =>
-                    $item->id,
-
-                'ordered_quantity' =>
-                    $planningRecommendedQty,
-
-                'unit_price' =>
-                    $unitPrice,
-
-                'received_quantity' =>
-                    0,
-
-                'remarks' =>
-                    'Created from Purchase Planning recommendation.',
-
-            ]);
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Return PO
-            |--------------------------------------------------------------------------
-            */
-
-            return $purchaseOrder;
         }
-    );
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
-    | Purchase Planning Redirect
+    | Validate Supplier / Item Relationship
     |--------------------------------------------------------------------------
     |
-    | Item is already added automatically.
-    |
-    | Go directly to Purchase Order detail page.
+    | The item must be active for the supplier of this Purchase Order.
     |
     */
 
-    if (
-        $planningSource === 'purchase-planning'
-        &&
-        $planningItemId
-    ) {
+        $supplierItem =
+            $item->suppliers()
+            ->where(
+                'suppliers.id',
+                $purchaseOrder->supplier_id
+            )
+            ->where(
+                'item_suppliers.status',
+                true
+            )
+            ->first();
+
+
+        if (!$supplierItem) {
+
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'item_id' =>
+                    'The selected item is not active for this Purchase Order supplier.',
+                ]);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Prevent Duplicate Product Model + Item
+    |--------------------------------------------------------------------------
+    */
+
+        $alreadyExists =
+            PurchaseOrderItem::query()
+            ->where(
+                'purchase_order_id',
+                $purchaseOrder->id
+            )
+            ->where(
+                'product_model_id',
+                $validated['product_model_id']
+            )
+            ->where(
+                'item_id',
+                $validated['item_id']
+            )
+            ->exists();
+
+
+        if ($alreadyExists) {
+
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'item_id' =>
+                    'This item has already been added for the selected Product Model.',
+                ]);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Supplier MOQ
+    |--------------------------------------------------------------------------
+    */
+
+       
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Unit Price
+    |--------------------------------------------------------------------------
+    |
+    | Use the supplier-specific configured price when available.
+    | Otherwise use the manually entered Unit Price.
+    |
+    */
+
+        $supplierUnitPrice =
+            $supplierItem
+            ->pivot
+            ->unit_price;
+
+
+        $unitPrice =
+            $supplierUnitPrice !== null
+            ? (float) $supplierUnitPrice
+            : (
+                isset($validated['unit_price'])
+                ? (float) $validated['unit_price']
+                : null
+            );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Create Purchase Order Item
+    |--------------------------------------------------------------------------
+    */
+
+        PurchaseOrderItem::create([
+
+            'purchase_order_id' =>
+            $purchaseOrder->id,
+
+            'product_model_id' =>
+            $validated['product_model_id'],
+
+            'item_id' =>
+            $validated['item_id'],
+
+            'ordered_quantity' =>
+            $validated['ordered_quantity'],
+
+            'unit_price' =>
+            $unitPrice,
+
+            'received_quantity' =>
+            0,
+
+            'planned_order_date' =>
+            null,
+
+            'remarks' =>
+            $validated['remarks'] ?? null,
+
+        ]);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Redirect
+    |--------------------------------------------------------------------------
+    */
 
         return redirect()
             ->route(
@@ -519,79 +396,61 @@ abort_if(
             )
             ->with(
                 'success',
-                'Purchase order created from Purchase Planning. The recommended item and quantity were added automatically. Please review the PO before confirming it.'
+                'Purchase Order item added successfully.'
             );
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Normal Manual PO Redirect
-    |--------------------------------------------------------------------------
-    */
-
-    return redirect()
-        ->route(
-            'purchase-orders.show',
-            $purchaseOrder
-        )
-        ->with(
-            'success',
-            'Purchase order created successfully. You can now add items.'
-        );
-}
-
-
     public function edit(
-    PurchaseOrder $purchaseOrder,
-    PurchaseOrderItem $purchaseOrderItem
-) {
-    /*
+        PurchaseOrder $purchaseOrder,
+        PurchaseOrderItem $purchaseOrderItem
+    ) {
+        /*
     |--------------------------------------------------------------------------
     | Only Draft PO Can Be Changed
     |--------------------------------------------------------------------------
     */
 
-    abort_if(
-        $purchaseOrder->status !== 'draft',
-        403,
-        'Only draft purchase orders can be modified.'
-    );
+        abort_if(
+            $purchaseOrder->status !== 'draft',
+            403,
+            'Only draft purchase orders can be modified.'
+        );
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Make Sure Item Belongs To This PO
     |--------------------------------------------------------------------------
     */
 
-    abort_if(
-        $purchaseOrderItem->purchase_order_id !== $purchaseOrder->id,
-        404
-    );
+        abort_if(
+            $purchaseOrderItem->purchase_order_id !== $purchaseOrder->id,
+            404
+        );
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Supplier Invoice PO Item Cannot Be Edited
 |--------------------------------------------------------------------------
 */
 
-abort_if(
-    $purchaseOrder->source === 'supplier-invoice',
-    403,
-    'This Purchase Order was created from a Supplier Invoice. Its items cannot be edited manually.'
-);
-    /*
+        abort_if(
+            $purchaseOrder->source === 'supplier-invoice',
+            403,
+            'This Purchase Order was created from a Supplier Invoice. Its items cannot be edited manually.'
+        );
+        /*
     |--------------------------------------------------------------------------
     | Planning Generated Item Cannot Be Edited
     |--------------------------------------------------------------------------
     */
 
-    abort_if(
-        $purchaseOrderItem->planned_order_date !== null,
-        403,
-        'This Purchase Order item was created from Purchase Planning and cannot be edited manually.'
-    );
+        abort_if(
+            $purchaseOrderItem->planned_order_date !== null,
+            403,
+            'This Purchase Order item was created from Purchase Planning and cannot be edited manually.'
+        );
 
 
         /*
@@ -676,23 +535,23 @@ abort_if(
 |--------------------------------------------------------------------------
 */
 
-abort_if(
-    $purchaseOrder->source === 'supplier-invoice',
-    403,
-    'This Purchase Order was created from a Supplier Invoice. Its items cannot be updated manually.'
-);
+        abort_if(
+            $purchaseOrder->source === 'supplier-invoice',
+            403,
+            'This Purchase Order was created from a Supplier Invoice. Its items cannot be updated manually.'
+        );
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Planning Generated Item Cannot Be Updated
 |--------------------------------------------------------------------------
 */
 
-abort_if(
-    $purchaseOrderItem->planned_order_date !== null,
-    403,
-    'This Purchase Order item was created from Purchase Planning and its quantity cannot be changed manually.'
-);
+        abort_if(
+            $purchaseOrderItem->planned_order_date !== null,
+            403,
+            'This Purchase Order item was created from Purchase Planning and its quantity cannot be changed manually.'
+        );
         /*
     |--------------------------------------------------------------------------
     | Validation
@@ -761,7 +620,7 @@ abort_if(
                 ->withErrors([
 
                     'ordered_quantity' =>
-                        'The ordered quantity cannot be less than the supplier MOQ of '
+                    'The ordered quantity cannot be less than the supplier MOQ of '
                         . number_format($minimumOrderQty, 0)
                         . ' '
                         . ($purchaseOrderItem->item->unit->name ?? 'units')
@@ -780,13 +639,13 @@ abort_if(
         $purchaseOrderItem->update([
 
             'ordered_quantity' =>
-                $validated['ordered_quantity'],
+            $validated['ordered_quantity'],
 
             'unit_price' =>
-                $validated['unit_price'] ?? null,
+            $validated['unit_price'] ?? null,
 
             'remarks' =>
-                $validated['remarks'] ?? null,
+            $validated['remarks'] ?? null,
 
         ]);
 
@@ -840,23 +699,23 @@ abort_if(
 |--------------------------------------------------------------------------
 */
 
-abort_if(
-    $purchaseOrder->source === 'supplier-invoice',
-    403,
-    'This Purchase Order was created from a Supplier Invoice. Its items cannot be deleted manually.'
-);
+        abort_if(
+            $purchaseOrder->source === 'supplier-invoice',
+            403,
+            'This Purchase Order was created from a Supplier Invoice. Its items cannot be deleted manually.'
+        );
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Planning Generated Item Cannot Be Deleted Individually
 |--------------------------------------------------------------------------
 */
 
-abort_if(
-    $purchaseOrderItem->planned_order_date !== null,
-    403,
-    'This Purchase Order item was created from Purchase Planning and cannot be deleted individually.'
-);
+        abort_if(
+            $purchaseOrderItem->planned_order_date !== null,
+            403,
+            'This Purchase Order item was created from Purchase Planning and cannot be deleted individually.'
+        );
         /*
     |--------------------------------------------------------------------------
     | Delete PO Item

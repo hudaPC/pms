@@ -34,883 +34,7 @@ class PurchaseOrderController extends Controller
         );
     }
 
-    public function createFromProductionPlan(
-        ProductionPlan $productionPlan,
-        Supplier $supplier,
-        ItemPurchasePlanningService $itemPurchasePlanningService
-    ) {
-        /*
-    |--------------------------------------------------------------------------
-    | Block Closed Production Plans
-    |--------------------------------------------------------------------------
-    */
-
-        /*
-    |--------------------------------------------------------------------------
-    | Only Confirmed Production Plans Can Create PO
-    |--------------------------------------------------------------------------
-    */
-
-        if ($productionPlan->status !== 'confirmed') {
-
-            return redirect()
-                ->route(
-                    'production-plans.requirements',
-                    $productionPlan
-                )
-                ->with(
-                    'warning',
-                    'Purchase Orders can only be created for a Confirmed Production Plan.'
-                );
-        }
-
-        /*
-    |--------------------------------------------------------------------------
-    | Validate Supplier
-    |--------------------------------------------------------------------------
-    */
-
-        if (!$supplier->status) {
-            return redirect()
-                ->route(
-                    'production-plans.requirements',
-                    $productionPlan
-                )
-                ->with(
-                    'warning',
-                    'The selected supplier is not active.'
-                );
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Prevent Duplicate Active Production Plan PO
-    |--------------------------------------------------------------------------
-    |
-    | If an active PO already exists for the same:
-    |
-    | Production Plan + Supplier
-    |
-    | redirect directly to that PO.
-    |
-    */
-
-        $existingProductionPo =
-            PurchaseOrder::where(
-                'production_plan_id',
-                $productionPlan->id
-            )
-                ->where(
-                    'supplier_id',
-                    $supplier->id
-                )
-                ->whereIn(
-                    'status',
-                    [
-                        'draft',
-                        'confirmed',
-                        'partially_received',
-                        'received',
-                    ]
-                )
-                ->first();
-
-
-        if ($existingProductionPo) {
-            return redirect()
-                ->route(
-                    'purchase-orders.show',
-                    $existingProductionPo
-                )
-                ->with(
-                    'warning',
-                    'An active Purchase Order already exists for this Production Plan and supplier: '
-                    . $existingProductionPo->po_number
-                    . '.'
-                );
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Load Production Plan Relationships
-    |--------------------------------------------------------------------------
-    */
-
-        $productionPlan->load([
-            'productModel.modelItems.item.unit',
-            'productModel.modelItems.item.purchaseSettings',
-        ]);
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Check Product Model
-    |--------------------------------------------------------------------------
-    */
-
-        if (!$productionPlan->productModel) {
-            return redirect()
-                ->route(
-                    'production-plans.requirements',
-                    $productionPlan
-                )
-                ->with(
-                    'warning',
-                    'No Product Model was found for this Production Plan.'
-                );
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Production Quantity
-    |--------------------------------------------------------------------------
-    */
-
-        $productionQuantity =
-            (float) 
-            $productionPlan->required_quantity;
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Consolidated Production PO Items
-    |--------------------------------------------------------------------------
-    */
-
-        $productionPoItems = [];
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Recalculate BOM Requirements
-    |--------------------------------------------------------------------------
-    */
-
-        foreach (
-            $productionPlan
-                ->productModel
-                ->modelItems
-            as $modelItem
-        ) {
-            /*
-        |--------------------------------------------------------------------------
-        | Item
-        |--------------------------------------------------------------------------
-        */
-
-            $item =
-                $modelItem->item;
-
-
-            if (!$item) {
-                continue;
-            }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | BOM Requirement
-        |--------------------------------------------------------------------------
-        */
-
-            $bomQuantity =
-                (float) 
-                $modelItem->quantity;
-
-
-            $requiredQuantity =
-                $productionQuantity
-                *
-                $bomQuantity;
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Common Purchase Planning Calculation
-        |--------------------------------------------------------------------------
-        */
-
-            $planning =
-                $itemPurchasePlanningService
-                    ->calculate(
-                        $item,
-                        $requiredQuantity,
-                        $requiredQuantity
-                    );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Purchase Settings Required
-        |--------------------------------------------------------------------------
-        */
-
-            if (
-                !(
-                    $planning['has_settings']
-                    ?? false
-                )
-            ) {
-                continue;
-            }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Preferred Supplier
-        |--------------------------------------------------------------------------
-        */
-
-            $planningSupplier =
-                $planning['planning_supplier']
-                ?? null;
-
-
-            if (!$planningSupplier) {
-                continue;
-            }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Include Only Requested Supplier
-        |--------------------------------------------------------------------------
-        */
-
-            if (
-                (int) 
-                $planningSupplier->id
-                !==
-                (int) 
-                $supplier->id
-            ) {
-                continue;
-            }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Current Stock
-        |--------------------------------------------------------------------------
-        */
-
-            $currentStock =
-                (float) (
-                    $planning['current_stock']
-                    ?? 0
-                );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Confirmed On Order
-        |--------------------------------------------------------------------------
-        */
-
-            $confirmedOnOrder =
-                (float) (
-                    $planning['confirmed_on_order']
-                    ?? 0
-                );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Inventory Position
-        |--------------------------------------------------------------------------
-        */
-
-            $inventoryPosition =
-                (float) (
-                    $planning['inventory_position']
-                    ?? (
-                        $currentStock
-                        +
-                        $confirmedOnOrder
-                    )
-                );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Production Shortage
-        |--------------------------------------------------------------------------
-        */
-
-            $productionShortage =
-                max(
-                    0,
-                    $requiredQuantity
-                    -
-                    $inventoryPosition
-                );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Production-Driven PO Only
-        |--------------------------------------------------------------------------
-        |
-        | If there is no Production Shortage, this item is not included
-        | in this consolidated Production Plan PO.
-        |
-        */
-
-            if (
-                $productionShortage
-                <= 0
-            ) {
-                continue;
-            }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Planning Recovery Quantity
-        |--------------------------------------------------------------------------
-        */
-
-            $planningRecovery =
-                (float) (
-                    $planning['recovery_order_quantity']
-                    ?? 0
-                );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Recommended Purchase Quantity
-        |--------------------------------------------------------------------------
-        */
-
-            /*
-|--------------------------------------------------------------------------
-| Planning Recovery Quantity
-|--------------------------------------------------------------------------
-*/
-
-            $planningRecovery =
-                (float) (
-                    $planning['recovery_order_quantity']
-                    ?? 0
-                );
-
-
-            /*
-|--------------------------------------------------------------------------
-| Recommended Purchase Quantity
-|--------------------------------------------------------------------------
-|
-| Production Plan PO uses only actual Production Shortage.
-| Planning Recovery is informational only.
-|
-*/
-
-            $recommendedQuantity =
-                $productionShortage;
-
-
-            /*
-|--------------------------------------------------------------------------
-| Supplier MOQ
-|--------------------------------------------------------------------------
-|
-| MOQ is informational only for Production Plan PO.
-|
-*/
-
-            $minimumOrderQty =
-                (float) (
-                    $planning['minimum_order_qty']
-                    ?? 0
-                );
-
-
-            /*
-|--------------------------------------------------------------------------
-| Skip Invalid Quantity
-|--------------------------------------------------------------------------
-*/
-
-            if (
-                $recommendedQuantity <= 0
-            ) {
-                continue;
-            }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Supplier MOQ
-        |--------------------------------------------------------------------------
-        */
-
-            $minimumOrderQty =
-                (float) (
-                    $planning['minimum_order_qty']
-                    ?? 0
-                );
-
-
-            $minimumOrderQty =
-                (float) (
-                    $planning['minimum_order_qty']
-                    ?? 0
-                );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Skip Invalid Quantity
-        |--------------------------------------------------------------------------
-        */
-
-            if (
-                $recommendedQuantity
-                <= 0
-            ) {
-                continue;
-            }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Lead Time
-        |--------------------------------------------------------------------------
-        */
-
-            $leadTimeDays =
-                (int) (
-                    $planning['lead_time_days']
-                    ?? 0
-                );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Latest Required PO Date
-        |--------------------------------------------------------------------------
-        */
-
-            $requiredPoDate =
-                $productionPlan
-                    ->requirement_date
-                    ->copy()
-                    ->startOfDay()
-                    ->subDays(
-                        $leadTimeDays
-                    );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Effective Order Date
-        |--------------------------------------------------------------------------
-        |
-        | If latest required PO date is already overdue,
-        | use today.
-        |
-        */
-
-            $effectiveOrderDate =
-                $requiredPoDate
-                    ->copy();
-
-
-            if (
-                $effectiveOrderDate
-                    ->lt(
-                        now()->startOfDay()
-                    )
-            ) {
-                $effectiveOrderDate =
-                    now()->startOfDay();
-            }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Supplier Unit Price
-        |--------------------------------------------------------------------------
-        */
-
-            $unitPrice =
-                $planning['supplier_unit_price'] !== null
-                ? (float) 
-                $planning['supplier_unit_price']
-                : 0;
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Supplier Item Code
-        |--------------------------------------------------------------------------
-        */
-
-            $supplierItemCode =
-                $planning['supplier_item_code']
-                ?? null;
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Line Total
-        |--------------------------------------------------------------------------
-        */
-
-            $lineTotal =
-                $recommendedQuantity
-                *
-                $unitPrice;
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Add Consolidated Line
-        |--------------------------------------------------------------------------
-        */
-
-            $productionPoItems[] = [
-
-                'item' =>
-                    $item,
-
-                'item_id' =>
-                    $item->id,
-
-                'item_code' =>
-                    $item->item_code,
-
-                'item_name' =>
-                    $item->item_name,
-
-                'unit' =>
-                    $item->unit,
-
-                'bom_quantity' =>
-                    $bomQuantity,
-
-                'required_quantity' =>
-                    $requiredQuantity,
-
-                'current_stock' =>
-                    $currentStock,
-
-                'confirmed_on_order' =>
-                    $confirmedOnOrder,
-
-                'inventory_position' =>
-                    $inventoryPosition,
-
-                'production_shortage' =>
-                    $productionShortage,
-
-                'planning_recovery_quantity' =>
-                    $planningRecovery,
-
-                'recommended_quantity' =>
-                    $recommendedQuantity,
-
-                'minimum_order_qty' =>
-                    $minimumOrderQty,
-
-                'supplier_item_code' =>
-                    $supplierItemCode,
-
-                'unit_price' =>
-                    $unitPrice,
-
-                'line_total' =>
-                    $lineTotal,
-
-                'lead_time_days' =>
-                    $leadTimeDays,
-
-                'required_po_date' =>
-                    $requiredPoDate,
-
-                'effective_order_date' =>
-                    $effectiveOrderDate,
-            ];
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | No Purchase Requirements
-    |--------------------------------------------------------------------------
-    */
-
-        if (
-            count(
-                $productionPoItems
-            )
-            === 0
-        ) {
-            return redirect()
-                ->route(
-                    'production-plans.requirements',
-                    $productionPlan
-                )
-                ->with(
-                    'warning',
-                    'No production-driven purchase requirements remain for this supplier.'
-                );
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Estimated PO Total
-    |--------------------------------------------------------------------------
-    */
-
-        $estimatedTotal =
-            collect(
-                $productionPoItems
-            )
-                ->sum(
-                    'line_total'
-                );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Earliest Required PO Date
-    |--------------------------------------------------------------------------
-    */
-
-        $earliestRequiredPoDate =
-            collect(
-                $productionPoItems
-            )
-                ->min(
-                    'required_po_date'
-                );
-
-
-        $earliestRequiredPoDate =
-            \Carbon\Carbon::parse(
-                $earliestRequiredPoDate
-            );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Header Order Date
-    |--------------------------------------------------------------------------
-    */
-
-        $orderDate =
-            $earliestRequiredPoDate
-                ->copy();
-
-
-        if (
-            $orderDate
-                ->lt(
-                    now()->startOfDay()
-                )
-        ) {
-            $orderDate =
-                now()->startOfDay();
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Expected Delivery Date
-    |--------------------------------------------------------------------------
-    |
-    | Use the latest expected arrival among all consolidated lines.
-    |
-    */
-
-        $expectedDeliveryDate =
-            collect(
-                $productionPoItems
-            )
-                ->map(
-                    function ($line) use ($orderDate) {
-                        return $orderDate
-                            ->copy()
-                            ->addDays(
-                                (int) 
-                                $line['lead_time_days']
-                            );
-                    }
-                )
-                ->max();
-
-
-        $expectedDeliveryDate =
-            \Carbon\Carbon::parse(
-                $expectedDeliveryDate
-            );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Generate Next PO Number
-    |--------------------------------------------------------------------------
-    */
-
-        $today =
-            now()->format(
-                'Ymd'
-            );
-
-
-        $prefix =
-            'PO-'
-            . $today
-            . '-';
-
-
-        $lastPo =
-            PurchaseOrder::where(
-                'po_number',
-                'like',
-                $prefix . '%'
-            )
-                ->orderByDesc(
-                    'id'
-                )
-                ->first();
-
-
-        $nextNumber = 1;
-
-
-        if ($lastPo) {
-            $lastSequence =
-                (int) 
-                substr(
-                    $lastPo->po_number,
-                    -4
-                );
-
-
-            $nextNumber =
-                $lastSequence
-                +
-                1;
-        }
-
-
-        $poNumber =
-            $prefix
-            .
-            str_pad(
-                $nextNumber,
-                4,
-                '0',
-                STR_PAD_LEFT
-            );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Source
-    |--------------------------------------------------------------------------
-    */
-
-        $source =
-            'production-plan';
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Suppliers List
-    |--------------------------------------------------------------------------
-    |
-    | Production Plan consolidated PO uses only this supplier.
-    |
-    */
-
-        $suppliers =
-            Supplier::where(
-                'id',
-                $supplier->id
-            )
-                ->where(
-                    'status',
-                    true
-                )
-                ->get();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Compatibility Variables For Existing Create Blade
-    |--------------------------------------------------------------------------
-    */
-
-        $selectedSupplier =
-            $supplier;
-
-
-        $selectedItem =
-            null;
-
-
-        $recommendedQty =
-            null;
-
-
-        $plannedOrderDate =
-            null;
-
-
-        $supplierItem =
-            null;
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Default Remarks
-    |--------------------------------------------------------------------------
-    */
-
-        $remarks =
-            'Created from Production Plan '
-            . $productionPlan->reference
-            . ' for Product Model '
-            . $productionPlan
-                ->productModel
-                ->model_code;
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Show Purchase Order Create Page
-    |--------------------------------------------------------------------------
-    */
-
-        return view(
-            'purchase-orders.create',
-            compact(
-                'suppliers',
-                'selectedSupplier',
-                'selectedItem',
-                'recommendedQty',
-                'plannedOrderDate',
-                'supplierItem',
-                'source',
-                'productionPlan',
-                'productionPoItems',
-                'estimatedTotal',
-                'earliestRequiredPoDate',
-                'orderDate',
-                'expectedDeliveryDate',
-                'poNumber',
-                'remarks'
-            )
-        );
-    }
+   
     /*
     |--------------------------------------------------------------------------
     | Create Purchase Order
@@ -1361,1144 +485,482 @@ class PurchaseOrderController extends Controller
         );
     }
 
-    public function store(
-        Request $request,
-        ItemPurchasePlanningService $itemPurchasePlanningService
-    ) {
-        /*
+   public function store(Request $request)
+{
+    /*
     |--------------------------------------------------------------------------
     | Validation
     |--------------------------------------------------------------------------
     */
 
-        $validated = $request->validate([
+    $validated = $request->validate([
 
-            'po_number' => [
-                'required',
-                'string',
-                'max:50',
-                'unique:purchase_orders,po_number',
-            ],
+        'po_number' => [
+            'required',
+            'string',
+            'max:50',
+            'unique:purchase_orders,po_number',
+        ],
 
-            'supplier_id' => [
-                'required',
-                'exists:suppliers,id',
-            ],
+        'supplier_id' => [
+            'required',
+            'exists:suppliers,id',
+        ],
 
-            'order_date' => [
-                'required',
-                'date',
-            ],
+        'order_date' => [
+            'required',
+            'date',
+        ],
 
-            'expected_delivery_date' => [
-                'nullable',
-                'date',
-                'after_or_equal:order_date',
-            ],
+        'expected_delivery_date' => [
+            'nullable',
+            'date',
+            'after_or_equal:order_date',
+        ],
 
-            'remarks' => [
-                'nullable',
-                'string',
-            ],
+        'remarks' => [
+            'nullable',
+            'string',
+        ],
 
 
-            /*
+        /*
         |--------------------------------------------------------------------------
         | Purchase Planning Data
         |--------------------------------------------------------------------------
         */
 
-            'planning_item_id' => [
-                'nullable',
-                'exists:items,id',
-            ],
+        'planning_item_id' => [
+            'nullable',
+            'exists:items,id',
+        ],
 
-            'planning_recommended_qty' => [
-                'nullable',
-                'numeric',
-                'min:0.001',
-            ],
+        'planning_recommended_qty' => [
+            'nullable',
+            'numeric',
+            'min:0.001',
+        ],
 
-            'planning_planned_order_date' => [
-                'nullable',
-                'date',
-            ],
+        'planning_planned_order_date' => [
+            'nullable',
+            'date',
+        ],
 
-            'planning_source' => [
-                'nullable',
-                'string',
-                'in:purchase-planning,production-plan',
-            ],
+        'planning_source' => [
+            'nullable',
+            'string',
+            'in:purchase-planning',
+        ],
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | Production Plan Consolidation Data
-        |--------------------------------------------------------------------------
-        */
-
-            'production_plan_id' => [
-                'nullable',
-                'exists:production_plans,id',
-            ],
-
-            'production_plan_supplier_id' => [
-                'nullable',
-                'exists:suppliers,id',
-            ],
-
-        ]);
+    ]);
 
 
-        /*
+    /*
     |--------------------------------------------------------------------------
-    | Source
+    | Purchase Planning Source
     |--------------------------------------------------------------------------
     */
 
-        $planningSource =
-            $validated['planning_source']
-            ?? null;
+    $planningSource =
+        $validated['planning_source']
+        ?? null;
 
 
-        /*
+    /*
     |--------------------------------------------------------------------------
     | Purchase Planning Values
     |--------------------------------------------------------------------------
     */
 
-        $planningItemId =
-            $validated['planning_item_id']
-            ?? null;
+    $planningItemId =
+        $validated['planning_item_id']
+        ?? null;
 
 
-        $planningRecommendedQty =
-            isset(
-            $validated['planning_recommended_qty']
-        )
-            ? (float) 
-            $validated['planning_recommended_qty']
+    $planningRecommendedQty =
+        isset($validated['planning_recommended_qty'])
+            ? (float) $validated['planning_recommended_qty']
             : null;
 
 
-        $planningPlannedOrderDate =
-            $validated['planning_planned_order_date']
-            ?? null;
+    $planningPlannedOrderDate =
+        $validated['planning_planned_order_date']
+        ?? null;
 
 
-        /*
+    /*
     |--------------------------------------------------------------------------
-    | Production Plan Values
-    |--------------------------------------------------------------------------
-    */
-
-        $productionPlanId =
-            $validated['production_plan_id']
-            ?? null;
-
-
-        $productionPlanSupplierId =
-            $validated['production_plan_supplier_id']
-            ?? null;
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Validate Source-Specific Required Data
+    | Validate Purchase Planning Data
     |--------------------------------------------------------------------------
     */
 
-        if (
-            $planningSource === 'purchase-planning'
-            &&
-            !$planningItemId
-        ) {
+    if (
+        $planningSource === 'purchase-planning'
+        &&
+        !$planningItemId
+    ) {
 
-            throw \Illuminate\Validation\ValidationException::withMessages([
+        throw \Illuminate\Validation\ValidationException::withMessages([
 
-                'planning_item_id' =>
-                    'Purchase Planning item information is missing.',
+            'planning_item_id' =>
+                'Purchase Planning item information is missing.',
 
-            ]);
-        }
-
-
-        if (
-            $planningSource === 'production-plan'
-            &&
-            !$productionPlanId
-        ) {
-
-            throw \Illuminate\Validation\ValidationException::withMessages([
-
-                'production_plan_id' =>
-                    'Production Plan information is missing.',
-
-            ]);
-        }
+        ]);
+    }
 
 
-        if (
-            $planningSource === 'production-plan'
-            &&
-            !$productionPlanSupplierId
-        ) {
-
-            throw \Illuminate\Validation\ValidationException::withMessages([
-
-                'production_plan_supplier_id' =>
-                    'Production Plan supplier information is missing.',
-
-            ]);
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Prevent Supplier Manipulation For Production Plan
-    |--------------------------------------------------------------------------
-    |
-    | The visible supplier_id and hidden production_plan_supplier_id
-    | must match.
-    |
-    */
-
-        if (
-            $planningSource === 'production-plan'
-            &&
-            (int) $validated['supplier_id']
-            !==
-            (int) $productionPlanSupplierId
-        ) {
-
-            throw \Illuminate\Validation\ValidationException::withMessages([
-
-                'supplier_id' =>
-                    'The selected supplier does not match the Production Plan consolidation supplier.',
-
-            ]);
-        }
-
-
-        /*
+    /*
     |--------------------------------------------------------------------------
     | Prevent Early Purchase Order Submission
     |--------------------------------------------------------------------------
     |
-    | Existing Purchase Planning protection.
+    | Purchase Planning POs cannot be created before their planned
+    | order date.
     |
     */
 
-        if (
-            $planningSource === 'purchase-planning'
-            &&
-            $planningItemId
-            &&
-            $planningPlannedOrderDate
-        ) {
+    if (
+        $planningSource === 'purchase-planning'
+        &&
+        $planningItemId
+        &&
+        $planningPlannedOrderDate
+    ) {
 
-            $plannedDate =
-                \Carbon\Carbon::parse(
-                    $planningPlannedOrderDate
-                )->startOfDay();
-
-
-            $today =
-                now()->startOfDay();
+        $plannedDate =
+            \Carbon\Carbon::parse(
+                $planningPlannedOrderDate
+            )->startOfDay();
 
 
-            if ($plannedDate->gt($today)) {
-
-                $daysUntilOrder =
-                    (int) $today->diffInDays(
-                        $plannedDate
-                    );
+        $today =
+            now()->startOfDay();
 
 
-                return redirect()
-                    ->route(
-                        'items.purchase-planning.index',
-                        $planningItemId
-                    )
-                    ->with(
-                        'warning',
-                        'This Purchase Order is scheduled for '
-                        . $plannedDate->format('d-M-Y')
-                        . '. It cannot be created yet. '
-                        . $daysUntilOrder
-                        . ' day'
-                        . ($daysUntilOrder === 1 ? '' : 's')
-                        . ' remaining.'
-                    );
-            }
-        }
+        if ($plannedDate->gt($today)) {
+
+            $daysUntilOrder =
+                (int) $today->diffInDays(
+                    $plannedDate
+                );
 
 
-        /*
-|--------------------------------------------------------------------------
-| Production Plan Duplicate Protection
-|--------------------------------------------------------------------------
-|
-| Block another active PO for the same:
-|
-| Production Plan + Supplier
-|
-| Cancelled POs do not block a replacement.
-|
-*/
-
-        if (
-            $planningSource === 'production-plan'
-            &&
-            $productionPlanId
-            &&
-            $productionPlanSupplierId
-        ) {
-
-            $existingProductionPo =
-                PurchaseOrder::where(
-                    'production_plan_id',
-                    $productionPlanId
+            return redirect()
+                ->route(
+                    'items.purchase-planning.index',
+                    $planningItemId
                 )
-                    ->where(
-                        'supplier_id',
-                        $productionPlanSupplierId
-                    )
-                    ->whereIn(
-                        'status',
-                        [
-                            'draft',
-                            'confirmed',
-                            'partially_received',
-                            'received',
-                        ]
-                    )
-                    ->first();
-
-
-            if ($existingProductionPo) {
-
-                return redirect()
-                    ->route(
-                        'purchase-orders.show',
-                        $existingProductionPo
-                    )
-                    ->with(
-                        'warning',
-                        'An active Purchase Order already exists for this Production Plan and supplier: '
-                        . $existingProductionPo->po_number
-                        . '.'
-                    );
-            }
+                ->with(
+                    'warning',
+                    'This Purchase Order is scheduled for '
+                    . $plannedDate->format('d-M-Y')
+                    . '. It cannot be created yet. '
+                    . $daysUntilOrder
+                    . ' day'
+                    . ($daysUntilOrder === 1 ? '' : 's')
+                    . ' remaining.'
+                );
         }
+    }
 
 
-        /*
-|--------------------------------------------------------------------------
-| Set Real PO Source Fields
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Set PO Source
+    |--------------------------------------------------------------------------
+    */
 
-        if (
-            $planningSource === 'production-plan'
-        ) {
+    if (
+        $planningSource === 'purchase-planning'
+    ) {
 
-            $validated['source'] =
-                'production-plan';
+        $validated['source'] =
+            'purchase-planning';
 
-            $validated['production_plan_id'] =
-                $productionPlanId;
-        } elseif (
-            $planningSource === 'purchase-planning'
-        ) {
+        $validated['production_plan_id'] =
+            null;
 
-            $validated['source'] =
-                'purchase-planning';
-
-            $validated['production_plan_id'] =
-                null;
-        } else {
-
-            $validated['source'] =
-                'manual';
-
-            $validated['production_plan_id'] =
-                null;
-        }
-
+    } else {
 
         /*
-|--------------------------------------------------------------------------
-| Remove Request-Only Planning Fields
-|--------------------------------------------------------------------------
-*/
+        |--------------------------------------------------------------------------
+        | Manual Purchase Order
+        |--------------------------------------------------------------------------
+        */
 
-        unset(
-            $validated['planning_item_id'],
-            $validated['planning_recommended_qty'],
-            $validated['planning_planned_order_date'],
-            $validated['planning_source'],
-            $validated['production_plan_supplier_id']
-        );
+        $validated['source'] =
+            'manual';
+
+        $validated['production_plan_id'] =
+            null;
+    }
 
 
-        /*
+    /*
+    |--------------------------------------------------------------------------
+    | Remove Request-Only Planning Fields
+    |--------------------------------------------------------------------------
+    */
+
+    unset(
+        $validated['planning_item_id'],
+        $validated['planning_recommended_qty'],
+        $validated['planning_planned_order_date'],
+        $validated['planning_source']
+    );
+
+
+    /*
     |--------------------------------------------------------------------------
     | Initial PO Status
     |--------------------------------------------------------------------------
     */
 
-        $validated['status'] =
-            'draft';
+    $validated['status'] =
+        'draft';
 
 
-        /*
+    /*
     |--------------------------------------------------------------------------
     | Database Transaction
     |--------------------------------------------------------------------------
     |
-    | Everything is atomic.
+    | Manual PO:
+    |     Creates PO header only.
     |
-    | Purchase Planning:
-    |     PO Header + 1 Planning Locked line
-    |
-    | Production Plan:
-    |     PO Header + all verified consolidated lines
+    | Purchase Planning PO:
+    |     Creates PO header + recommended planning item.
     |
     */
 
-        $purchaseOrder =
-            DB::transaction(
-                function () use ($validated, $planningSource, $planningItemId, $planningRecommendedQty, $planningPlannedOrderDate, $productionPlanId, $productionPlanSupplierId, $itemPurchasePlanningService) {
+    $purchaseOrder =
+        DB::transaction(
+            function () use (
+                $validated,
+                $planningSource,
+                $planningItemId,
+                $planningRecommendedQty,
+                $planningPlannedOrderDate
+            ) {
 
-                    /*
+                /*
                 |--------------------------------------------------------------------------
                 | Create PO Header
                 |--------------------------------------------------------------------------
                 */
 
-                    $purchaseOrder =
-                        PurchaseOrder::create(
-                            $validated
-                        );
+                $purchaseOrder =
+                    PurchaseOrder::create(
+                        $validated
+                    );
 
 
-                    /*
+                /*
                 |--------------------------------------------------------------------------
                 | Normal Manual PO
                 |--------------------------------------------------------------------------
                 */
 
-                    if (!$planningSource) {
+                if (!$planningSource) {
 
-                        return $purchaseOrder;
-                    }
+                    return $purchaseOrder;
+                }
 
 
-                    /*
+                /*
                 |--------------------------------------------------------------------------
-                | PURCHASE PLANNING MODE
+                | Purchase Planning Mode
                 |--------------------------------------------------------------------------
                 */
 
-                    if (
-                        $planningSource
-                        ===
-                        'purchase-planning'
-                    ) {
+                if (
+                    $planningSource ===
+                    'purchase-planning'
+                ) {
 
-                        /*
+                    /*
                     |--------------------------------------------------------------------------
                     | Validate Recommended Quantity
                     |--------------------------------------------------------------------------
                     */
 
-                        if (
-                            !$planningRecommendedQty
-                            ||
-                            $planningRecommendedQty <= 0
-                        ) {
+                    if (
+                        !$planningRecommendedQty
+                        ||
+                        $planningRecommendedQty <= 0
+                    ) {
 
-                            throw \Illuminate\Validation\ValidationException::withMessages([
+                        throw \Illuminate\Validation\ValidationException::withMessages([
 
-                                'planning_recommended_qty' =>
-                                    'Purchase Planning did not provide a valid recommended quantity.',
+                            'planning_recommended_qty' =>
+                                'Purchase Planning did not provide a valid recommended quantity.',
 
-                            ]);
-                        }
+                        ]);
+                    }
 
 
-                        /*
+                    /*
                     |--------------------------------------------------------------------------
                     | Find Planned Item
                     |--------------------------------------------------------------------------
+                    |
+                    | The item must:
+                    |
+                    | - exist
+                    | - be active
+                    | - be available from the selected supplier
+                    | - have an active supplier-item relationship
+                    |
                     */
 
-                        $item =
-                            Item::where(
-                                'id',
-                                $planningItemId
+                    $item =
+                        Item::where(
+                            'id',
+                            $planningItemId
+                        )
+                            ->where(
+                                'status',
+                                true
                             )
-                                ->where(
-                                    'status',
-                                    true
-                                )
-                                ->whereHas(
-                                    'suppliers',
-                                    function ($query) use ($purchaseOrder) {
+                            ->whereHas(
+                                'suppliers',
+                                function ($query) use ($purchaseOrder) {
 
-                                        $query
-                                            ->where(
-                                                'suppliers.id',
-                                                $purchaseOrder
-                                                    ->supplier_id
-                                            )
-                                            ->where(
-                                                'item_suppliers.status',
-                                                true
-                                            );
-                                    }
-                                )
-                                ->first();
+                                    $query
+                                        ->where(
+                                            'suppliers.id',
+                                            $purchaseOrder->supplier_id
+                                        )
+                                        ->where(
+                                            'item_suppliers.status',
+                                            true
+                                        );
+                                }
+                            )
+                            ->first();
 
 
-                        if (!$item) {
+                    if (!$item) {
 
-                            throw \Illuminate\Validation\ValidationException::withMessages([
+                        throw \Illuminate\Validation\ValidationException::withMessages([
 
-                                'supplier_id' =>
-                                    'The planned item is not available from the selected supplier.',
+                            'supplier_id' =>
+                                'The planned item is not available from the selected supplier.',
 
-                            ]);
-                        }
+                        ]);
+                    }
 
 
-                        /*
+                    /*
                     |--------------------------------------------------------------------------
                     | Supplier Specific Item Information
                     |--------------------------------------------------------------------------
                     */
 
-                        $supplier =
-                            $item->suppliers()
-                                ->where(
-                                    'suppliers.id',
-                                    $purchaseOrder
-                                        ->supplier_id
-                                )
-                                ->where(
-                                    'item_suppliers.status',
-                                    true
-                                )
-                                ->first();
+                    $supplier =
+                        $item->suppliers()
+                            ->where(
+                                'suppliers.id',
+                                $purchaseOrder->supplier_id
+                            )
+                            ->where(
+                                'item_suppliers.status',
+                                true
+                            )
+                            ->first();
 
 
-                        if (!$supplier) {
+                    if (!$supplier) {
 
-                            throw \Illuminate\Validation\ValidationException::withMessages([
+                        throw \Illuminate\Validation\ValidationException::withMessages([
 
-                                'supplier_id' =>
-                                    'No active supplier-item configuration was found for this planned item.',
+                            'supplier_id' =>
+                                'No active supplier-item configuration was found for this planned item.',
 
-                            ]);
-                        }
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | Supplier MOQ
-                    |--------------------------------------------------------------------------
-                    */
-
-                        $minimumOrderQty =
-                            (float) (
-                                $supplier
-                                    ->pivot
-                                    ->minimum_order_qty
-                                ?? 0
-                            );
+                        ]);
+                    }
 
 
-
-
-
-                        /*
+                    /*
                     |--------------------------------------------------------------------------
                     | Supplier Unit Price
                     |--------------------------------------------------------------------------
                     */
 
-                        $unitPrice =
-                            $supplier
-                                ->pivot
-                                ->unit_price
-                            !== null
-                            ? (float) 
-                            $supplier
+                    $unitPrice =
+                        $supplier
+                            ->pivot
+                            ->unit_price
+                        !== null
+                            ? (float) $supplier
                                 ->pivot
                                 ->unit_price
                             : null;
 
 
-                        /*
-                    |--------------------------------------------------------------------------
-                    | Create Planned PO Item
-                    |--------------------------------------------------------------------------
-                    */
-
-                        PurchaseOrderItem::create([
-
-                            'purchase_order_id' =>
-                                $purchaseOrder->id,
-
-                            'item_id' =>
-                                $item->id,
-
-                            'ordered_quantity' =>
-                                $planningRecommendedQty,
-
-                            'unit_price' =>
-                                $unitPrice,
-
-                            'received_quantity' =>
-                                0,
-
-                            'planned_order_date' =>
-                                $planningPlannedOrderDate,
-
-                            'remarks' =>
-                                'Created from Purchase Planning recommendation.',
-
-                        ]);
-
-
-                        return $purchaseOrder;
-                    }
-
-
                     /*
-                |--------------------------------------------------------------------------
-                | PRODUCTION PLAN CONSOLIDATION MODE
-                |--------------------------------------------------------------------------
-                */
-
-                    if (
-                        $planningSource
-                        ===
-                        'production-plan'
-                    ) {
-
-                        /*
                     |--------------------------------------------------------------------------
-                    | Reload Production Plan From Database
-                    |--------------------------------------------------------------------------
-                    |
-                    | Do NOT trust item IDs or quantities from the browser.
-                    |
-                    */
-
-                        $productionPlan =
-                            ProductionPlan::with([
-                                'productModel.modelItems.item.unit',
-                                'productModel.modelItems.item.purchaseSettings',
-                            ])
-                                ->lockForUpdate()
-                                ->find(
-                                    $productionPlanId
-                                );
-
-
-                        if (!$productionPlan) {
-
-                            throw \Illuminate\Validation\ValidationException::withMessages([
-
-                                'production_plan_id' =>
-                                    'The Production Plan could not be found.',
-
-                            ]);
-                        }
-
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | Production Plan Status
-                    |--------------------------------------------------------------------------
-                    |
-                    | Production-driven Purchase Orders may only be created from a
-                    | Confirmed Production Plan.
-                    |
-                    */
-
-                        if ($productionPlan->status !== 'confirmed') {
-
-                            throw \Illuminate\Validation\ValidationException::withMessages([
-
-                                'production_plan_id' =>
-                                    'Purchase Orders can only be created for a Confirmed Production Plan.',
-
-                            ]);
-                        }
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | Verify Supplier
+                    | Create Purchase Planning PO Item
                     |--------------------------------------------------------------------------
                     */
 
-                        $productionSupplier =
-                            Supplier::where(
-                                'id',
-                                $productionPlanSupplierId
-                            )
-                                ->where(
-                                    'status',
-                                    true
-                                )
-                                ->first();
+                    PurchaseOrderItem::create([
 
+                        'purchase_order_id' =>
+                            $purchaseOrder->id,
 
-                        if (!$productionSupplier) {
+                        'item_id' =>
+                            $item->id,
 
-                            throw \Illuminate\Validation\ValidationException::withMessages([
+                        'ordered_quantity' =>
+                            $planningRecommendedQty,
 
-                                'supplier_id' =>
-                                    'The Production Plan supplier is not active.',
+                        'unit_price' =>
+                            $unitPrice,
 
-                            ]);
-                        }
+                        'received_quantity' =>
+                            0,
 
+                        'planned_order_date' =>
+                            $planningPlannedOrderDate,
 
-                        if (
-                            (int) $purchaseOrder
-                                ->supplier_id
-                            !==
-                            (int) $productionSupplier
-                                ->id
-                        ) {
-
-                            throw \Illuminate\Validation\ValidationException::withMessages([
-
-                                'supplier_id' =>
-                                    'The Purchase Order supplier does not match the Production Plan supplier.',
-
-                            ]);
-                        }
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | Production Quantity
-                    |--------------------------------------------------------------------------
-                    */
-
-                        $productionQuantity =
-                            (float) 
-                            $productionPlan
-                                ->required_quantity;
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | Count Created Lines
-                    |--------------------------------------------------------------------------
-                    */
-
-                        $createdLineCount = 0;
-
-
-
-
-
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | Recalculate Every BOM Item
-                    |--------------------------------------------------------------------------
-                    */
-
-                        foreach (
-                            $productionPlan
-                                ->productModel
-                                ->modelItems
-                            as $modelItem
-                        ) {
-
-                            $item =
-                                $modelItem->item;
-
-
-                            if (!$item) {
-                                continue;
-                            }
-
-
-                            /*
-                        |--------------------------------------------------------------------------
-                        | BOM Requirement
-                        |--------------------------------------------------------------------------
-                        */
-
-                            $bomQuantity =
-                                (float) 
-                                $modelItem->quantity;
-
-
-                            $requiredQuantity =
-                                $productionQuantity
-                                *
-                                $bomQuantity;
-
-
-                            /*
-                        |--------------------------------------------------------------------------
-                        | Recalculate Current Purchase Planning Position
-                        |--------------------------------------------------------------------------
-                        */
-
-                            $planning =
-                                $itemPurchasePlanningService
-                                    ->calculate(
-                                        $item,
-                                        $requiredQuantity,
-                                        $requiredQuantity
-                                    );
-
-                            if (
-                                !(
-                                    $planning['has_settings']
-                                    ?? false
-                                )
-                            ) {
-
-                                continue;
-                            }
-
-
-                            /*
-                        |--------------------------------------------------------------------------
-                        | Verify Preferred Supplier
-                        |--------------------------------------------------------------------------
-                        */
-
-                            $planningSupplier =
-                                $planning['planning_supplier']
-                                ?? null;
-
-
-                            if (
-                                !$planningSupplier
-                                ||
-                                (int) 
-                                $planningSupplier->id
-                                !==
-                                (int) 
-                                $productionSupplier->id
-                            ) {
-
-                                continue;
-                            }
-
-
-                            /*
-                        |--------------------------------------------------------------------------
-                        | Inventory Position
-                        |--------------------------------------------------------------------------
-                        */
-
-                            $inventoryPosition =
-                                (float) 
-                                $planning['inventory_position'];
-
-
-                            /*
-                        |--------------------------------------------------------------------------
-                        | Production Shortage
-                        |--------------------------------------------------------------------------
-                        */
-
-                            $productionShortage =
-                                max(
-                                    0,
-                                    $requiredQuantity
-                                    -
-                                    $inventoryPosition
-                                );
-
-
-                            /*
-                        |--------------------------------------------------------------------------
-                        | Only Real Production Shortages
-                        |--------------------------------------------------------------------------
-                        */
-
-                            if (
-                                $productionShortage
-                                <= 0
-                            ) {
-
-                                continue;
-                            }
-
-
-                            /*
-                        |--------------------------------------------------------------------------
-                        | Planning Recovery
-                        |--------------------------------------------------------------------------
-                        */
-
-                            $planningRecoveryQuantity =
-                                (float) (
-                                    $planning['recovery_order_quantity']
-                                    ?? 0
-                                );
-
-
-                            /*
-|--------------------------------------------------------------------------
-| Recommended Purchase Quantity
-|--------------------------------------------------------------------------
-|
-| Production Plan PO purchases only the actual Production Shortage.
-| General Purchase Planning recovery is informational only.
-|
-*/
-
-                            $recommendedQuantity =
-                                $productionShortage;
-
-
-                            /*
-                        |--------------------------------------------------------------------------
-                        | Supplier MOQ
-                        |--------------------------------------------------------------------------
-                        */
-
-                            $minimumOrderQty =
-                                (float) (
-                                    $planning['minimum_order_qty']
-                                    ?? 0
-                                );
-
-
-                            if (
-                                $recommendedQuantity
-                                <= 0
-                            ) {
-
-                                continue;
-                            }
-
-
-                            /*
-                        |--------------------------------------------------------------------------
-                        | Required Production PO Date
-                        |--------------------------------------------------------------------------
-                        */
-
-                            $leadTimeDays =
-                                (int) (
-                                    $planning['lead_time_days']
-                                    ?? 0
-                                );
-
-
-                            $requiredPoDate =
-                                $productionPlan
-                                    ->requirement_date
-                                    ->copy()
-                                    ->startOfDay()
-                                    ->subDays(
-                                        $leadTimeDays
-                                    );
-
-
-                            /*
-                        |--------------------------------------------------------------------------
-                        | Effective Planned Order Date
-                        |--------------------------------------------------------------------------
-                        |
-                        | If required date is overdue, store today's date.
-                        |
-                        */
-
-                            $effectivePlannedOrderDate =
-                                $requiredPoDate
-                                    ->copy()
-                                    ->lt(
-                                        now()->startOfDay()
-                                    )
-                                ? now()
-                                    ->startOfDay()
-                                : $requiredPoDate
-                                    ->copy();
-
-
-                            /*
-                        |--------------------------------------------------------------------------
-                        | Unit Price
-                        |--------------------------------------------------------------------------
-                        */
-
-                            $unitPrice =
-                                $planning['supplier_unit_price'] !== null
-                                ? (float) 
-                                $planning['supplier_unit_price']
-                                : null;
-
-
-                            /*
-                        |--------------------------------------------------------------------------
-                        | Create Planning Locked PO Line
-                        |--------------------------------------------------------------------------
-                        |
-                        | planned_order_date being populated preserves your
-                        | existing Planning Locked behavior.
-                        |
-                        */
-
-                            PurchaseOrderItem::create([
-
-                                'purchase_order_id' =>
-                                    $purchaseOrder->id,
-
-                                'item_id' =>
-                                    $item->id,
-
-                                'ordered_quantity' =>
-                                    $recommendedQuantity,
-
-                                'unit_price' =>
-                                    $unitPrice,
-
-                                'received_quantity' =>
-                                    0,
-
-                                'planned_order_date' =>
-                                    $effectivePlannedOrderDate
-                                        ->format('Y-m-d'),
-
-                                'remarks' =>
-                                    'Created from Production Plan '
-                                    . $productionPlan
-                                        ->reference
-                                    . '. Production shortage: '
-                                    . number_format(
-                                        $productionShortage,
-                                        3,
-                                        '.',
-                                        ''
-                                    )
-                                    . '.',
-
-                            ]);
-
-
-                            $createdLineCount++;
-                        }
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | Nothing Qualified
-                    |--------------------------------------------------------------------------
-                    |
-                    | Throwing inside DB::transaction() rolls back the PO header too.
-                    |
-                    */
-
-                        if (
-                            $createdLineCount === 0
-                        ) {
-
-                            throw \Illuminate\Validation\ValidationException::withMessages([
-
-                                'production_plan_id' =>
-                                    'No production-driven purchase requirements remain for this supplier. Stock or purchase-order quantities may have changed since the preview was opened.',
-
-                            ]);
-                        }
-
-
-                        return $purchaseOrder;
-                    }
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | Unknown Source
-                |--------------------------------------------------------------------------
-                */
-
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-
-                        'planning_source' =>
-                            'Invalid Purchase Order source.',
+                        'remarks' =>
+                            'Created from Purchase Planning recommendation.',
 
                     ]);
+
+
+                    return $purchaseOrder;
                 }
-            );
 
 
-        /*
+                /*
+                |--------------------------------------------------------------------------
+                | Invalid Source Safety
+                |--------------------------------------------------------------------------
+                */
+
+                throw \Illuminate\Validation\ValidationException::withMessages([
+
+                    'planning_source' =>
+                        'Invalid Purchase Order source.',
+
+                ]);
+            }
+        );
+
+
+    /*
     |--------------------------------------------------------------------------
     | Purchase Planning Redirect
     |--------------------------------------------------------------------------
     */
 
-        if (
-            $planningSource
-            ===
-            'purchase-planning'
-            &&
-            $planningItemId
-        ) {
-
-            return redirect()
-                ->route(
-                    'purchase-orders.show',
-                    $purchaseOrder
-                )
-                ->with(
-                    'success',
-                    'Purchase order created from Purchase Planning. The recommended item and quantity were added automatically.'
-                );
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Production Plan Redirect
-    |--------------------------------------------------------------------------
-    */
-
-        if (
-            $planningSource
-            ===
-            'production-plan'
-            &&
-            $productionPlanId
-        ) {
-
-            return redirect()
-                ->route(
-                    'purchase-orders.show',
-                    $purchaseOrder
-                )
-                ->with(
-                    'success',
-                    'Consolidated Purchase Order created from the Production Plan. All verified production purchase items were added automatically as Planning Locked lines.'
-                );
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Normal Manual PO Redirect
-    |--------------------------------------------------------------------------
-    */
+    if (
+        $planningSource === 'purchase-planning'
+        &&
+        $planningItemId
+    ) {
 
         return redirect()
             ->route(
@@ -2507,9 +969,28 @@ class PurchaseOrderController extends Controller
             )
             ->with(
                 'success',
-                'Purchase order created successfully. You can now add items.'
+                'Purchase order created from Purchase Planning. '
+                . 'The recommended item and quantity were added automatically.'
             );
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Normal Manual PO Redirect
+    |--------------------------------------------------------------------------
+    */
+
+    return redirect()
+        ->route(
+            'purchase-orders.show',
+            $purchaseOrder
+        )
+        ->with(
+            'success',
+            'Purchase order created successfully. You can now add items.'
+        );
+}
 
 
     public function show(PurchaseOrder $purchaseOrder)

@@ -4,173 +4,75 @@
 
 @section('content')
 
-    @php
+   @php
+
+    /*
+    |--------------------------------------------------------------------------
+    | Source
+    |--------------------------------------------------------------------------
+    |
+    | Current supported sources:
+    |
+    | - purchase-planning
+    | - manual / no source
+    |
+    */
+
+    $currentSource = $source ?? null;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Supplier List
+    |--------------------------------------------------------------------------
+    */
+
+    $supplierList = collect();
+
+    if (
+        $currentSource === 'purchase-planning'
+        &&
+        ($planningItem ?? null)
+    ) {
+
+        $supplierList =
+            collect($planningSuppliers ?? []);
+
+    } else {
 
         /*
         |--------------------------------------------------------------------------
-        | Source
+        | Manual Purchase Order
         |--------------------------------------------------------------------------
         */
 
-        $currentSource = $source ?? null;
+        $supplierList =
+            collect($suppliers ?? []);
+    }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Production PO Items
-        |--------------------------------------------------------------------------
-        |
-        | Controller currently sends this as a normal PHP array.
-        |
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Selected Supplier
+    |--------------------------------------------------------------------------
+    */
 
-        $productionPoItems =
-            isset($productionPoItems)
-                ? $productionPoItems
-                : [];
+    $selectedSupplierForCard = null;
 
+    if (
+        ($selectedSupplierId ?? null)
+        &&
+        $supplierList->isNotEmpty()
+    ) {
 
-        /*
-        |--------------------------------------------------------------------------
-        | Supplier List
-        |--------------------------------------------------------------------------
-        */
-
-        $supplierList = collect();
-
-        if (
-            $currentSource === 'purchase-planning'
-            &&
-            ($planningItem ?? null)
-        ) {
-
-            $supplierList =
-                collect($planningSuppliers ?? []);
-
-        } elseif ($currentSource === 'production-plan') {
-
-            /*
-            |--------------------------------------------------------------------------
-            | Production Plan
-            |--------------------------------------------------------------------------
-            |
-            | $supplier may or may not have been passed by the controller.
-            | If it exists, use it.
-            |
-            */
-
-            if (isset($supplier) && $supplier) {
-
-                $supplierList =
-                    collect([$supplier]);
-
-            } elseif (isset($suppliers)) {
-
-                $supplierList =
-                    collect($suppliers);
-
-            }
-
-        } else {
-
-            $supplierList =
-                collect($suppliers ?? []);
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Production Supplier
-        |--------------------------------------------------------------------------
-        |
-        | Never directly assume $supplier exists.
-        |
-        */
-
-        $productionSupplier = null;
-
-        if ($currentSource === 'production-plan') {
-
-            if (isset($supplier) && $supplier) {
-
-                $productionSupplier = $supplier;
-
-            } elseif (
-                isset($selectedSupplierId)
-                &&
+        $selectedSupplierForCard =
+            $supplierList->firstWhere(
+                'id',
                 $selectedSupplierId
-                &&
-                $supplierList->isNotEmpty()
-            ) {
+            );
+    }
 
-                $productionSupplier =
-                    $supplierList->firstWhere(
-                        'id',
-                        $selectedSupplierId
-                    );
-
-            } elseif ($supplierList->isNotEmpty()) {
-
-                $productionSupplier =
-                    $supplierList->first();
-            }
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Selected Supplier
-        |--------------------------------------------------------------------------
-        */
-
-        $selectedSupplierForCard = null;
-
-        if (
-            ($selectedSupplierId ?? null)
-            &&
-            $supplierList->isNotEmpty()
-        ) {
-
-            $selectedSupplierForCard =
-                $supplierList->firstWhere(
-                    'id',
-                    $selectedSupplierId
-                );
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Production Plan Header Lead Time
-        |--------------------------------------------------------------------------
-        */
-
-        $productionPlanHeaderLeadTime = 0;
-
-        if (
-            $currentSource === 'production-plan'
-            &&
-            !empty($productionPoItems)
-        ) {
-
-            $productionPlanHeaderLeadTime =
-                (int) collect($productionPoItems)
-                    ->max('lead_time_days');
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Production PO Item Count
-        |--------------------------------------------------------------------------
-        */
-
-        $productionPoItemCount =
-            !empty($productionPoItems)
-                ? count($productionPoItems)
-                : 0;
-
-    @endphp
+@endphp
 
 
     <div class="container-fluid py-4">
@@ -1765,31 +1667,7 @@
             @endif
 
 
-            {{-- ============================================================
-                PRODUCTION PLAN DATA
-            ============================================================ --}}
-
-            @if (
-                $currentSource === 'production-plan'
-                &&
-                ($productionPlan ?? null)
-                &&
-                $productionSupplier
-            )
-
-                <input type="hidden"
-                       name="production_plan_id"
-                       value="{{ $productionPlan->id }}">
-
-                <input type="hidden"
-                       name="production_plan_supplier_id"
-                       value="{{ $productionSupplier->id }}">
-
-                <input type="hidden"
-                       name="planning_source"
-                       value="production-plan">
-
-            @endif
+            
 
         </form>
 

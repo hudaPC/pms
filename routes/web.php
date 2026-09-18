@@ -69,10 +69,6 @@ Route::post('/logout', [AuthController::class, 'logout'])
 
 
 
-Route::get(
-    '/production-plans/{productionPlan}/suppliers/{supplier}/purchase-order/create',
-    [PurchaseOrderController::class, 'createFromProductionPlan']
-)->name('production-plans.purchase-orders.create');
 
 
 

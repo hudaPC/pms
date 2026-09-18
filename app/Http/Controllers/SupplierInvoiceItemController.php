@@ -572,6 +572,49 @@ if ($hasProductionRequirement) {
                         'The selected item does not belong to the selected Product Model BOM.',
                 ]);
         }
+
+
+        /*
+|--------------------------------------------------------------------------
+| Verify Item Is Active For Invoice Supplier
+|--------------------------------------------------------------------------
+|
+| The selected item must have an active relationship with the Supplier
+| of this Supplier Invoice.
+|
+| This protects against manually submitting an item_id that is not
+| supplied by this supplier.
+|
+*/
+
+$itemAvailableForSupplier =
+    DB::table('item_suppliers')
+        ->where(
+            'supplier_id',
+            $supplierInvoice->supplier_id
+        )
+        ->where(
+            'item_id',
+            $validated['item_id']
+        )
+        ->where(
+            'status',
+            1
+        )
+        ->exists();
+
+
+if (!$itemAvailableForSupplier) {
+
+    return back()
+        ->withInput()
+        ->withErrors([
+
+            'item_id' =>
+                'The selected item is not active for this supplier.',
+
+        ]);
+}
         /*
     |--------------------------------------------------------------------------
     | Prevent Duplicate Item On Same Invoice

@@ -96,13 +96,9 @@
                                 </label>
 
 
-                                <select
-    name="supplier_id"
-    id="supplier_id"
-    class="form-control @error('supplier_id') is-invalid @enderror"
-    required
-    @disabled($supplierInvoice->items()->exists())
->
+                                <select name="supplier_id" id="supplier_id"
+                                    class="form-control @error('supplier_id') is-invalid @enderror" required
+                                    @disabled($supplierInvoice->items()->exists())>
 
                                     <option value="">
                                         -- Select Supplier --
@@ -123,14 +119,8 @@
 
                                 </select>
                                 @if ($supplierInvoice->items()->exists())
-
-    <input
-        type="hidden"
-        name="supplier_id"
-        value="{{ $supplierInvoice->supplier_id }}"
-    >
-
-@endif
+                                    <input type="hidden" name="supplier_id" value="{{ $supplierInvoice->supplier_id }}">
+                                @endif
 
 
                                 @error('supplier_id')
@@ -328,9 +318,8 @@
 
 
                                 <input type="number" name="tax_amount" id="tax_amount"
-                                    value="{{ old('tax_amount', $supplierInvoice->tax_amount) }}"
-                                    step="0.0001" min="0"
-                                    class="form-control @error('tax_amount') is-invalid @enderror">
+                                    value="{{ old('tax_amount', $supplierInvoice->tax_amount) }}" step="0.0001"
+                                    min="0" class="form-control @error('tax_amount') is-invalid @enderror">
 
 
                                 @error('tax_amount')
@@ -355,9 +344,8 @@
 
 
                                 <input type="number" name="discount_amount" id="discount_amount"
-                                    value="{{ old('discount_amount', $supplierInvoice->discount_amount) }}"
-                                    step="0.0001" min="0"
-                                    class="form-control @error('discount_amount') is-invalid @enderror">
+                                    value="{{ old('discount_amount', $supplierInvoice->discount_amount) }}" step="0.0001"
+                                    min="0" class="form-control @error('discount_amount') is-invalid @enderror">
 
 
                                 @error('discount_amount')

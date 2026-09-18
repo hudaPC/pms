@@ -1103,58 +1103,81 @@ $validated = $request->validate([
 
                 ]);
             }
-            /*
-            |--------------------------------------------------------------------------
-            | Protect Linked Purchase Order
-            |--------------------------------------------------------------------------
-            |
-            | Once the linked Purchase Order has been confirmed or goods have
-            | started being received, the Supplier Invoice cannot be cancelled
-            | independently.
-            |
-            */
+           /*
+|--------------------------------------------------------------------------
+| Protect Linked Purchase Order
+|--------------------------------------------------------------------------
+|
+| A Supplier Invoice cannot be cancelled while it is linked to an
+| active Purchase Order.
+|
+| If the Purchase Order is still Draft, cancel the Purchase Order first.
+| The Purchase Order cancellation workflow will unlink it from this
+| Supplier Invoice.
+|
+| Confirmed / partially received / received Purchase Orders must also
+| remain protected.
+|
+*/
 
-            if ($invoice->purchase_order_id) {
+if ($invoice->purchase_order_id) {
 
-                $linkedPurchaseOrder =
-                    PurchaseOrder::query()
-                    ->whereKey(
-                        $invoice->purchase_order_id
-                    )
-                    ->lockForUpdate()
-                    ->first();
+    $linkedPurchaseOrder =
+        PurchaseOrder::query()
+        ->whereKey(
+            $invoice->purchase_order_id
+        )
+        ->lockForUpdate()
+        ->first();
 
 
-                if (
-                    $linkedPurchaseOrder
-                    &&
-                    in_array(
-                        $linkedPurchaseOrder->status,
-                        [
-                            'confirmed',
-                            'partially_received',
-                            'received',
-                        ],
-                        true
-                    )
-                ) {
+    if (
+        $linkedPurchaseOrder
+        &&
+        $linkedPurchaseOrder->status !== 'cancelled'
+    ) {
 
-                    throw \Illuminate\Validation\ValidationException::withMessages([
+        /*
+        |--------------------------------------------------------------------------
+        | Draft Purchase Order
+        |--------------------------------------------------------------------------
+        */
 
-                        'cancellation_reason' =>
-                        'This Supplier Invoice cannot be cancelled because linked Purchase Order '
-                            . $linkedPurchaseOrder->po_number
-                            . ' is already '
-                            . str_replace(
-                                '_',
-                                ' ',
-                                $linkedPurchaseOrder->status
-                            )
-                            . '.',
+        if ($linkedPurchaseOrder->status === 'draft') {
 
-                    ]);
-                }
-            }
+            throw \Illuminate\Validation\ValidationException::withMessages([
+
+                'cancellation_reason' =>
+                    'This Supplier Invoice is linked to Draft Purchase Order '
+                    . $linkedPurchaseOrder->po_number
+                    . '. Cancel the Purchase Order first, then cancel this Supplier Invoice.',
+
+            ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Active Purchase Order
+        |--------------------------------------------------------------------------
+        */
+
+        throw \Illuminate\Validation\ValidationException::withMessages([
+
+            'cancellation_reason' =>
+                'This Supplier Invoice cannot be cancelled because linked Purchase Order '
+                . $linkedPurchaseOrder->po_number
+                . ' is already '
+                . str_replace(
+                    '_',
+                    ' ',
+                    $linkedPurchaseOrder->status
+                )
+                . '.',
+
+        ]);
+    }
+}
 
             /*
             |--------------------------------------------------------------------------

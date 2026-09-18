@@ -59,65 +59,44 @@
 
 
                 {{-- Create Purchase Order --}}
-                @if (
-                                in_array(
-                                    $supplierInvoice->status,
-                                    [
-                                        'unpaid',
-                                        'partially_paid',
-                                        'paid',
-                                    ]
-                                )
-                                &&
-                                !$supplierInvoice->purchase_order_id
-                                &&
-                                $supplierInvoice->items->isNotEmpty()
-                            )
-
-                            <form action="{{ route(
-                        'supplier-invoices.create-purchase-order',
-                        $supplierInvoice
-                    ) }}" method="POST" class="mr-2" onsubmit="return confirm(
+                @if (in_array($supplierInvoice->status, ['unpaid', 'partially_paid', 'paid']) &&
+                        !$supplierInvoice->purchase_order_id &&
+                        $supplierInvoice->items->isNotEmpty())
+                    <form
+                        action="{{ route('supplier-invoices.create-purchase-order', $supplierInvoice) }}"
+                        method="POST" class="mr-2"
+                        onsubmit="return confirm(
                                                 'Create Purchase Order from this Supplier Invoice? PO quantities and prices will be copied from the invoice items.'
                                             );">
 
-                                @csrf
-                                <div class="form-group mb-2">
+                        @csrf
+                        <div class="form-group mb-2">
 
-                                    <label for="expected_delivery_date" class="mb-1">
-                                        <small>
-                                            Expected Delivery Date
-                                        </small>
-                                    </label>
+                            <label for="expected_delivery_date" class="mb-1">
+                                <small>
+                                    Expected Delivery Date
+                                </small>
+                            </label>
 
-                                    <input type="date" name="expected_delivery_date" id="expected_delivery_date"
-                                        class="form-control form-control-sm" value="{{ old('expected_delivery_date') }}"
-                                        min="{{ now()->format('Y-m-d') }}" required>
+                            <input type="date" name="expected_delivery_date" id="expected_delivery_date"
+                                class="form-control form-control-sm" value="{{ old('expected_delivery_date') }}"
+                                min="{{ now()->format('Y-m-d') }}" required>
 
-                                </div>
+                        </div>
 
-                                <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary">
 
-                                    <i class="fas fa-file-signature mr-1"></i>
+                            <i class="fas fa-file-signature mr-1"></i>
 
-                                    Create Purchase Order
+                            Create Purchase Order
 
-                                </button>
+                        </button>
 
-                            </form>
-
+                    </form>
                 @endif
 
                 {{-- Cancel Supplier Invoice --}}
-                @if (
-                        $supplierInvoice->status === 'unpaid'
-                        &&
-                        (
-                            !$supplierInvoice->purchaseOrder
-                            ||
-                            $supplierInvoice->purchaseOrder->status === 'draft'
-                        )
-                    )
+                @if ($supplierInvoice->status === 'unpaid' && !$supplierInvoice->purchaseOrder)
                     <button type="button" class="btn btn-danger mr-2" id="btnCancelInvoice"
                         data-url="{{ route('supplier-invoices.cancel', $supplierInvoice) }}"
                         data-invoice="{{ $supplierInvoice->invoice_number }}">
@@ -189,22 +168,16 @@
                         <div class="mt-1">
 
                             @if ($supplierInvoice->productionPlan)
+                                <a
+                                    href="{{ route('production-plans.requirements', $supplierInvoice->productionPlan) }}">
 
-                                                    <a href="{{ route(
-                                    'production-plans.requirements',
-                                    $supplierInvoice->productionPlan
-                                ) }}">
+                                    {{ $supplierInvoice->productionPlan->reference }}
 
-                                                        {{ $supplierInvoice->productionPlan->reference }}
-
-                                                    </a>
-
+                                </a>
                             @else
-
                                 <span class="text-muted">
                                     Manual / Not Linked
                                 </span>
-
                             @endif
 
                         </div>
@@ -287,8 +260,8 @@
                         <div class="mt-1">
 
                             @if (in_array($supplierInvoice->status, ['unpaid', 'partially_paid', 'paid']))
-                                <form action="{{ route('supplier-invoices.due-date.update', $supplierInvoice) }}" method="POST"
-                                    class="form-inline">
+                                <form action="{{ route('supplier-invoices.due-date.update', $supplierInvoice) }}"
+                                    method="POST" class="form-inline">
 
                                     @csrf
                                     @method('PATCH')
@@ -427,7 +400,8 @@
                 </h3>
 
                 @if ($supplierInvoice->status === 'draft')
-                    <a href="{{ route('supplier-invoices.items.create', $supplierInvoice) }}" class="btn btn-sm btn-primary">
+                    <a href="{{ route('supplier-invoices.items.create', $supplierInvoice) }}"
+                        class="btn btn-sm btn-primary">
 
                         <i class="fas fa-plus mr-1"></i>
 
@@ -1019,7 +993,7 @@
     {{-- End History card --}}
     @push('scripts')
         <script>
-            $(document).ready(function () {
+            $(document).ready(function() {
 
 
                 /*
@@ -1033,13 +1007,13 @@
                     toastr.error(
                         @json($errors->first('cancellation_reason')),
                         'Invoice Cancellation Blocked', {
-                        closeButton: true,
-                        progressBar: false,
-                        timeOut: 0,
-                        extendedTimeOut: 0,
-                        positionClass: 'toast-top-right',
-                        preventDuplicates: true
-                    }
+                            closeButton: true,
+                            progressBar: false,
+                            timeOut: 0,
+                            extendedTimeOut: 0,
+                            positionClass: 'toast-top-right',
+                            preventDuplicates: true
+                        }
                     );
                 @endif
 
@@ -1052,7 +1026,7 @@
 
                 $('#btnCancelInvoice').on(
                     'click',
-                    function () {
+                    function() {
 
                         const button =
                             $(this);
@@ -1215,7 +1189,7 @@
 
                                 reasonSelect.addEventListener(
                                     'change',
-                                    function () {
+                                    function() {
 
                                         if (
                                             this.value ===
@@ -1302,7 +1276,7 @@
 
                             }
 
-                        }).then(function (result) {
+                        }).then(function(result) {
 
 
                             /*
@@ -1416,7 +1390,7 @@
 
                 $('.void-payment-btn').on(
                     'click',
-                    function () {
+                    function() {
 
                         const button =
                             $(this);
@@ -1595,7 +1569,7 @@
 
                                 reasonSelect.addEventListener(
                                     'change',
-                                    function () {
+                                    function() {
 
                                         if (
                                             this.value ===
@@ -1682,7 +1656,7 @@
 
                             }
 
-                        }).then(function (result) {
+                        }).then(function(result) {
 
 
                             /*

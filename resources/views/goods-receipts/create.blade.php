@@ -74,20 +74,81 @@
 
 
                         {{-- GRN Number --}}
-                        <div class="col-md-4">
+<div class="col-md-4">
 
-                            <div class="form-group">
+    <div class="form-group">
 
-                                <label>
-                                    GRN Number
-                                </label>
+        <label>
+            GRN Number
+            <span class="text-danger">*</span>
+        </label>
 
-                                <input type="text" name="grn_number" value="{{ old('grn_number', $grnNumber) }}"
-                                    class="form-control" readonly>
+        {{-- GRN Number Mode --}}
+        <div class="mb-2">
 
-                            </div>
+            <div class="custom-control custom-radio custom-control-inline">
 
-                        </div>
+                <input type="radio"
+                    id="grn_mode_automatic"
+                    name="grn_mode"
+                    value="automatic"
+                    class="custom-control-input"
+                    {{ old('grn_mode', 'automatic') === 'automatic' ? 'checked' : '' }}>
+
+                <label class="custom-control-label"
+                    for="grn_mode_automatic">
+                    Automatic
+                </label>
+
+            </div>
+
+
+            <div class="custom-control custom-radio custom-control-inline">
+
+                <input type="radio"
+                    id="grn_mode_manual"
+                    name="grn_mode"
+                    value="manual"
+                    class="custom-control-input"
+                    {{ old('grn_mode') === 'manual' ? 'checked' : '' }}>
+
+                <label class="custom-control-label"
+                    for="grn_mode_manual">
+                    Manual
+                </label>
+
+            </div>
+
+        </div>
+
+
+        {{-- GRN Number Input --}}
+        <input type="text"
+            name="grn_number"
+            id="grn_number"
+            value="{{ old('grn_number', $grnNumber) }}"
+            data-generated-grn="{{ $grnNumber }}"
+            class="form-control @error('grn_number') is-invalid @enderror"
+            maxlength="50"
+            required>
+
+        <small id="grnHelp"
+            class="form-text text-muted">
+            Automatically generated GRN number.
+        </small>
+
+
+        @error('grn_number')
+
+            <div class="invalid-feedback">
+                {{ $message }}
+            </div>
+
+        @enderror
+
+    </div>
+
+</div>
 
 
                         {{-- Purchase Order --}}
@@ -263,6 +324,107 @@
         const receiptDateInput = document.getElementById('receipt_date');
         const supplierReferenceInput = document.getElementById('supplier_reference');
         const referenceSequence = @json($referenceSequence);
+        /*
+|--------------------------------------------------------------------------
+| GRN Number - Automatic / Manual
+|--------------------------------------------------------------------------
+*/
+
+const grnNumberInput =
+    document.getElementById('grn_number');
+
+const automaticGrnRadio =
+    document.getElementById('grn_mode_automatic');
+
+const manualGrnRadio =
+    document.getElementById('grn_mode_manual');
+
+const grnHelp =
+    document.getElementById('grnHelp');
+
+const generatedGrn =
+    grnNumberInput.dataset.generatedGrn;
+
+
+/*
+|--------------------------------------------------------------------------
+| Update GRN Mode
+|--------------------------------------------------------------------------
+*/
+
+function updateGrnMode() {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Automatic
+    |--------------------------------------------------------------------------
+    */
+
+    if (automaticGrnRadio.checked) {
+
+        grnNumberInput.value =
+            generatedGrn;
+
+        grnNumberInput.readOnly =
+            true;
+
+        grnHelp.textContent =
+            'Automatically generated GRN number.';
+
+        return;
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Manual
+    |--------------------------------------------------------------------------
+    */
+
+    grnNumberInput.readOnly =
+        false;
+
+    /*
+     * Clear the automatic number only when
+     * it is still the generated value.
+     */
+    if (
+        grnNumberInput.value === generatedGrn
+    ) {
+        grnNumberInput.value = '';
+    }
+
+    grnHelp.textContent =
+        'Enter the GRN number manually. Duplicate GRN numbers are not allowed.';
+
+    grnNumberInput.focus();
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| GRN Mode Change
+|--------------------------------------------------------------------------
+*/
+
+automaticGrnRadio.addEventListener(
+    'change',
+    updateGrnMode
+);
+
+manualGrnRadio.addEventListener(
+    'change',
+    updateGrnMode
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Initial GRN State
+|--------------------------------------------------------------------------
+*/
+
+updateGrnMode();
 
         // Once the user manually edits Supplier Reference, don't overwrite it
         // just because the date changes.

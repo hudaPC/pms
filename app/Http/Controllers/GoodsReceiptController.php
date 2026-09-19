@@ -316,12 +316,17 @@ class GoodsReceiptController extends Controller
     {
         $validated = $request->validate([
 
-            'grn_number' => [
-                'required',
-                'string',
-                'max:50',
-                'unique:goods_receipts,grn_number',
-            ],
+             'grn_mode' => [
+        'required',
+        'in:automatic,manual',
+    ],
+
+    'grn_number' => [
+        'required',
+        'string',
+        'max:50',
+        'unique:goods_receipts,grn_number',
+    ],
 
             'purchase_order_id' => [
                 'required',

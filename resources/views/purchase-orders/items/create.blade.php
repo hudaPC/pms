@@ -193,7 +193,7 @@
 
                                 <select name="product_model_id"
         id="product_model_id"
-        class="form-control no-select2"
+        class="form-control"
         required>
 
                                     <option value="">
@@ -222,13 +222,14 @@
                                     <span class="text-danger">*</span>
                                 </label>
 
-                                <select name="item_id" id="item_id"
-    class="form-control no-clear no-select2 @error('item_id') is-invalid @enderror"
-                                    data-url="{{ route('purchase-orders.product-model-items', [
-                                        'purchaseOrder' => $purchaseOrder->id,
-                                        'productModel' => '__MODEL_ID__',
-                                    ]) }}"
-                                    required>
+                                <<select name="item_id"
+        id="item_id"
+        class="form-control no-clear @error('item_id') is-invalid @enderror"
+        data-url="{{ route('purchase-orders.product-model-items', [
+            'purchaseOrder' => $purchaseOrder->id,
+            'productModel' => '__MODEL_ID__'
+        ]) }}"
+        required>
 
                                     <option value="">
                                         Select Item
@@ -951,10 +952,12 @@ document.addEventListener('DOMContentLoaded', function() {
     |--------------------------------------------------------------------------
     */
 
-    productModelSelect.addEventListener(
-        'change',
-        loadItemsByProductModel
-    );
+   $(productModelSelect).on(
+    'change select2:select select2:clear',
+    function () {
+        loadItemsByProductModel();
+    }
+);
 
 
     /*

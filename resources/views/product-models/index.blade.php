@@ -59,7 +59,7 @@
 
                             <th>#</th>
 
-                            <th>Model Code</th>
+                            <th>Model</th>
 
                             <th>Document No.</th>
 

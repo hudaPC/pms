@@ -15,7 +15,98 @@ use Illuminate\Validation\ValidationException;
 
 class PurchaseOrderItemController extends Controller
 {
+    
+
+public function itemsByProductModel(
+    PurchaseOrder $purchaseOrder,
+    $productModel
+)
+{
     /*
+    |--------------------------------------------------------------------------
+    | Items belonging to selected Product Model
+    |--------------------------------------------------------------------------
+    |
+    | product_model_items is the real Product Model ↔ Item relationship.
+    | Supplier does NOT restrict which items are available.
+    |
+    */
+
+    $items = Item::where('status', true)
+
+        ->whereHas('productModelItems', function ($query) use ($productModel) {
+
+            $query->where(
+                'product_model_id',
+                $productModel
+            );
+
+        })
+
+        /*
+        |--------------------------------------------------------------------------
+        | Load selected PO supplier information
+        |--------------------------------------------------------------------------
+        |
+        | Only used for supplier-specific price / MOQ when available.
+        |
+        */
+
+        ->with([
+            'unit',
+
+            'suppliers' => function ($query) use ($purchaseOrder) {
+
+                $query->where(
+                    'suppliers.id',
+                    $purchaseOrder->supplier_id
+                )
+                ->where(
+                    'item_suppliers.status',
+                    true
+                );
+
+            },
+        ])
+
+        ->orderBy('item_code')
+        ->get();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prepare AJAX Response
+    |--------------------------------------------------------------------------
+    */
+
+    $data = $items->map(function ($item) {
+
+        $supplierItem = $item->suppliers->first();
+
+        return [
+            'id' => $item->id,
+
+            'item_code' => $item->item_code,
+
+            'item_name' => $item->item_name,
+
+            'unit_price' =>
+                $supplierItem?->pivot?->unit_price,
+
+            'minimum_order_qty' =>
+                $supplierItem?->pivot?->minimum_order_qty,
+        ];
+
+    });
+
+
+    return response()->json([
+        'items' => $data,
+    ]);
+}
+
+
+/*
     |--------------------------------------------------------------------------
     | Add Item Form
     |--------------------------------------------------------------------------

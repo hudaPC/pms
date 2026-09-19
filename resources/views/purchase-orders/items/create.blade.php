@@ -191,15 +191,17 @@
                                     <span class="text-danger">*</span>
                                 </label>
 
-                                <select name="product_model_id" id="product_model_id" class="form-control" required>
+                                <select name="product_model_id"
+        id="product_model_id"
+        class="form-control no-select2"
+        required>
 
                                     <option value="">
                                         Select Product Model
                                     </option>
 
                                     @foreach ($productModels as $productModel)
-                                        <option value="{{ $productModel->id }}"
-                                            @selected(old('product_model_id') == $productModel->id)>
+                                        <option value="{{ $productModel->id }}" @selected(old('product_model_id') == $productModel->id)>
                                             {{ $productModel->model_code }}
                                         </option>
                                     @endforeach
@@ -221,220 +223,18 @@
                                 </label>
 
                                 <select name="item_id" id="item_id"
-                                    class="form-control no-clear no-select2 @error('item_id') is-invalid @enderror"
+    class="form-control no-clear no-select2 @error('item_id') is-invalid @enderror"
+                                    data-url="{{ route('purchase-orders.product-model-items', [
+                                        'purchaseOrder' => $purchaseOrder->id,
+                                        'productModel' => '__MODEL_ID__',
+                                    ]) }}"
                                     required>
 
                                     <option value="">
                                         Select Item
                                     </option>
 
-                                    @foreach ($items as $item)
-                                        @php
-
-                                                /*
-                                            |--------------------------------------------------------------------------
-                                            | Supplier Specific Information
-                                            |--------------------------------------------------------------------------
-                                            */
-
-                                                $supplierItem = $item->suppliers->first();
-
-                                                $supplierPrice = $supplierItem?->pivot?->unit_price;
-
-                                                $minimumOrderQty = $supplierItem?->pivot?->minimum_order_qty;
-
-                                                $settings = $item->purchaseSettings;
-
-                                                $currentStock = (float) $item->current_stock;
-
-                                                $monthlyUsage = (float) ($settings->monthly_usage ?? 0);
-
-                                                $leadTimeDays = (int) ($settings->lead_time_days ?? 0);
-
-                                                $safetyStock = (float) ($settings->safety_stock ?? 0);
-
-                                                $normalOrderQuantity = (float) ($settings->order_quantity ?? 0);
-
-                                                /*
-                                            |--------------------------------------------------------------------------
-                                            | Lead Time Demand
-                                            |--------------------------------------------------------------------------
-                                            |
-                                            | Use the same calculation as Purchase Planning.
-                                            |
-                                            */
-
-                                                $leadTimeDemand = $monthlyUsage * ($leadTimeDays / 30);
-
-                                                /*
-                                            |--------------------------------------------------------------------------
-                                            | Reorder Point
-                                            |--------------------------------------------------------------------------
-                                            */
-
-                                                $reorderPoint = $leadTimeDemand + $safetyStock;
-
-                                                /*
-                                            |--------------------------------------------------------------------------
-                                            | Critical Shortage
-                                            |--------------------------------------------------------------------------
-                                            */
-
-                                                $criticalShortage = $currentStock < $reorderPoint;
-
-                                                /*
-                                            |--------------------------------------------------------------------------
-                                            | Recommended Quantity
-                                            |--------------------------------------------------------------------------
-                                            |
-                                            | Normal condition:
-                                            |     Use Normal Order Quantity.
-                                            |
-                                            | Recovery condition:
-                                            |     Use the ACTUAL calculated recovery requirement.
-                                            |
-                                            | Do NOT round the recovery quantity to a multiple of the
-                                            | Normal Order Quantity.
-                                            |
-                                            */
-
-                                                $recommendedQuantity = $normalOrderQuantity;
-
-                                                if ($criticalShortage) {
-                                                    $recommendedQuantity = max(
-                                                        0,
-                                                        $leadTimeDemand + $reorderPoint - $currentStock,
-                                                    );
-                                                }
-
-                                                /*
-                                            |--------------------------------------------------------------------------
-                                            | Production Requirement Reference
-                                            |--------------------------------------------------------------------------
-                                            |
-                                            | This information is reference only.
-                                            | It does NOT control Manual PO Ordered Quantity.
-                                            |
-                                            */
-
-                                                $hasProductionRequirement = false;
-
-                                                $productionRequiredQty = 0;
-
-                                                $productionPlanning =
-                                                    $planningInformation[$item->id] ?? [];
-
-                                                $productionCurrentStock =
-                                                    (float) (
-                                                        $productionPlanning['current_stock']
-                                                        ?? $currentStock
-                                                    );
-
-                                                $productionOnOrder =
-                                                    (float) (
-                                                        $productionPlanning['on_order_quantity']
-                                                        ?? 0
-                                                    );
-
-                                                $productionInventoryPosition =
-                                                    (float) (
-                                                        $productionPlanning['inventory_position']
-                                                        ?? $productionCurrentStock
-                                                    );
-
-                                                $productionShortage = 0;
-
-                                                /*
-                                            |--------------------------------------------------------------------------
-                                            | Find Confirmed Production Plans
-                                            |--------------------------------------------------------------------------
-                                            */
-
-                                                if ($item->product_model_id) {
-                                                    $plans = $confirmedProductionPlans->get(
-                                                        $item->product_model_id,
-                                                        collect(),
-                                                    );
-
-                                                    if ($plans->isNotEmpty()) {
-                                                        /*
-                                            |--------------------------------------------------------------------------
-                                            | Find BOM Quantity
-                                            |--------------------------------------------------------------------------
-                                            */
-
-                                                        $modelItem = $item->productModelItems->firstWhere(
-                                                            'product_model_id',
-                                                            $item->product_model_id,
-                                                        );
-
-                                                        if ($modelItem) {
-                                                            $bomQuantity = (float) $modelItem->quantity;
-
-                                                            /*
-                                            |--------------------------------------------------------------------------
-                                            | Total Confirmed Production Quantity
-                                            |--------------------------------------------------------------------------
-                                            */
-
-                                                            $productionQuantity = (float) $plans->sum('required_quantity');
-
-                                                            /*
-                                            |--------------------------------------------------------------------------
-                                            | Required Item Quantity
-                                            |--------------------------------------------------------------------------
-                                            |
-                                            | Production Qty × BOM Qty
-                                            |
-                                            */
-
-                                                            $productionRequiredQty = $productionQuantity * $bomQuantity;
-
-                                                            $hasProductionRequirement = true;
-
-                                                            /*
-                                            |--------------------------------------------------------------------------
-                                            | Temporary Production Stock Position
-                                            |--------------------------------------------------------------------------
-                                            |
-                                            | On Order will be connected to the existing
-                                            | purchasing calculation in the next step.
-                                            |
-                                            */
-
-                                                            $productionInventoryPosition =
-                                                                $productionCurrentStock + $productionOnOrder;
-
-                                                            $productionShortage = max(
-                                                                0,
-                                                                $productionRequiredQty - $productionInventoryPosition,
-                                                            );
-                                                        }
-                                                    }
-                                                }
-                                        @endphp
-
-
-                                        <option value="{{ $item->id }}"
-                                            data-product-model-ids="{{ $item->productModelItems->pluck('product_model_id')->implode(',') }}"
-                                            data-price="{{ $supplierPrice ?? '' }}" data-moq="{{ $minimumOrderQty ?? '' }}"
-                                            data-existing="{{ in_array($item->id, $existingItemIds) ? '1' : '0' }}"
-                                            data-current-stock="{{ $currentStock }}" data-reorder-point="{{ $reorderPoint }}"
-                                            data-normal-order-qty="{{ $normalOrderQuantity }}"
-                                            data-recommended-qty="{{ $recommendedQuantity }}"
-                                            data-order-type="{{ $criticalShortage ? 'Recovery' : 'Normal' }}"
-                                            data-has-production-requirement="{{ $hasProductionRequirement ? '1' : '0' }}"
-                                            data-production-required="{{ $productionRequiredQty }}"
-                                            data-production-current-stock="{{ $productionCurrentStock }}"
-                                            data-production-on-order="{{ $productionOnOrder }}"
-                                            data-production-inventory-position="{{ $productionInventoryPosition }}"
-                                            data-production-shortage="{{ $productionShortage }}"
-                                            @selected(old('item_id') == $item->id)>
-
-                                            {{ $item->item_code }} - {{ $item->item_name }}
-
-                                        </option>
-                                    @endforeach
+                                    
 
                                 </select>
 
@@ -512,8 +312,8 @@
                                     <span class="text-danger">*</span>
                                 </label>
 
-                                <input type="number" step="0.001" min="0.001" name="ordered_quantity" id="ordered_quantity"
-                                    value="{{ old('ordered_quantity') }}"
+                                <input type="number" step="0.001" min="0.001" name="ordered_quantity"
+                                    id="ordered_quantity" value="{{ old('ordered_quantity') }}"
                                     class="form-control @error('ordered_quantity') is-invalid @enderror" required>
 
                                 @error('ordered_quantity')
@@ -656,8 +456,7 @@
 
                             <label>Remarks</label>
 
-                            <textarea name="remarks" rows="2"
-                                class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
+                            <textarea name="remarks" rows="2" class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
 
                             @error('remarks')
                                 <div class="invalid-feedback">
@@ -717,90 +516,259 @@
     </form>
 
 
-    
+
 
     </div>
 
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
 
-            const productModelSelect = document.getElementById('product_model_id');
-            const itemSelect = document.getElementById('item_id');
-            const priceInput = document.getElementById('unit_price');
-            const quantityInput = document.getElementById('ordered_quantity');
-            const moqHelp = document.getElementById('moqHelp');
-            const duplicateWarning = document.getElementById('duplicateWarning');
-            const submitBtn = document.querySelector('button[type="submit"]');
+    const productModelSelect =
+        document.getElementById('product_model_id');
 
-            /*
-            |--------------------------------------------------------------------------
-            | Purchase Planning Recommendation
-            |--------------------------------------------------------------------------
-            */
+    const itemSelect =
+        document.getElementById('item_id');
 
-            const planningBox =
-                document.getElementById('planningRecommendation');
+    const priceInput =
+        document.getElementById('unit_price');
 
-            const planningCurrentStock =
-                document.getElementById('planningCurrentStock');
+    const quantityInput =
+        document.getElementById('ordered_quantity');
 
-            const planningReorderPoint =
-                document.getElementById('planningReorderPoint');
+    const moqHelp =
+        document.getElementById('moqHelp');
 
-            const planningRecommendedQty =
-                document.getElementById('planningRecommendedQty');
+    const duplicateWarning =
+        document.getElementById('duplicateWarning');
 
-            const planningOrderType =
-                document.getElementById('planningOrderType');
+    const submitBtn =
+        document.querySelector('button[type="submit"]');
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Production Requirement Reference
-            |--------------------------------------------------------------------------
-            */
+    /*
+    |--------------------------------------------------------------------------
+    | Purchase Planning Recommendation
+    |--------------------------------------------------------------------------
+    */
 
-            const productionBox =
-                document.getElementById('productionRequirementReference');
+    const planningBox =
+        document.getElementById('planningRecommendation');
 
-            const productionRequiredQty =
-                document.getElementById('productionRequiredQty');
+    const planningCurrentStock =
+        document.getElementById('planningCurrentStock');
 
-            const productionCurrentStock =
-                document.getElementById('productionCurrentStock');
+    const planningReorderPoint =
+        document.getElementById('planningReorderPoint');
 
-            const productionOnOrder =
-                document.getElementById('productionOnOrder');
+    const planningRecommendedQty =
+        document.getElementById('planningRecommendedQty');
 
-            const productionInventoryPosition =
-                document.getElementById('productionInventoryPosition');
-
-            const productionShortage =
-                document.getElementById('productionShortage');
+    const planningOrderType =
+        document.getElementById('planningOrderType');
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Filter Items By Product Model
-            |--------------------------------------------------------------------------
-            */
+    /*
+    |--------------------------------------------------------------------------
+    | Production Requirement Reference
+    |--------------------------------------------------------------------------
+    */
 
-            const originalItemOptions =
-                Array.from(itemSelect.options)
-                    .slice(1)
-                    .map(option => option.cloneNode(true));
+    const productionBox =
+        document.getElementById('productionRequirementReference');
+
+    const productionRequiredQty =
+        document.getElementById('productionRequiredQty');
+
+    const productionCurrentStock =
+        document.getElementById('productionCurrentStock');
+
+    const productionOnOrder =
+        document.getElementById('productionOnOrder');
+
+    const productionInventoryPosition =
+        document.getElementById('productionInventoryPosition');
+
+    const productionShortage =
+        document.getElementById('productionShortage');
 
 
-            function filterItemsByProductModel() {
+    /*
+    |--------------------------------------------------------------------------
+    | Quantity Formatter
+    |--------------------------------------------------------------------------
+    */
 
-                const productModelId =
-                    productModelSelect.value;
+    function formatQty(value) {
 
+        return Number(value).toLocaleString(
+            undefined,
+            {
+                minimumFractionDigits: 3,
+                maximumFractionDigits: 3
+            }
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reset Production Requirement Reference
+    |--------------------------------------------------------------------------
+    */
+
+    function resetProductionReference() {
+
+        if (!productionBox) {
+            return;
+        }
+
+        productionBox.style.display = 'none';
+
+        productionRequiredQty.textContent =
+            formatQty(0);
+
+        productionCurrentStock.textContent =
+            formatQty(0);
+
+        productionOnOrder.textContent =
+            formatQty(0);
+
+        productionInventoryPosition.textContent =
+            formatQty(0);
+
+        productionShortage.textContent =
+            formatQty(0);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reset Item Information
+    |--------------------------------------------------------------------------
+    */
+
+    function resetItemInformation() {
+
+        priceInput.value = '';
+
+        moqHelp.textContent = '';
+
+        quantityInput.min = '0.001';
+
+        quantityInput.value = '';
+
+        duplicateWarning.style.display =
+            'none';
+
+        submitBtn.disabled =
+            false;
+
+        planningBox.style.display =
+            'none';
+
+        resetProductionReference();
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Load Items By Product Model - AJAX
+    |--------------------------------------------------------------------------
+    |
+    | Items are NOT filtered by supplier.
+    |
+    | Laravel gets the items from:
+    |
+    |     product_model_items
+    |
+    | Supplier relationship is used only for supplier-specific
+    | price / MOQ when available.
+    |
+    */
+
+    function loadItemsByProductModel() {
+
+        const productModelId =
+            productModelSelect.value;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Clear Current Items
+        |--------------------------------------------------------------------------
+        */
+
+        itemSelect.innerHTML =
+            '<option value="">Select Item</option>';
+
+        $(itemSelect)
+            .val('')
+            .trigger('change');
+
+        resetItemInformation();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | No Product Model Selected
+        |--------------------------------------------------------------------------
+        */
+
+        if (!productModelId) {
+            return;
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Build AJAX URL
+        |--------------------------------------------------------------------------
+        */
+
+        const urlTemplate =
+            itemSelect.dataset.url;
+
+        const url =
+            urlTemplate.replace(
+                '__MODEL_ID__',
+                productModelId
+            );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Loading State
+        |--------------------------------------------------------------------------
+        */
+
+        itemSelect.disabled = true;
+
+        itemSelect.innerHTML =
+            '<option value="">Loading items...</option>';
+
+        $(itemSelect)
+            .trigger('change');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | AJAX Request
+        |--------------------------------------------------------------------------
+        */
+
+        $.ajax({
+
+            url: url,
+
+            type: 'GET',
+
+            dataType: 'json',
+
+            success: function(response) {
 
                 /*
                 |--------------------------------------------------------------------------
-                | Reset Item Dropdown
+                | Reset Dropdown
                 |--------------------------------------------------------------------------
                 */
 
@@ -808,404 +776,492 @@
                     '<option value="">Select Item</option>';
 
 
-                if (!productModelId) {
+                /*
+                |--------------------------------------------------------------------------
+                | Add Returned Items
+                |--------------------------------------------------------------------------
+                */
 
-                    $(itemSelect)
-                        .val('')
-                        .trigger('change');
+                if (
+                    response.items &&
+                    response.items.length > 0
+                ) {
 
-                    return;
+                    response.items.forEach(function(item) {
+
+                        const option =
+                            document.createElement('option');
+
+                        option.value =
+                            item.id;
+
+                        option.textContent =
+    '[' + productModelSelect.options[
+        productModelSelect.selectedIndex
+    ].text.trim() + '] ' +
+    item.item_code +
+    ' - ' +
+    item.item_name;
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Supplier Information
+                        |--------------------------------------------------------------------------
+                        */
+
+                        option.dataset.price =
+                            item.unit_price ?? '';
+
+                        option.dataset.moq =
+                            item.minimum_order_qty ?? '';
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Duplicate Information
+                        |--------------------------------------------------------------------------
+                        |
+                        | The controller can return this later.
+                        | Default is not existing.
+                        |
+                        */
+
+                        option.dataset.existing =
+                            item.existing ?? '0';
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Purchase Planning Information
+                        |--------------------------------------------------------------------------
+                        |
+                        | These values are optional in the first AJAX response.
+                        | Defaults prevent the existing UI from breaking.
+                        |
+                        */
+
+                        option.dataset.currentStock =
+                            item.current_stock ?? '0';
+
+                        option.dataset.reorderPoint =
+                            item.reorder_point ?? '0';
+
+                        option.dataset.normalOrderQty =
+                            item.normal_order_qty ?? '0';
+
+                        option.dataset.recommendedQty =
+                            item.recommended_qty ?? '0';
+
+                        option.dataset.orderType =
+                            item.order_type ?? 'Normal';
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Production Requirement Reference
+                        |--------------------------------------------------------------------------
+                        */
+
+                        option.dataset.hasProductionRequirement =
+                            item.has_production_requirement ?? '0';
+
+                        option.dataset.productionRequired =
+                            item.production_required ?? '0';
+
+                        option.dataset.productionCurrentStock =
+                            item.production_current_stock ?? '0';
+
+                        option.dataset.productionOnOrder =
+                            item.production_on_order ?? '0';
+
+                        option.dataset.productionInventoryPosition =
+                            item.production_inventory_position ?? '0';
+
+                        option.dataset.productionShortage =
+                            item.production_shortage ?? '0';
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Add Option
+                        |--------------------------------------------------------------------------
+                        */
+
+                        itemSelect.appendChild(option);
+                    });
+
+                } else {
+
+                    const option =
+                        document.createElement('option');
+
+                    option.value = '';
+
+                    option.textContent =
+                        'No items found for this Product Model';
+
+                    itemSelect.appendChild(option);
                 }
 
 
                 /*
                 |--------------------------------------------------------------------------
-                | Add Matching Items
+                | Enable Dropdown
                 |--------------------------------------------------------------------------
                 */
 
-                originalItemOptions.forEach(function (option) {
-
-                    const productModelIds =
-                        (option.dataset.productModelIds || '')
-                            .split(',')
-                            .filter(Boolean);
-
-                    if (
-                        productModelIds.includes(productModelId)
-                    ) {
-
-                        itemSelect.appendChild(
-                            option.cloneNode(true)
-                        );
-                    }
-
-                });
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Reset Selected Item
-                |--------------------------------------------------------------------------
-                */
+                itemSelect.disabled =
+                    false;
 
                 $(itemSelect)
                     .val('')
                     .trigger('change');
+            },
+
+
+            error: function(xhr) {
+
+                console.error(
+                    xhr.responseText
+                );
+
+                itemSelect.innerHTML =
+                    '<option value="">Unable to load items</option>';
+
+                itemSelect.disabled =
+                    false;
+
+                $(itemSelect)
+                    .val('')
+                    .trigger('change');
+
+                toastr.error(
+                    'Unable to load items for the selected Product Model.'
+                );
             }
 
+        });
+    }
 
-            productModelSelect.addEventListener(
-                'change',
-                filterItemsByProductModel
-            );
 
+    /*
+    |--------------------------------------------------------------------------
+    | Product Model Change
+    |--------------------------------------------------------------------------
+    */
+
+    productModelSelect.addEventListener(
+        'change',
+        loadItemsByProductModel
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Load Supplier / Planning / Production Information
+    |--------------------------------------------------------------------------
+    */
+
+    function loadSupplierInformation() {
+
+        const option =
+            itemSelect.options[
+                itemSelect.selectedIndex
+            ];
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | No Item Selected
+        |--------------------------------------------------------------------------
+        */
+
+        if (!option || !option.value) {
+
+            resetItemInformation();
+
+            return;
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Supplier Price / MOQ
+        |--------------------------------------------------------------------------
+        */
+
+        const price =
+            option.dataset.price;
+
+        const moq =
+            option.dataset.moq;
+
+        const isExisting =
+            option.dataset.existing === '1';
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Unit Price
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            price !== undefined &&
+            price !== null &&
+            price !== ''
+        ) {
+
+            priceInput.value =
+                Number(price).toFixed(4);
+
+        } else {
 
             /*
             |--------------------------------------------------------------------------
-            | Quantity Formatter
+            | No Supplier Price
             |--------------------------------------------------------------------------
+            |
+            | Leave empty so user can manually enter Unit Price.
+            |
             */
 
-            function formatQty(value) {
+            priceInput.value = '';
+        }
 
-                return Number(value).toLocaleString(
+
+        /*
+        |--------------------------------------------------------------------------
+        | Supplier MOQ - Reference Only
+        |--------------------------------------------------------------------------
+        */
+
+        quantityInput.min =
+            '0.001';
+
+
+        if (
+            moq !== undefined &&
+            moq !== null &&
+            moq !== '' &&
+            Number(moq) > 0
+        ) {
+
+            const minimum =
+                Number(moq);
+
+            moqHelp.textContent =
+                'Supplier MOQ: ' +
+                minimum.toLocaleString(
                     undefined,
                     {
                         minimumFractionDigits: 3,
                         maximumFractionDigits: 3
                     }
-                );
-            }
+                ) +
+                ' (reference only)';
 
+        } else {
 
-            /*
-            |--------------------------------------------------------------------------
-            | Reset Production Requirement Reference
-            |--------------------------------------------------------------------------
-            */
+            moqHelp.textContent =
+                'No supplier MOQ configured.';
+        }
 
-            function resetProductionReference() {
 
-                productionBox.style.display = 'none';
+        /*
+        |--------------------------------------------------------------------------
+        | Duplicate Item Warning
+        |--------------------------------------------------------------------------
+        */
 
-                productionRequiredQty.textContent =
-                    formatQty(0);
+        if (isExisting) {
 
-                productionCurrentStock.textContent =
-                    formatQty(0);
+            duplicateWarning.style.display =
+                'block';
 
-                productionOnOrder.textContent =
-                    formatQty(0);
+            submitBtn.disabled =
+                true;
 
-                productionInventoryPosition.textContent =
-                    formatQty(0);
+        } else {
 
-                productionShortage.textContent =
-                    formatQty(0);
-            }
+            duplicateWarning.style.display =
+                'none';
 
+            submitBtn.disabled =
+                false;
+        }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Load Supplier / Planning / Production Information
-            |--------------------------------------------------------------------------
-            */
 
-            function loadSupplierInformation() {
+        /*
+        |--------------------------------------------------------------------------
+        | Purchase Planning Information
+        |--------------------------------------------------------------------------
+        */
 
-                const option =
-                    itemSelect.options[
-                    itemSelect.selectedIndex
-                    ];
+        const currentStock =
+            Number(
+                option.dataset.currentStock || 0
+            );
 
+        const reorderPoint =
+            Number(
+                option.dataset.reorderPoint || 0
+            );
 
-                /*
-                |--------------------------------------------------------------------------
-                | No Item Selected
-                |--------------------------------------------------------------------------
-                */
+        const recommendedQty =
+            Number(
+                option.dataset.recommendedQty || 0
+            );
 
-                if (!option || !option.value) {
+        const orderType =
+            option.dataset.orderType || 'Normal';
 
-                    priceInput.value = '';
 
-                    moqHelp.textContent = '';
+        planningCurrentStock.textContent =
+            formatQty(currentStock);
 
-                    quantityInput.min = '0.001';
+        planningReorderPoint.textContent =
+            formatQty(reorderPoint);
 
-                    quantityInput.value = '';
+        planningRecommendedQty.textContent =
+            formatQty(recommendedQty);
 
-                    duplicateWarning.style.display =
-                        'none';
+        planningOrderType.textContent =
+            orderType;
 
-                    submitBtn.disabled =
-                        false;
-
-                    planningBox.style.display =
-                        'none';
-
-                    resetProductionReference();
-
-                    return;
-                }
-
-
-                const price =
-                    option.dataset.price;
-
-                const moq =
-                    option.dataset.moq;
-
-                const isExisting =
-                    option.dataset.existing === '1';
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Unit Price
-                |--------------------------------------------------------------------------
-                */
-
-                if (
-                    price !== undefined &&
-                    price !== null &&
-                    price !== ''
-                ) {
-
-                    priceInput.value =
-                        Number(price).toFixed(4);
-
-                } else {
-
-                    priceInput.value = '';
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Supplier MOQ - Reference Only
-                |--------------------------------------------------------------------------
-                |
-                | MOQ does NOT restrict Manual PO Ordered Quantity.
-                |
-                */
-
-                quantityInput.min = '0.001';
-
-
-                if (
-                    moq !== undefined &&
-                    moq !== null &&
-                    moq !== '' &&
-                    Number(moq) > 0
-                ) {
-
-                    const minimum =
-                        Number(moq);
-
-                    moqHelp.textContent =
-                        'Supplier MOQ: ' +
-                        minimum.toLocaleString(
-                            undefined,
-                            {
-                                minimumFractionDigits: 3,
-                                maximumFractionDigits: 3
-                            }
-                        ) +
-                        ' (reference only)';
-
-                } else {
-
-                    moqHelp.textContent =
-                        'No supplier MOQ configured.';
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Duplicate Item Warning
-                |--------------------------------------------------------------------------
-                */
-
-                if (isExisting) {
-
-                    duplicateWarning.style.display =
-                        'block';
-
-                    submitBtn.disabled =
-                        true;
-
-                } else {
-
-                    duplicateWarning.style.display =
-                        'none';
-
-                    submitBtn.disabled =
-                        false;
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Recommended Qty / Reorder Planning
-                |--------------------------------------------------------------------------
-                */
-
-                const currentStock =
-                    Number(
-                        option.dataset.currentStock || 0
-                    );
-
-                const reorderPoint =
-                    Number(
-                        option.dataset.reorderPoint || 0
-                    );
-
-                const recommendedQty =
-                    Number(
-                        option.dataset.recommendedQty || 0
-                    );
-
-                const orderType =
-                    option.dataset.orderType || 'Normal';
-
-
-                planningCurrentStock.textContent =
-                    formatQty(currentStock);
-
-                planningReorderPoint.textContent =
-                    formatQty(reorderPoint);
-
-                planningRecommendedQty.textContent =
-                    formatQty(recommendedQty);
-
-                planningOrderType.textContent =
-                    orderType;
-
-                planningOrderType.className =
-                    'badge ' +
-                    (
-                        orderType === 'Recovery'
-                            ? 'badge-danger'
-                            : 'badge-secondary'
-                    );
-
-                planningBox.style.display =
-                    'block';
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Auto Fill Recommended Purchase Quantity
-                |--------------------------------------------------------------------------
-                */
-
-                if (recommendedQty > 0) {
-
-                    quantityInput.value =
-                        recommendedQty.toFixed(3);
-
-                } else {
-
-                    quantityInput.value = '';
-                }
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Production Requirement Reference
-                |--------------------------------------------------------------------------
-                |
-                | Reference only.
-                | This does NOT change Manual PO Ordered Quantity.
-                |
-                */
-
-                const hasProductionRequirement =
-                    option.dataset.hasProductionRequirement === '1';
-
-
-                if (hasProductionRequirement) {
-
-                    const required =
-                        Number(
-                            option.dataset.productionRequired || 0
-                        );
-
-                    const productionStock =
-                        Number(
-                            option.dataset.productionCurrentStock || 0
-                        );
-
-                    const onOrder =
-                        Number(
-                            option.dataset.productionOnOrder || 0
-                        );
-
-                    const inventoryPosition =
-                        Number(
-                            option.dataset.productionInventoryPosition || 0
-                        );
-
-                    const shortage =
-                        Number(
-                            option.dataset.productionShortage || 0
-                        );
-
-
-                    productionRequiredQty.textContent =
-                        formatQty(required);
-
-                    productionCurrentStock.textContent =
-                        formatQty(productionStock);
-
-                    productionOnOrder.textContent =
-                        formatQty(onOrder);
-
-                    productionInventoryPosition.textContent =
-                        formatQty(inventoryPosition);
-
-                    productionShortage.textContent =
-                        formatQty(shortage);
-
-                    productionBox.style.display =
-                        'block';
-
-                } else {
-
-                    resetProductionReference();
-                }
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Item Change
-            |--------------------------------------------------------------------------
-            */
-
-            $(itemSelect).on(
-                'change',
-                loadSupplierInformation
+        planningOrderType.className =
+            'badge ' +
+            (
+                orderType === 'Recovery'
+                    ? 'badge-danger'
+                    : 'badge-secondary'
             );
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Existing Selected Item
-            |--------------------------------------------------------------------------
-            */
+        /*
+        |--------------------------------------------------------------------------
+        | Show Planning Box Only When We Have Planning Data
+        |--------------------------------------------------------------------------
+        */
 
-            if (itemSelect.value) {
+        if (
+            currentStock !== 0 ||
+            reorderPoint !== 0 ||
+            recommendedQty !== 0
+        ) {
 
-                loadSupplierInformation();
+            planningBox.style.display =
+                'block';
 
-            } else {
+        } else {
 
-                resetProductionReference();
-            }
+            planningBox.style.display =
+                'none';
+        }
 
-        });
-    </script>
+
+        /*
+        |--------------------------------------------------------------------------
+        | Auto Fill Recommended Purchase Quantity
+        |--------------------------------------------------------------------------
+        */
+
+        if (recommendedQty > 0) {
+
+            quantityInput.value =
+                recommendedQty.toFixed(3);
+
+        } else {
+
+            quantityInput.value = '';
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Production Requirement Reference
+        |--------------------------------------------------------------------------
+        */
+
+        const hasProductionRequirement =
+            option.dataset.hasProductionRequirement === '1';
+
+
+        if (hasProductionRequirement) {
+
+            const required =
+                Number(
+                    option.dataset.productionRequired || 0
+                );
+
+            const productionStock =
+                Number(
+                    option.dataset.productionCurrentStock || 0
+                );
+
+            const onOrder =
+                Number(
+                    option.dataset.productionOnOrder || 0
+                );
+
+            const inventoryPosition =
+                Number(
+                    option.dataset.productionInventoryPosition || 0
+                );
+
+            const shortage =
+                Number(
+                    option.dataset.productionShortage || 0
+                );
+
+
+            productionRequiredQty.textContent =
+                formatQty(required);
+
+            productionCurrentStock.textContent =
+                formatQty(productionStock);
+
+            productionOnOrder.textContent =
+                formatQty(onOrder);
+
+            productionInventoryPosition.textContent =
+                formatQty(inventoryPosition);
+
+            productionShortage.textContent =
+                formatQty(shortage);
+
+            productionBox.style.display =
+                'block';
+
+        } else {
+
+            resetProductionReference();
+        }
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Item Change
+    |--------------------------------------------------------------------------
+    */
+
+    $(itemSelect).on(
+        'change',
+        loadSupplierInformation
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Initial Page State
+    |--------------------------------------------------------------------------
+    */
+
+    resetItemInformation();
+
+});
+</script>
+
 @endsection

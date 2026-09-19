@@ -461,8 +461,13 @@ Route::middleware(['auth'])->group(function () {
     )->name(
             'supplier-invoices.product-model-items'
         );
-
-
+// Manual Purchase Order Product model Items
+Route::get(
+    '/purchase-orders/{purchaseOrder}/product-models/{productModel}/items',
+    [PurchaseOrderItemController::class, 'itemsByProductModel']
+)->name(
+    'purchase-orders.product-model-items'
+);
 
     Route::post(
         '/supplier-invoices/{supplierInvoice}/items',

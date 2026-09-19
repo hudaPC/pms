@@ -16,6 +16,9 @@ class SupplierInvoice extends Model
     'supplier_id',
     'production_plan_id',
     'purchase_order_id',
+    'po_creation_mode',
+    'requested_po_number',
+'requested_delivery_date',
     'invoice_date',
     'due_date',
     'subtotal',
@@ -34,7 +37,7 @@ class SupplierInvoice extends Model
 
     'invoice_date' => 'date',
     'due_date' => 'date',
-
+    'requested_delivery_date' => 'date',
     'subtotal' => 'decimal:4',
     'tax_amount' => 'decimal:4',
     'discount_amount' => 'decimal:4',

@@ -59,41 +59,99 @@
 
 
                 {{-- Create Purchase Order --}}
-                @if (in_array($supplierInvoice->status, ['unpaid', 'partially_paid', 'paid']) &&
-                        !$supplierInvoice->purchase_order_id &&
-                        $supplierInvoice->items->isNotEmpty())
-                    <form
-                        action="{{ route('supplier-invoices.create-purchase-order', $supplierInvoice) }}"
-                        method="POST" class="mr-2"
-                        onsubmit="return confirm(
-                                                'Create Purchase Order from this Supplier Invoice? PO quantities and prices will be copied from the invoice items.'
-                                            );">
+@if (
+    in_array(
+        $supplierInvoice->status,
+        ['unpaid', 'partially_paid', 'paid']
+    )
+    && !$supplierInvoice->purchase_order_id
+    && $supplierInvoice->items->isNotEmpty()
+    && $supplierInvoice->po_creation_mode === 'manual'
+)
 
-                        @csrf
-                        <div class="form-group mb-2">
+    <form
+        action="{{ route('supplier-invoices.create-purchase-order', $supplierInvoice) }}"
+        method="POST"
+        class="mr-2"
+        onsubmit="return confirm(
+            'Create Purchase Order from this Supplier Invoice? PO quantities and prices will be copied from the invoice items.'
+        );"
+    >
 
-                            <label for="expected_delivery_date" class="mb-1">
-                                <small>
-                                    Expected Delivery Date
-                                </small>
-                            </label>
+        @csrf
 
-                            <input type="date" name="expected_delivery_date" id="expected_delivery_date"
-                                class="form-control form-control-sm" value="{{ old('expected_delivery_date') }}"
-                                min="{{ now()->format('Y-m-d') }}" required>
 
-                        </div>
+        {{-- PO Number --}}
+        <div class="form-group mb-2">
 
-                        <button type="submit" class="btn btn-primary">
+            <label for="po_number" class="mb-1">
 
-                            <i class="fas fa-file-signature mr-1"></i>
+                <small>
+                    PO Number
+                </small>
 
-                            Create Purchase Order
+            </label>
 
-                        </button>
+            <input
+                type="text"
+                name="po_number"
+                id="po_number"
+                class="form-control form-control-sm @error('po_number') is-invalid @enderror"
+                value="{{ old('po_number') }}"
+                maxlength="50"
+                placeholder="Enter PO Number"
+                required
+            >
 
-                    </form>
-                @endif
+            @error('po_number')
+                <div class="invalid-feedback">
+                    {{ $message }}
+                </div>
+            @enderror
+
+        </div>
+
+
+        {{-- Expected Delivery Date --}}
+        <div class="form-group mb-2">
+
+            <label for="expected_delivery_date" class="mb-1">
+
+                <small>
+                    Expected Delivery Date
+                </small>
+
+            </label>
+
+            <input
+                type="date"
+                name="expected_delivery_date"
+                id="expected_delivery_date"
+                class="form-control form-control-sm @error('expected_delivery_date') is-invalid @enderror"
+                value="{{ old('expected_delivery_date') }}"               
+                required
+            >
+
+            @error('expected_delivery_date')
+                <div class="invalid-feedback">
+                    {{ $message }}
+                </div>
+            @enderror
+
+        </div>
+
+
+        <button type="submit" class="btn btn-primary">
+
+            <i class="fas fa-file-signature mr-1"></i>
+
+            Create Purchase Order
+
+        </button>
+
+    </form>
+
+@endif
 
                 {{-- Cancel Supplier Invoice --}}
                 @if ($supplierInvoice->status === 'unpaid' && !$supplierInvoice->purchaseOrder)

@@ -134,7 +134,171 @@
                             </div>
 
                         </div>
+{{-- Purchase Order Creation Mode --}}
+<div class="col-md-12">
 
+    <div class="form-group">
+
+        <label>
+            Purchase Order Creation
+            <span class="text-danger">*</span>
+        </label>
+
+        <div class="row">
+
+            <div class="col-md-6">
+
+                <div class="custom-control custom-radio">
+
+                    <input
+                        type="radio"
+                        id="po_creation_mode_manual"
+                        name="po_creation_mode"
+                        value="manual"
+                        class="custom-control-input"
+                        {{ old('po_creation_mode', 'manual') === 'manual' ? 'checked' : '' }}
+                    >
+
+                    <label
+                        class="custom-control-label"
+                        for="po_creation_mode_manual"
+                    >
+                        Manual
+                    </label>
+
+                </div>
+
+                <small class="form-text text-muted ml-4">
+                    Confirm the invoice first, then create the Purchase Order manually.
+                </small>
+
+            </div>
+
+
+            <div class="col-md-6">
+
+                <div class="custom-control custom-radio">
+
+                    <input
+                        type="radio"
+                        id="po_creation_mode_automatic"
+                        name="po_creation_mode"
+                        value="automatic"
+                        class="custom-control-input"
+                        {{ old('po_creation_mode') === 'automatic' ? 'checked' : '' }}
+                    >
+
+                    <label
+                        class="custom-control-label"
+                        for="po_creation_mode_automatic"
+                    >
+                        Automatic
+                    </label>
+
+                </div>
+
+                <small class="form-text text-muted ml-4">
+                    Purchase Order will be created automatically when the invoice is confirmed.
+                </small>
+
+            </div>
+
+        </div>
+
+
+        @error('po_creation_mode')
+            <div class="text-danger mt-2">
+                {{ $message }}
+            </div>
+        @enderror
+
+    </div>
+
+</div>
+{{-- Automatic PO Details --}}
+<div class="col-md-12" id="automatic_po_details" style="display: none;">
+
+    <div class="card bg-light mb-3">
+
+        <div class="card-body">
+
+            <h6 class="mb-3">
+                <i class="fas fa-file-alt mr-1"></i>
+                Automatic Purchase Order Details
+            </h6>
+
+            <div class="row">
+
+                {{-- PO Number --}}
+                <div class="col-md-6">
+
+                    <div class="form-group">
+
+                        <label for="requested_po_number">
+                            PO Number
+                            <span class="text-danger">*</span>
+                        </label>
+
+                        <input
+                            type="text"
+                            name="requested_po_number"
+                            id="requested_po_number"
+                            value="{{ old('requested_po_number') }}"
+                            class="form-control @error('requested_po_number') is-invalid @enderror"
+                            maxlength="50"
+                            placeholder="Enter PO number"
+                        >
+
+                        @error('requested_po_number')
+                            <div class="invalid-feedback">
+                                {{ $message }}
+                            </div>
+                        @enderror
+
+                        <small class="form-text text-muted">
+                            Enter the actual Purchase Order number manually.
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                {{-- Expected Delivery Date --}}
+                <div class="col-md-6">
+
+                    <div class="form-group">
+
+                        <label for="requested_delivery_date">
+                            Expected Delivery Date
+                            <span class="text-danger">*</span>
+                        </label>
+
+                        <input
+                            type="date"
+                            name="requested_delivery_date"
+                            id="requested_delivery_date"
+                            value="{{ old('requested_delivery_date') }}"
+                            class="form-control @error('requested_delivery_date') is-invalid @enderror"
+                        >
+
+                        @error('requested_delivery_date')
+                            <div class="invalid-feedback">
+                                {{ $message }}
+                            </div>
+                        @enderror
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 
                         {{-- Supplier Invoice Number --}}
                         <div class="col-md-4">
@@ -380,6 +544,10 @@
             const $invoiceDateInput = $('#invoice_date');
             const $invoiceNumberInput = $('#invoice_number');
             const $regenerateBtn = $('#regenerate_invoice_number_btn');
+            const $poCreationMode = $('input[name="po_creation_mode"]');
+            const $automaticPoDetails = $('#automatic_po_details');
+            const $requestedPoNumber = $('#requested_po_number');
+            const $requestedDeliveryDate = $('#requested_delivery_date');
 
             let invoiceNumberManuallyEdited = false;
 
@@ -494,6 +662,47 @@
 
                 generateInvoiceNumber();
             }
+
+            /*
+|--------------------------------------------------------------------------
+| PO Creation Mode
+|--------------------------------------------------------------------------
+*/
+
+function updatePoCreationMode() {
+
+    const mode =
+        $('input[name="po_creation_mode"]:checked').val();
+
+    if (mode === 'automatic') {
+
+        $automaticPoDetails.show();
+
+        $requestedPoNumber.prop('required', true);
+        $requestedDeliveryDate.prop('required', true);
+
+    } else {
+
+        $automaticPoDetails.hide();
+
+        $requestedPoNumber.prop('required', false);
+        $requestedDeliveryDate.prop('required', false);
+    }
+}
+
+
+$poCreationMode.on('change', function() {
+    updatePoCreationMode();
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Initial State
+|--------------------------------------------------------------------------
+*/
+
+updatePoCreationMode();
 
         });
     </script>

@@ -49,39 +49,40 @@ class PurchaseOrderItemController extends Controller
 
         $items = Item::where('status', true)
 
-            ->whereHas('suppliers', function ($query) use ($purchaseOrder) {
+    ->with([
+        'unit',
+        'purchaseSettings',
+        'productModel',
+        'productModelItems',
 
-                $query->where(
-                    'suppliers.id',
-                    $purchaseOrder->supplier_id
-                )
-                    ->where(
-                        'item_suppliers.status',
-                        true
-                    );
-            })
+        /*
+        |--------------------------------------------------------------------------
+        | Selected PO Supplier Information
+        |--------------------------------------------------------------------------
+        |
+        | Do NOT restrict available items by supplier.
+        |
+        | We load the selected supplier relationship only so we can use
+        | supplier-specific Unit Price / MOQ when it exists.
+        |
+        */
 
-            ->with([
-                'unit',
-                'purchaseSettings',
-                'productModel',
-                'productModelItems',
-                'suppliers' => function ($query) use ($purchaseOrder) {
+        'suppliers' => function ($query) use ($purchaseOrder) {
 
-                    $query->where(
-                        'suppliers.id',
-                        $purchaseOrder->supplier_id
-                    )
-                        ->where(
-                            'item_suppliers.status',
-                            true
-                        );
-                },
-            ])
+            $query->where(
+                'suppliers.id',
+                $purchaseOrder->supplier_id
+            )
+                ->where(
+                    'item_suppliers.status',
+                    true
+                );
+        },
+    ])
 
-            ->orderBy('item_code')
+    ->orderBy('item_code')
 
-            ->get();
+    ->get();
         /*
 |--------------------------------------------------------------------------
 | Product Models Available For This Supplier
@@ -337,15 +338,7 @@ class PurchaseOrderItemController extends Controller
             ->first();
 
 
-        if (!$supplierItem) {
-
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'item_id' =>
-                    'The selected item is not active for this Purchase Order supplier.',
-                ]);
-        }
+       
 
 
         /*
@@ -402,9 +395,7 @@ class PurchaseOrderItemController extends Controller
     */
 
         $supplierUnitPrice =
-            $supplierItem
-            ->pivot
-            ->unit_price;
+    $supplierItem?->pivot?->unit_price;
 
 
         $unitPrice =

@@ -481,7 +481,155 @@
             </div>
 
         </div>
+{{-- Purchase Order Summary --}}
+@php
 
+    $totalItems =
+        $purchaseOrder->items->count();
+
+    $totalOrderedQty =
+        $purchaseOrder->items->sum(
+            'ordered_quantity'
+        );
+
+    $totalReceivedQty =
+        $purchaseOrder->items->sum(
+            'received_quantity'
+        );
+
+    $totalBalanceQty =
+        $totalOrderedQty
+        - $totalReceivedQty;
+
+    $totalPoAmount =
+        $purchaseOrder->items->sum(
+            function ($item) {
+
+                return
+                    (float) $item->ordered_quantity
+                    *
+                    (float) ($item->unit_price ?? 0);
+            }
+        );
+
+@endphp
+
+
+<div class="row mt-3">
+
+    <div class="col-md-6 ml-auto">
+
+        <div class="card card-outline card-info">
+
+            <div class="card-header">
+
+                <h3 class="card-title">
+
+                    <i class="fas fa-calculator mr-2"></i>
+
+                    Purchase Order Summary
+
+                </h3>
+
+            </div>
+
+
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between mb-2">
+
+                    <span>
+                        Total Items
+                    </span>
+
+                    <strong>
+                        {{ $totalItems }}
+                    </strong>
+
+                </div>
+
+
+                <div class="d-flex justify-content-between mb-2">
+
+                    <span>
+                        Total Ordered Qty
+                    </span>
+
+                    <strong class="text-primary">
+
+                        {{ number_format(
+                            (float) $totalOrderedQty,
+                            3
+                        ) }}
+
+                    </strong>
+
+                </div>
+
+
+                <div class="d-flex justify-content-between mb-2">
+
+                    <span>
+                        Total Received Qty
+                    </span>
+
+                    <strong class="text-success">
+
+                        {{ number_format(
+                            (float) $totalReceivedQty,
+                            3
+                        ) }}
+
+                    </strong>
+
+                </div>
+
+
+                <div class="d-flex justify-content-between mb-2">
+
+                    <span>
+                        Total Balance Qty
+                    </span>
+
+                    <strong class="text-danger">
+
+                        {{ number_format(
+                            (float) $totalBalanceQty,
+                            3
+                        ) }}
+
+                    </strong>
+
+                </div>
+
+
+                <hr>
+
+
+                <div class="d-flex justify-content-between">
+
+                    <strong>
+                        Total PO Amount
+                    </strong>
+
+                    <strong class="text-primary">
+
+                        {{ number_format(
+                            (float) $totalPoAmount,
+                            4
+                        ) }}
+
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 
         {{-- Goods Receipt History --}}
         <div class="card card-success card-outline mt-4">

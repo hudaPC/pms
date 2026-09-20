@@ -681,6 +681,41 @@
 
                     <div class="card-body">
 
+                        {{-- Total Items --}}
+<div class="d-flex justify-content-between mb-2">
+
+    <span>
+        Total Items
+    </span>
+
+    <strong>
+        {{ $supplierInvoice->items->count() }}
+    </strong>
+
+</div>
+
+
+{{-- Total Quantity --}}
+<div class="d-flex justify-content-between mb-2">
+
+    <span>
+        Total Quantity
+    </span>
+
+    <strong class="text-info">
+
+        {{ number_format(
+            (float) $supplierInvoice->items->sum('quantity'),
+            3
+        ) }}
+
+    </strong>
+
+</div>
+
+
+<hr>
+
                         <div class="d-flex justify-content-between mb-2">
 
                             <span>

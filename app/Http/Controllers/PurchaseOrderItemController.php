@@ -15,102 +15,439 @@ use Illuminate\Validation\ValidationException;
 
 class PurchaseOrderItemController extends Controller
 {
-    
 
-public function itemsByProductModel(
-    PurchaseOrder $purchaseOrder,
-    $productModel
-)
-{
-    /*
-    |--------------------------------------------------------------------------
-    | Items belonging to selected Product Model
-    |--------------------------------------------------------------------------
-    |
-    | product_model_items is the real Product Model ↔ Item relationship.
-    | Supplier does NOT restrict which items are available.
-    |
-    */
 
-    $items = Item::where('status', true)
-
-        ->whereHas('productModelItems', function ($query) use ($productModel) {
-
-            $query->where(
-                'product_model_id',
-                $productModel
-            );
-
-        })
-
+    public function itemsByProductModel(
+        PurchaseOrder $purchaseOrder,
+        $productModel,
+        ItemPurchasePlanningService $itemPurchasePlanningService
+    ) {
         /*
         |--------------------------------------------------------------------------
-        | Load selected PO supplier information
+        | Confirmed Production Plans
         |--------------------------------------------------------------------------
         |
-        | Only used for supplier-specific price / MOQ when available.
+        | Only confirmed Production Plans for the selected Product Model
+        | are used for Production Requirement Reference.
         |
         */
 
-        ->with([
-            'unit',
+        $confirmedProductionPlans = ProductionPlan::where(
+            'status',
+            'confirmed'
+        )
+            ->where(
+                'product_model_id',
+                $productModel
+            )
+            ->whereDate(
+                'requirement_date',
+                '>=',
+                today()
+            )
+            ->get();
 
-            'suppliers' => function ($query) use ($purchaseOrder) {
 
-                $query->where(
-                    'suppliers.id',
-                    $purchaseOrder->supplier_id
-                )
-                ->where(
-                    'item_suppliers.status',
-                    true
+        /*
+        |--------------------------------------------------------------------------
+        | Items belonging to selected Product Model
+        |--------------------------------------------------------------------------
+        |
+        | product_model_items is the real Product Model ↔ Item relationship.
+        |
+        | Supplier does NOT restrict available items.
+        | Supplier relationship is loaded only for Unit Price / MOQ.
+        |
+        */
+
+        $items = Item::where('status', true)
+
+            ->whereHas(
+                'productModelItems',
+                function ($query) use ($productModel) {
+
+                    $query->where(
+                        'product_model_id',
+                        $productModel
+                    );
+                }
+            )
+
+            ->with([
+
+                'unit',
+
+                'purchaseSettings',
+
+                /*
+                |--------------------------------------------------------------------------
+                | Selected Product Model BOM row
+                |--------------------------------------------------------------------------
+                */
+
+                'productModelItems' => function ($query) use ($productModel) {
+
+                    $query->where(
+                        'product_model_id',
+                        $productModel
+                    );
+                },
+
+                /*
+                |--------------------------------------------------------------------------
+                | Selected PO Supplier Information
+                |--------------------------------------------------------------------------
+                */
+
+                'suppliers' => function ($query) {
+
+                    $query->where(
+                        'item_suppliers.status',
+                        true
+                    )
+                        ->orderByDesc(
+                            'item_suppliers.is_preferred'
+                        );
+                },
+            ])
+
+            ->orderBy('item_code')
+
+            ->get();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Existing PO Item IDs
+        |--------------------------------------------------------------------------
+        |
+        | Used by the existing Blade duplicate warning.
+        |
+        */
+
+        $existingItemIds = $purchaseOrder
+            ->items()
+            ->pluck('item_id')
+            ->map(function ($id) {
+                return (int) $id;
+            })
+            ->toArray();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Prepare AJAX Response
+        |--------------------------------------------------------------------------
+        */
+
+        $data = $items->map(
+            function ($item) use ($confirmedProductionPlans, $itemPurchasePlanningService, $existingItemIds, $purchaseOrder) {
+
+                /*
+|--------------------------------------------------------------------------
+| Unit Price Supplier
+|--------------------------------------------------------------------------
+|
+| Priority:
+|
+| 1. Selected Purchase Order Supplier
+| 2. Preferred Supplier
+| 3. No supplier price -> manual Unit Price
+|
+*/
+
+                $selectedSupplierItem =
+                    $item->suppliers->firstWhere(
+                        'id',
+                        $purchaseOrder->supplier_id
+                    );
+
+
+                $preferredSupplierItem =
+                    $item->suppliers->first(
+                        function ($supplier) {
+
+                            return (bool) (
+                                $supplier->pivot->is_preferred
+                                ?? false
+                            );
+                        }
+                    );
+
+
+                $priceSupplier =
+                    $selectedSupplierItem
+                    ?? $preferredSupplierItem;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Purchase Planning Information
+                |--------------------------------------------------------------------------
+                */
+
+                $planning =
+                    $itemPurchasePlanningService->calculate(
+                        $item
+                    );
+
+
+                $currentStock = (float) (
+                    $planning['current_stock']
+                    ?? $item->current_stock
+                    ?? 0
                 );
 
-            },
-        ])
 
-        ->orderBy('item_code')
-        ->get();
+                $onOrder = (float) (
+                    $planning['on_order_quantity']
+                    ?? 0
+                );
+
+
+                $inventoryPosition = (float) (
+                    $planning['inventory_position']
+                    ?? ($currentStock + $onOrder)
+                );
+
+
+                $reorderPoint = (float) (
+                    $planning['reorder_point']
+                    ?? 0
+                );
+
+
+                $normalOrderQty = (float) (
+                    $planning['normal_order_quantity']
+                    ?? $planning['normal_order_qty']
+                    ?? 0
+                );
+
+
+                $recommendedQty = (float) (
+                    $planning['recommended_purchase_quantity']
+                    ?? $planning['recommended_quantity']
+                    ?? $planning['recommended_qty']
+                    ?? 0
+                );
+
+
+                $orderType =
+                    $planning['order_type']
+                    ?? 'Normal';
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | BOM Quantity
+                |--------------------------------------------------------------------------
+                |
+                | Because productModelItems was filtered above, first() is the
+                | BOM row for the Product Model currently selected by the user.
+                |
+                */
+
+                $bomRow =
+                    $item->productModelItems->first();
+
+
+                $bomQuantity = (float) (
+                    $bomRow?->quantity
+                    ?? 0
+                );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Production Required Quantity
+                |--------------------------------------------------------------------------
+                |
+                | Required =
+                | Confirmed Production Plan Qty × BOM Qty
+                |
+                */
+
+                $productionRequired = 0;
+
+
+                foreach (
+                    $confirmedProductionPlans
+                    as $productionPlan
+                ) {
+
+                    $productionRequired +=
+                        (
+                            (float) 
+                            $productionPlan->required_quantity
+                        )
+                        * $bomQuantity;
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Production Shortage
+                |--------------------------------------------------------------------------
+                */
+
+                $productionShortage = max(
+                    0,
+                    $productionRequired
+                    - $inventoryPosition
+                );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Has Production Requirement
+                |--------------------------------------------------------------------------
+                |
+                | Existing Blade expects a string/number 1 or 0.
+                |
+                */
+
+                $hasProductionRequirement =
+                    $productionRequired > 0
+                    ? 1
+                    : 0;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | AJAX Item Data
+                |--------------------------------------------------------------------------
+                */
+
+                return [
+
+                    'id' =>
+                        $item->id,
+
+
+                    'item_code' =>
+                        $item->item_code,
+
+
+                    'item_name' =>
+                        $item->item_name,
+
+
+                    'unit_name' =>
+                        $item->unit?->name,
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Supplier Information
+                    |--------------------------------------------------------------------------
+                    */
+
+                    'unit_price' =>
+                        $priceSupplier?->pivot?->unit_price,
+
+                    'minimum_order_qty' =>
+                        $priceSupplier?->pivot?->minimum_order_qty,
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Duplicate Information
+                    |--------------------------------------------------------------------------
+                    */
+
+                    'existing' =>
+                        in_array(
+                            (int) $item->id,
+                            $existingItemIds,
+                            true
+                        )
+                        ? 1
+                        : 0,
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Purchase Planning Information
+                    |--------------------------------------------------------------------------
+                    |
+                    | Names match your existing Blade JavaScript.
+                    |
+                    */
+
+                    'current_stock' =>
+                        $currentStock,
+
+
+                    'reorder_point' =>
+                        $reorderPoint,
+
+
+                    'normal_order_qty' =>
+                        $normalOrderQty,
+
+
+                    'recommended_qty' =>
+                        $recommendedQty,
+
+
+                    'order_type' =>
+                        $orderType,
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Production Requirement Reference
+                    |--------------------------------------------------------------------------
+                    |
+                    | IMPORTANT:
+                    | These names exactly match your existing Blade JavaScript.
+                    |
+                    */
+
+                    'has_production_requirement' =>
+                        $hasProductionRequirement,
+
+
+                    'production_required' =>
+                        $productionRequired,
+
+
+                    'production_current_stock' =>
+                        $currentStock,
+
+
+                    'production_on_order' =>
+                        $onOrder,
+
+
+                    'production_inventory_position' =>
+                        $inventoryPosition,
+
+
+                    'production_shortage' =>
+                        $productionShortage,
+                ];
+            }
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | JSON Response
+        |--------------------------------------------------------------------------
+        */
+
+        return response()->json([
+            'items' => $data,
+        ]);
+    }
 
 
     /*
-    |--------------------------------------------------------------------------
-    | Prepare AJAX Response
-    |--------------------------------------------------------------------------
-    */
-
-    $data = $items->map(function ($item) {
-
-        $supplierItem = $item->suppliers->first();
-
-        return [
-            'id' => $item->id,
-
-            'item_code' => $item->item_code,
-
-            'item_name' => $item->item_name,
-
-            'unit_price' =>
-                $supplierItem?->pivot?->unit_price,
-
-            'minimum_order_qty' =>
-                $supplierItem?->pivot?->minimum_order_qty,
-        ];
-
-    });
-
-
-    return response()->json([
-        'items' => $data,
-    ]);
-}
-
-
-/*
-    |--------------------------------------------------------------------------
-    | Add Item Form
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | Add Item Form
+        |--------------------------------------------------------------------------
+        */
 
     public function create(
         PurchaseOrder $purchaseOrder,
@@ -140,40 +477,40 @@ public function itemsByProductModel(
 
         $items = Item::where('status', true)
 
-    ->with([
-        'unit',
-        'purchaseSettings',
-        'productModel',
-        'productModelItems',
+            ->with([
+                'unit',
+                'purchaseSettings',
+                'productModel',
+                'productModelItems',
 
-        /*
-        |--------------------------------------------------------------------------
-        | Selected PO Supplier Information
-        |--------------------------------------------------------------------------
-        |
-        | Do NOT restrict available items by supplier.
-        |
-        | We load the selected supplier relationship only so we can use
-        | supplier-specific Unit Price / MOQ when it exists.
-        |
-        */
+                /*
+                |--------------------------------------------------------------------------
+                | Selected PO Supplier Information
+                |--------------------------------------------------------------------------
+                |
+                | Do NOT restrict available items by supplier.
+                |
+                | We load the selected supplier relationship only so we can use
+                | supplier-specific Unit Price / MOQ when it exists.
+                |
+                */
 
-        'suppliers' => function ($query) use ($purchaseOrder) {
+                'suppliers' => function ($query) use ($purchaseOrder) {
 
-            $query->where(
-                'suppliers.id',
-                $purchaseOrder->supplier_id
-            )
-                ->where(
-                    'item_suppliers.status',
-                    true
-                );
-        },
-    ])
+                    $query->where(
+                        'suppliers.id',
+                        $purchaseOrder->supplier_id
+                    )
+                        ->where(
+                            'item_suppliers.status',
+                            true
+                        );
+                },
+            ])
 
-    ->orderBy('item_code')
+            ->orderBy('item_code')
 
-    ->get();
+            ->get();
         /*
 |--------------------------------------------------------------------------
 | Product Models Available For This Supplier
@@ -208,26 +545,26 @@ public function itemsByProductModel(
 
             $planningInformation[$item->id] = [
                 'current_stock' =>
-                (float) (
-                    $planning['current_stock']
-                    ?? $item->current_stock
-                ),
+                    (float) (
+                        $planning['current_stock']
+                        ?? $item->current_stock
+                    ),
 
                 'on_order_quantity' =>
-                (float) (
-                    $planning['on_order_quantity']
-                    ?? 0
-                ),
+                    (float) (
+                        $planning['on_order_quantity']
+                        ?? 0
+                    ),
 
                 'inventory_position' =>
-                (float) (
-                    $planning['inventory_position']
-                    ?? $item->current_stock
-                ),
+                    (float) (
+                        $planning['inventory_position']
+                        ?? $item->current_stock
+                    ),
             ];
         }
 
- 
+
         /*
 |--------------------------------------------------------------------------
 | Confirmed Production Plans
@@ -378,7 +715,7 @@ public function itemsByProductModel(
                 ->withInput()
                 ->withErrors([
                     'item_id' =>
-                    'The selected item is not active or does not exist.',
+                        'The selected item is not active or does not exist.',
                 ]);
         }
 
@@ -402,7 +739,7 @@ public function itemsByProductModel(
                 ->withInput()
                 ->withErrors([
                     'item_id' =>
-                    'The selected item does not belong to the selected Product Model.',
+                        'The selected item does not belong to the selected Product Model.',
                 ]);
         }
 
@@ -418,18 +755,18 @@ public function itemsByProductModel(
 
         $supplierItem =
             $item->suppliers()
-            ->where(
-                'suppliers.id',
-                $purchaseOrder->supplier_id
-            )
-            ->where(
-                'item_suppliers.status',
-                true
-            )
-            ->first();
+                ->where(
+                    'suppliers.id',
+                    $purchaseOrder->supplier_id
+                )
+                ->where(
+                    'item_suppliers.status',
+                    true
+                )
+                ->first();
 
 
-       
+
 
 
         /*
@@ -440,19 +777,19 @@ public function itemsByProductModel(
 
         $alreadyExists =
             PurchaseOrderItem::query()
-            ->where(
-                'purchase_order_id',
-                $purchaseOrder->id
-            )
-            ->where(
-                'product_model_id',
-                $validated['product_model_id']
-            )
-            ->where(
-                'item_id',
-                $validated['item_id']
-            )
-            ->exists();
+                ->where(
+                    'purchase_order_id',
+                    $purchaseOrder->id
+                )
+                ->where(
+                    'product_model_id',
+                    $validated['product_model_id']
+                )
+                ->where(
+                    'item_id',
+                    $validated['item_id']
+                )
+                ->exists();
 
 
         if ($alreadyExists) {
@@ -461,7 +798,7 @@ public function itemsByProductModel(
                 ->withInput()
                 ->withErrors([
                     'item_id' =>
-                    'This item has already been added for the selected Product Model.',
+                        'This item has already been added for the selected Product Model.',
                 ]);
         }
 
@@ -486,7 +823,7 @@ public function itemsByProductModel(
     */
 
         $supplierUnitPrice =
-    $supplierItem?->pivot?->unit_price;
+            $supplierItem?->pivot?->unit_price;
 
 
         $unitPrice =
@@ -508,28 +845,28 @@ public function itemsByProductModel(
         PurchaseOrderItem::create([
 
             'purchase_order_id' =>
-            $purchaseOrder->id,
+                $purchaseOrder->id,
 
             'product_model_id' =>
-            $validated['product_model_id'],
+                $validated['product_model_id'],
 
             'item_id' =>
-            $validated['item_id'],
+                $validated['item_id'],
 
             'ordered_quantity' =>
-            $validated['ordered_quantity'],
+                $validated['ordered_quantity'],
 
             'unit_price' =>
-            $unitPrice,
+                $unitPrice,
 
             'received_quantity' =>
-            0,
+                0,
 
             'planned_order_date' =>
-            null,
+                null,
 
             'remarks' =>
-            $validated['remarks'] ?? null,
+                $validated['remarks'] ?? null,
 
         ]);
 
@@ -760,7 +1097,7 @@ public function itemsByProductModel(
                 ->withErrors([
 
                     'ordered_quantity' =>
-                    'Ordered quantity cannot be less than the already received quantity of '
+                        'Ordered quantity cannot be less than the already received quantity of '
                         . number_format(
                             $receivedQuantity,
                             3
@@ -779,13 +1116,13 @@ public function itemsByProductModel(
         $purchaseOrderItem->update([
 
             'ordered_quantity' =>
-            $validated['ordered_quantity'],
+                $validated['ordered_quantity'],
 
             'unit_price' =>
-            $validated['unit_price'] ?? null,
+                $validated['unit_price'] ?? null,
 
             'remarks' =>
-            $validated['remarks'] ?? null,
+                $validated['remarks'] ?? null,
 
         ]);
 

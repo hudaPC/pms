@@ -191,17 +191,15 @@
                                     <span class="text-danger">*</span>
                                 </label>
 
-                                <select name="product_model_id"
-        id="product_model_id"
-        class="form-control"
-        required>
+                                <select name="product_model_id" id="product_model_id" class="form-control" required>
 
                                     <option value="">
                                         Select Product Model
                                     </option>
 
                                     @foreach ($productModels as $productModel)
-                                        <option value="{{ $productModel->id }}" @selected(old('product_model_id') == $productModel->id)>
+                                        <option value="{{ $productModel->id }}"
+                                            @selected(old('product_model_id') == $productModel->id)>
                                             {{ $productModel->model_code }}
                                         </option>
                                     @endforeach
@@ -222,20 +220,17 @@
                                     <span class="text-danger">*</span>
                                 </label>
 
-                                <<select name="item_id"
-        id="item_id"
-        class="form-control no-clear @error('item_id') is-invalid @enderror"
-        data-url="{{ route('purchase-orders.product-model-items', [
-            'purchaseOrder' => $purchaseOrder->id,
-            'productModel' => '__MODEL_ID__'
-        ]) }}"
-        required>
+                                <select name="item_id" id="item_id"
+                                    class="form-control no-clear @error('item_id') is-invalid @enderror" data-url="{{ route('purchase-orders.product-model-items', [
+        'purchaseOrder' => $purchaseOrder->id,
+        'productModel' => '__MODEL_ID__'
+    ]) }}" required>
 
                                     <option value="">
                                         Select Item
                                     </option>
 
-                                    
+
 
                                 </select>
 
@@ -313,8 +308,8 @@
                                     <span class="text-danger">*</span>
                                 </label>
 
-                                <input type="number" step="0.001" min="0.001" name="ordered_quantity"
-                                    id="ordered_quantity" value="{{ old('ordered_quantity') }}"
+                                <input type="number" step="0.001" min="0.001" name="ordered_quantity" id="ordered_quantity"
+                                    value="{{ old('ordered_quantity') }}"
                                     class="form-control @error('ordered_quantity') is-invalid @enderror" required>
 
                                 @error('ordered_quantity')
@@ -361,10 +356,13 @@
 
                         </div>
                     </div>
-                    {{-- =====================================================
-                    PRODUCTION REQUIREMENT REFERENCE
-                    ===================================================== --}}
 
+
+
+
+
+
+                    {{-- Production Requirement Reference --}}
                     <div class="row">
 
                         <div class="col-md-12">
@@ -378,17 +376,17 @@
                                         Production Requirement Reference
                                     </strong>
 
-                                    <small class="text-muted ml-2">
-                                        Reference only — enter the actual Manual PO Ordered Quantity above.
+                                    <small class="ml-2">
+                                        Reference only — enter the actual Purchase Order Qty below.
                                     </small>
 
                                 </div>
 
-
                                 <div class="row">
 
-                                    <div class="col-md-2">
-                                        <small class="text-muted d-block">
+                                    {{-- Required --}}
+                                    <div class="col-md">
+                                        <small class="d-block">
                                             Required
                                         </small>
 
@@ -397,9 +395,9 @@
                                         </strong>
                                     </div>
 
-
-                                    <div class="col-md-2">
-                                        <small class="text-muted d-block">
+                                    {{-- Current Stock --}}
+                                    <div class="col-md">
+                                        <small class="d-block">
                                             Current Stock
                                         </small>
 
@@ -408,9 +406,9 @@
                                         </strong>
                                     </div>
 
-
-                                    <div class="col-md-2">
-                                        <small class="text-muted d-block">
+                                    {{-- On Order --}}
+                                    <div class="col-md">
+                                        <small class="d-block">
                                             On Order
                                         </small>
 
@@ -419,9 +417,9 @@
                                         </strong>
                                     </div>
 
-
-                                    <div class="col-md-3">
-                                        <small class="text-muted d-block">
+                                    {{-- Inventory Position --}}
+                                    <div class="col-md">
+                                        <small class="d-block">
                                             Inventory Position
                                         </small>
 
@@ -430,9 +428,9 @@
                                         </strong>
                                     </div>
 
-
-                                    <div class="col-md-3">
-                                        <small class="text-muted d-block">
+                                    {{-- Production Shortage --}}
+                                    <div class="col-md">
+                                        <small class="d-block">
                                             Production Shortage
                                         </small>
 
@@ -457,7 +455,8 @@
 
                             <label>Remarks</label>
 
-                            <textarea name="remarks" rows="2" class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
+                            <textarea name="remarks" rows="2"
+                                class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
 
                             @error('remarks')
                                 <div class="invalid-feedback">
@@ -523,748 +522,748 @@
 
 
     <script>
-document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
 
-    const productModelSelect =
-        document.getElementById('product_model_id');
+            const productModelSelect =
+                document.getElementById('product_model_id');
 
-    const itemSelect =
-        document.getElementById('item_id');
+            const itemSelect =
+                document.getElementById('item_id');
 
-    const priceInput =
-        document.getElementById('unit_price');
+            const priceInput =
+                document.getElementById('unit_price');
 
-    const quantityInput =
-        document.getElementById('ordered_quantity');
+            const quantityInput =
+                document.getElementById('ordered_quantity');
 
-    const moqHelp =
-        document.getElementById('moqHelp');
+            const moqHelp =
+                document.getElementById('moqHelp');
 
-    const duplicateWarning =
-        document.getElementById('duplicateWarning');
+            const duplicateWarning =
+                document.getElementById('duplicateWarning');
 
-    const submitBtn =
-        document.querySelector('button[type="submit"]');
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Purchase Planning Recommendation
-    |--------------------------------------------------------------------------
-    */
-
-    const planningBox =
-        document.getElementById('planningRecommendation');
-
-    const planningCurrentStock =
-        document.getElementById('planningCurrentStock');
-
-    const planningReorderPoint =
-        document.getElementById('planningReorderPoint');
-
-    const planningRecommendedQty =
-        document.getElementById('planningRecommendedQty');
-
-    const planningOrderType =
-        document.getElementById('planningOrderType');
+            const submitBtn =
+                document.querySelector('button[type="submit"]');
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Production Requirement Reference
-    |--------------------------------------------------------------------------
-    */
+            /*
+            |--------------------------------------------------------------------------
+            | Purchase Planning Recommendation
+            |--------------------------------------------------------------------------
+            */
 
-    const productionBox =
-        document.getElementById('productionRequirementReference');
+            const planningBox =
+                document.getElementById('planningRecommendation');
 
-    const productionRequiredQty =
-        document.getElementById('productionRequiredQty');
+            const planningCurrentStock =
+                document.getElementById('planningCurrentStock');
 
-    const productionCurrentStock =
-        document.getElementById('productionCurrentStock');
+            const planningReorderPoint =
+                document.getElementById('planningReorderPoint');
 
-    const productionOnOrder =
-        document.getElementById('productionOnOrder');
+            const planningRecommendedQty =
+                document.getElementById('planningRecommendedQty');
 
-    const productionInventoryPosition =
-        document.getElementById('productionInventoryPosition');
-
-    const productionShortage =
-        document.getElementById('productionShortage');
+            const planningOrderType =
+                document.getElementById('planningOrderType');
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Quantity Formatter
-    |--------------------------------------------------------------------------
-    */
+            /*
+            |--------------------------------------------------------------------------
+            | Production Requirement Reference
+            |--------------------------------------------------------------------------
+            */
 
-    function formatQty(value) {
+            const productionBox =
+                document.getElementById('productionRequirementReference');
 
-        return Number(value).toLocaleString(
-            undefined,
-            {
-                minimumFractionDigits: 3,
-                maximumFractionDigits: 3
+            const productionRequiredQty =
+                document.getElementById('productionRequiredQty');
+
+            const productionCurrentStock =
+                document.getElementById('productionCurrentStock');
+
+            const productionOnOrder =
+                document.getElementById('productionOnOrder');
+
+            const productionInventoryPosition =
+                document.getElementById('productionInventoryPosition');
+
+            const productionShortage =
+                document.getElementById('productionShortage');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Quantity Formatter
+            |--------------------------------------------------------------------------
+            */
+
+            function formatQty(value) {
+
+                return Number(value).toLocaleString(
+                    undefined,
+                    {
+                        minimumFractionDigits: 3,
+                        maximumFractionDigits: 3
+                    }
+                );
             }
-        );
-    }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Reset Production Requirement Reference
-    |--------------------------------------------------------------------------
-    */
+            /*
+            |--------------------------------------------------------------------------
+            | Reset Production Requirement Reference
+            |--------------------------------------------------------------------------
+            */
 
-    function resetProductionReference() {
+            function resetProductionReference() {
 
-        if (!productionBox) {
-            return;
-        }
+                if (!productionBox) {
+                    return;
+                }
 
-        productionBox.style.display = 'none';
+                productionBox.style.display = 'none';
 
-        productionRequiredQty.textContent =
-            formatQty(0);
+                productionRequiredQty.textContent =
+                    formatQty(0);
 
-        productionCurrentStock.textContent =
-            formatQty(0);
+                productionCurrentStock.textContent =
+                    formatQty(0);
 
-        productionOnOrder.textContent =
-            formatQty(0);
+                productionOnOrder.textContent =
+                    formatQty(0);
 
-        productionInventoryPosition.textContent =
-            formatQty(0);
+                productionInventoryPosition.textContent =
+                    formatQty(0);
 
-        productionShortage.textContent =
-            formatQty(0);
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Reset Item Information
-    |--------------------------------------------------------------------------
-    */
-
-    function resetItemInformation() {
-
-        priceInput.value = '';
-
-        moqHelp.textContent = '';
-
-        quantityInput.min = '0.001';
-
-        quantityInput.value = '';
-
-        duplicateWarning.style.display =
-            'none';
-
-        submitBtn.disabled =
-            false;
-
-        planningBox.style.display =
-            'none';
-
-        resetProductionReference();
-    }
+                productionShortage.textContent =
+                    formatQty(0);
+            }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Load Items By Product Model - AJAX
-    |--------------------------------------------------------------------------
-    |
-    | Items are NOT filtered by supplier.
-    |
-    | Laravel gets the items from:
-    |
-    |     product_model_items
-    |
-    | Supplier relationship is used only for supplier-specific
-    | price / MOQ when available.
-    |
-    */
+            /*
+            |--------------------------------------------------------------------------
+            | Reset Item Information
+            |--------------------------------------------------------------------------
+            */
 
-    function loadItemsByProductModel() {
+            function resetItemInformation() {
 
-        const productModelId =
-            productModelSelect.value;
+                priceInput.value = '';
 
-        /*
-        |--------------------------------------------------------------------------
-        | Clear Current Items
-        |--------------------------------------------------------------------------
-        */
+                moqHelp.textContent = '';
 
-        itemSelect.innerHTML =
-            '<option value="">Select Item</option>';
+                quantityInput.min = '0.001';
 
-        $(itemSelect)
-            .val('')
-            .trigger('change');
+                quantityInput.value = '';
 
-        resetItemInformation();
+                duplicateWarning.style.display =
+                    'none';
+
+                submitBtn.disabled =
+                    false;
+
+                planningBox.style.display =
+                    'none';
+
+                resetProductionReference();
+            }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | No Product Model Selected
-        |--------------------------------------------------------------------------
-        */
+            /*
+            |--------------------------------------------------------------------------
+            | Load Items By Product Model - AJAX
+            |--------------------------------------------------------------------------
+            |
+            | Items are NOT filtered by supplier.
+            |
+            | Laravel gets the items from:
+            |
+            |     product_model_items
+            |
+            | Supplier relationship is used only for supplier-specific
+            | price / MOQ when available.
+            |
+            */
 
-        if (!productModelId) {
-            return;
-        }
+            function loadItemsByProductModel() {
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Build AJAX URL
-        |--------------------------------------------------------------------------
-        */
-
-        const urlTemplate =
-            itemSelect.dataset.url;
-
-        const url =
-            urlTemplate.replace(
-                '__MODEL_ID__',
-                productModelId
-            );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Loading State
-        |--------------------------------------------------------------------------
-        */
-
-        itemSelect.disabled = true;
-
-        itemSelect.innerHTML =
-            '<option value="">Loading items...</option>';
-
-        $(itemSelect)
-            .trigger('change');
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | AJAX Request
-        |--------------------------------------------------------------------------
-        */
-
-        $.ajax({
-
-            url: url,
-
-            type: 'GET',
-
-            dataType: 'json',
-
-            success: function(response) {
+                const productModelId =
+                    productModelSelect.value;
 
                 /*
                 |--------------------------------------------------------------------------
-                | Reset Dropdown
+                | Clear Current Items
                 |--------------------------------------------------------------------------
                 */
 
                 itemSelect.innerHTML =
                     '<option value="">Select Item</option>';
 
+                $(itemSelect)
+                    .val('')
+                    .trigger('change');
+
+                resetItemInformation();
+
 
                 /*
                 |--------------------------------------------------------------------------
-                | Add Returned Items
+                | No Product Model Selected
                 |--------------------------------------------------------------------------
                 */
 
-                if (
-                    response.items &&
-                    response.items.length > 0
-                ) {
-
-                    response.items.forEach(function(item) {
-
-                        const option =
-                            document.createElement('option');
-
-                        option.value =
-                            item.id;
-
-                        option.textContent =
-    '[' + productModelSelect.options[
-        productModelSelect.selectedIndex
-    ].text.trim() + '] ' +
-    item.item_code +
-    ' - ' +
-    item.item_name;
-
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Supplier Information
-                        |--------------------------------------------------------------------------
-                        */
-
-                        option.dataset.price =
-                            item.unit_price ?? '';
-
-                        option.dataset.moq =
-                            item.minimum_order_qty ?? '';
-
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Duplicate Information
-                        |--------------------------------------------------------------------------
-                        |
-                        | The controller can return this later.
-                        | Default is not existing.
-                        |
-                        */
-
-                        option.dataset.existing =
-                            item.existing ?? '0';
-
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Purchase Planning Information
-                        |--------------------------------------------------------------------------
-                        |
-                        | These values are optional in the first AJAX response.
-                        | Defaults prevent the existing UI from breaking.
-                        |
-                        */
-
-                        option.dataset.currentStock =
-                            item.current_stock ?? '0';
-
-                        option.dataset.reorderPoint =
-                            item.reorder_point ?? '0';
-
-                        option.dataset.normalOrderQty =
-                            item.normal_order_qty ?? '0';
-
-                        option.dataset.recommendedQty =
-                            item.recommended_qty ?? '0';
-
-                        option.dataset.orderType =
-                            item.order_type ?? 'Normal';
-
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Production Requirement Reference
-                        |--------------------------------------------------------------------------
-                        */
-
-                        option.dataset.hasProductionRequirement =
-                            item.has_production_requirement ?? '0';
-
-                        option.dataset.productionRequired =
-                            item.production_required ?? '0';
-
-                        option.dataset.productionCurrentStock =
-                            item.production_current_stock ?? '0';
-
-                        option.dataset.productionOnOrder =
-                            item.production_on_order ?? '0';
-
-                        option.dataset.productionInventoryPosition =
-                            item.production_inventory_position ?? '0';
-
-                        option.dataset.productionShortage =
-                            item.production_shortage ?? '0';
-
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Add Option
-                        |--------------------------------------------------------------------------
-                        */
-
-                        itemSelect.appendChild(option);
-                    });
-
-                } else {
-
-                    const option =
-                        document.createElement('option');
-
-                    option.value = '';
-
-                    option.textContent =
-                        'No items found for this Product Model';
-
-                    itemSelect.appendChild(option);
+                if (!productModelId) {
+                    return;
                 }
 
 
                 /*
                 |--------------------------------------------------------------------------
-                | Enable Dropdown
+                | Build AJAX URL
                 |--------------------------------------------------------------------------
                 */
 
-                itemSelect.disabled =
-                    false;
+                const urlTemplate =
+                    itemSelect.dataset.url;
 
-                $(itemSelect)
-                    .val('')
-                    .trigger('change');
-            },
+                const url =
+                    urlTemplate.replace(
+                        '__MODEL_ID__',
+                        productModelId
+                    );
 
 
-            error: function(xhr) {
+                /*
+                |--------------------------------------------------------------------------
+                | Loading State
+                |--------------------------------------------------------------------------
+                */
 
-                console.error(
-                    xhr.responseText
-                );
+                itemSelect.disabled = true;
 
                 itemSelect.innerHTML =
-                    '<option value="">Unable to load items</option>';
-
-                itemSelect.disabled =
-                    false;
+                    '<option value="">Loading items...</option>';
 
                 $(itemSelect)
-                    .val('')
                     .trigger('change');
 
-                toastr.error(
-                    'Unable to load items for the selected Product Model.'
-                );
+
+                /*
+                |--------------------------------------------------------------------------
+                | AJAX Request
+                |--------------------------------------------------------------------------
+                */
+
+                $.ajax({
+
+                    url: url,
+
+                    type: 'GET',
+
+                    dataType: 'json',
+
+                    success: function (response) {
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Reset Dropdown
+                        |--------------------------------------------------------------------------
+                        */
+
+                        itemSelect.innerHTML =
+                            '<option value="">Select Item</option>';
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Add Returned Items
+                        |--------------------------------------------------------------------------
+                        */
+
+                        if (
+                            response.items &&
+                            response.items.length > 0
+                        ) {
+
+                            response.items.forEach(function (item) {
+
+                                const option =
+                                    document.createElement('option');
+
+                                option.value =
+                                    item.id;
+
+                                option.textContent =
+                                    '[' + productModelSelect.options[
+                                        productModelSelect.selectedIndex
+                                    ].text.trim() + '] ' +
+                                    item.item_code +
+                                    ' - ' +
+                                    item.item_name;
+
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | Supplier Information
+                                |--------------------------------------------------------------------------
+                                */
+
+                                option.dataset.price =
+                                    item.unit_price ?? '';
+
+                                option.dataset.moq =
+                                    item.minimum_order_qty ?? '';
+
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | Duplicate Information
+                                |--------------------------------------------------------------------------
+                                |
+                                | The controller can return this later.
+                                | Default is not existing.
+                                |
+                                */
+
+                                option.dataset.existing =
+                                    item.existing ?? '0';
+
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | Purchase Planning Information
+                                |--------------------------------------------------------------------------
+                                |
+                                | These values are optional in the first AJAX response.
+                                | Defaults prevent the existing UI from breaking.
+                                |
+                                */
+
+                                option.dataset.currentStock =
+                                    item.current_stock ?? '0';
+
+                                option.dataset.reorderPoint =
+                                    item.reorder_point ?? '0';
+
+                                option.dataset.normalOrderQty =
+                                    item.normal_order_qty ?? '0';
+
+                                option.dataset.recommendedQty =
+                                    item.recommended_qty ?? '0';
+
+                                option.dataset.orderType =
+                                    item.order_type ?? 'Normal';
+
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | Production Requirement Reference
+                                |--------------------------------------------------------------------------
+                                */
+
+                                option.dataset.hasProductionRequirement =
+                                    item.has_production_requirement ?? '0';
+
+                                option.dataset.productionRequired =
+                                    item.production_required ?? '0';
+
+                                option.dataset.productionCurrentStock =
+                                    item.production_current_stock ?? '0';
+
+                                option.dataset.productionOnOrder =
+                                    item.production_on_order ?? '0';
+
+                                option.dataset.productionInventoryPosition =
+                                    item.production_inventory_position ?? '0';
+
+                                option.dataset.productionShortage =
+                                    item.production_shortage ?? '0';
+
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | Add Option
+                                |--------------------------------------------------------------------------
+                                */
+
+                                itemSelect.appendChild(option);
+                            });
+
+                        } else {
+
+                            const option =
+                                document.createElement('option');
+
+                            option.value = '';
+
+                            option.textContent =
+                                'No items found for this Product Model';
+
+                            itemSelect.appendChild(option);
+                        }
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Enable Dropdown
+                        |--------------------------------------------------------------------------
+                        */
+
+                        itemSelect.disabled =
+                            false;
+
+                        $(itemSelect)
+                            .val('')
+                            .trigger('change');
+                    },
+
+
+                    error: function (xhr) {
+
+                        console.error(
+                            xhr.responseText
+                        );
+
+                        itemSelect.innerHTML =
+                            '<option value="">Unable to load items</option>';
+
+                        itemSelect.disabled =
+                            false;
+
+                        $(itemSelect)
+                            .val('')
+                            .trigger('change');
+
+                        toastr.error(
+                            'Unable to load items for the selected Product Model.'
+                        );
+                    }
+
+                });
             }
 
-        });
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Product Model Change
-    |--------------------------------------------------------------------------
-    */
-
-   $(productModelSelect).on(
-    'change select2:select select2:clear',
-    function () {
-        loadItemsByProductModel();
-    }
-);
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Load Supplier / Planning / Production Information
-    |--------------------------------------------------------------------------
-    */
-
-    function loadSupplierInformation() {
-
-        const option =
-            itemSelect.options[
-                itemSelect.selectedIndex
-            ];
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | No Item Selected
-        |--------------------------------------------------------------------------
-        */
-
-        if (!option || !option.value) {
-
-            resetItemInformation();
-
-            return;
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Supplier Price / MOQ
-        |--------------------------------------------------------------------------
-        */
-
-        const price =
-            option.dataset.price;
-
-        const moq =
-            option.dataset.moq;
-
-        const isExisting =
-            option.dataset.existing === '1';
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Unit Price
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            price !== undefined &&
-            price !== null &&
-            price !== ''
-        ) {
-
-            priceInput.value =
-                Number(price).toFixed(4);
-
-        } else {
 
             /*
             |--------------------------------------------------------------------------
-            | No Supplier Price
+            | Product Model Change
             |--------------------------------------------------------------------------
-            |
-            | Leave empty so user can manually enter Unit Price.
-            |
             */
 
-            priceInput.value = '';
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Supplier MOQ - Reference Only
-        |--------------------------------------------------------------------------
-        */
-
-        quantityInput.min =
-            '0.001';
-
-
-        if (
-            moq !== undefined &&
-            moq !== null &&
-            moq !== '' &&
-            Number(moq) > 0
-        ) {
-
-            const minimum =
-                Number(moq);
-
-            moqHelp.textContent =
-                'Supplier MOQ: ' +
-                minimum.toLocaleString(
-                    undefined,
-                    {
-                        minimumFractionDigits: 3,
-                        maximumFractionDigits: 3
-                    }
-                ) +
-                ' (reference only)';
-
-        } else {
-
-            moqHelp.textContent =
-                'No supplier MOQ configured.';
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Duplicate Item Warning
-        |--------------------------------------------------------------------------
-        */
-
-        if (isExisting) {
-
-            duplicateWarning.style.display =
-                'block';
-
-            submitBtn.disabled =
-                true;
-
-        } else {
-
-            duplicateWarning.style.display =
-                'none';
-
-            submitBtn.disabled =
-                false;
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Purchase Planning Information
-        |--------------------------------------------------------------------------
-        */
-
-        const currentStock =
-            Number(
-                option.dataset.currentStock || 0
-            );
-
-        const reorderPoint =
-            Number(
-                option.dataset.reorderPoint || 0
-            );
-
-        const recommendedQty =
-            Number(
-                option.dataset.recommendedQty || 0
-            );
-
-        const orderType =
-            option.dataset.orderType || 'Normal';
-
-
-        planningCurrentStock.textContent =
-            formatQty(currentStock);
-
-        planningReorderPoint.textContent =
-            formatQty(reorderPoint);
-
-        planningRecommendedQty.textContent =
-            formatQty(recommendedQty);
-
-        planningOrderType.textContent =
-            orderType;
-
-        planningOrderType.className =
-            'badge ' +
-            (
-                orderType === 'Recovery'
-                    ? 'badge-danger'
-                    : 'badge-secondary'
+            $(productModelSelect).on(
+                'change select2:select select2:clear',
+                function () {
+                    loadItemsByProductModel();
+                }
             );
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Show Planning Box Only When We Have Planning Data
-        |--------------------------------------------------------------------------
-        */
+            /*
+            |--------------------------------------------------------------------------
+            | Load Supplier / Planning / Production Information
+            |--------------------------------------------------------------------------
+            */
 
-        if (
-            currentStock !== 0 ||
-            reorderPoint !== 0 ||
-            recommendedQty !== 0
-        ) {
+            function loadSupplierInformation() {
 
-            planningBox.style.display =
-                'block';
-
-        } else {
-
-            planningBox.style.display =
-                'none';
-        }
+                const option =
+                    itemSelect.options[
+                    itemSelect.selectedIndex
+                    ];
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Auto Fill Recommended Purchase Quantity
-        |--------------------------------------------------------------------------
-        */
+                /*
+                |--------------------------------------------------------------------------
+                | No Item Selected
+                |--------------------------------------------------------------------------
+                */
 
-        if (recommendedQty > 0) {
+                if (!option || !option.value) {
 
-            quantityInput.value =
-                recommendedQty.toFixed(3);
+                    resetItemInformation();
 
-        } else {
-
-            quantityInput.value = '';
-        }
+                    return;
+                }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Production Requirement Reference
-        |--------------------------------------------------------------------------
-        */
+                /*
+                |--------------------------------------------------------------------------
+                | Supplier Price / MOQ
+                |--------------------------------------------------------------------------
+                */
 
-        const hasProductionRequirement =
-            option.dataset.hasProductionRequirement === '1';
+                const price =
+                    option.dataset.price;
 
+                const moq =
+                    option.dataset.moq;
 
-        if (hasProductionRequirement) {
-
-            const required =
-                Number(
-                    option.dataset.productionRequired || 0
-                );
-
-            const productionStock =
-                Number(
-                    option.dataset.productionCurrentStock || 0
-                );
-
-            const onOrder =
-                Number(
-                    option.dataset.productionOnOrder || 0
-                );
-
-            const inventoryPosition =
-                Number(
-                    option.dataset.productionInventoryPosition || 0
-                );
-
-            const shortage =
-                Number(
-                    option.dataset.productionShortage || 0
-                );
+                const isExisting =
+                    option.dataset.existing === '1';
 
 
-            productionRequiredQty.textContent =
-                formatQty(required);
+                /*
+                |--------------------------------------------------------------------------
+                | Unit Price
+                |--------------------------------------------------------------------------
+                */
 
-            productionCurrentStock.textContent =
-                formatQty(productionStock);
+                if (
+                    price !== undefined &&
+                    price !== null &&
+                    price !== ''
+                ) {
 
-            productionOnOrder.textContent =
-                formatQty(onOrder);
+                    priceInput.value =
+                        Number(price).toFixed(4);
 
-            productionInventoryPosition.textContent =
-                formatQty(inventoryPosition);
+                } else {
 
-            productionShortage.textContent =
-                formatQty(shortage);
+                    /*
+                    |--------------------------------------------------------------------------
+                    | No Supplier Price
+                    |--------------------------------------------------------------------------
+                    |
+                    | Leave empty so user can manually enter Unit Price.
+                    |
+                    */
 
-            productionBox.style.display =
-                'block';
-
-        } else {
-
-            resetProductionReference();
-        }
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Item Change
-    |--------------------------------------------------------------------------
-    */
-
-    $(itemSelect).on(
-        'change',
-        loadSupplierInformation
-    );
+                    priceInput.value = '';
+                }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Initial Page State
-    |--------------------------------------------------------------------------
-    */
+                /*
+                |--------------------------------------------------------------------------
+                | Supplier MOQ - Reference Only
+                |--------------------------------------------------------------------------
+                */
 
-    resetItemInformation();
+                quantityInput.min =
+                    '0.001';
 
-});
-</script>
+
+                if (
+                    moq !== undefined &&
+                    moq !== null &&
+                    moq !== '' &&
+                    Number(moq) > 0
+                ) {
+
+                    const minimum =
+                        Number(moq);
+
+                    moqHelp.textContent =
+                        'Supplier MOQ: ' +
+                        minimum.toLocaleString(
+                            undefined,
+                            {
+                                minimumFractionDigits: 3,
+                                maximumFractionDigits: 3
+                            }
+                        ) +
+                        ' (reference only)';
+
+                } else {
+
+                    moqHelp.textContent =
+                        'No supplier MOQ configured.';
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Duplicate Item Warning
+                |--------------------------------------------------------------------------
+                */
+
+                if (isExisting) {
+
+                    duplicateWarning.style.display =
+                        'block';
+
+                    submitBtn.disabled =
+                        true;
+
+                } else {
+
+                    duplicateWarning.style.display =
+                        'none';
+
+                    submitBtn.disabled =
+                        false;
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Purchase Planning Information
+                |--------------------------------------------------------------------------
+                */
+
+                const currentStock =
+                    Number(
+                        option.dataset.currentStock || 0
+                    );
+
+                const reorderPoint =
+                    Number(
+                        option.dataset.reorderPoint || 0
+                    );
+
+                const recommendedQty =
+                    Number(
+                        option.dataset.recommendedQty || 0
+                    );
+
+                const orderType =
+                    option.dataset.orderType || 'Normal';
+
+
+                planningCurrentStock.textContent =
+                    formatQty(currentStock);
+
+                planningReorderPoint.textContent =
+                    formatQty(reorderPoint);
+
+                planningRecommendedQty.textContent =
+                    formatQty(recommendedQty);
+
+                planningOrderType.textContent =
+                    orderType;
+
+                planningOrderType.className =
+                    'badge ' +
+                    (
+                        orderType === 'Recovery'
+                            ? 'badge-danger'
+                            : 'badge-secondary'
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Show Planning Box Only When We Have Planning Data
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    currentStock !== 0 ||
+                    reorderPoint !== 0 ||
+                    recommendedQty !== 0
+                ) {
+
+                    planningBox.style.display =
+                        'block';
+
+                } else {
+
+                    planningBox.style.display =
+                        'none';
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Auto Fill Recommended Purchase Quantity
+                |--------------------------------------------------------------------------
+                */
+
+                if (recommendedQty > 0) {
+
+                    quantityInput.value =
+                        recommendedQty.toFixed(3);
+
+                } else {
+
+                    quantityInput.value = '';
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Production Requirement Reference
+                |--------------------------------------------------------------------------
+                */
+
+                const hasProductionRequirement =
+                    option.dataset.hasProductionRequirement === '1';
+
+
+                if (hasProductionRequirement) {
+
+                    const required =
+                        Number(
+                            option.dataset.productionRequired || 0
+                        );
+
+                    const productionStock =
+                        Number(
+                            option.dataset.productionCurrentStock || 0
+                        );
+
+                    const onOrder =
+                        Number(
+                            option.dataset.productionOnOrder || 0
+                        );
+
+                    const inventoryPosition =
+                        Number(
+                            option.dataset.productionInventoryPosition || 0
+                        );
+
+                    const shortage =
+                        Number(
+                            option.dataset.productionShortage || 0
+                        );
+
+
+                    productionRequiredQty.textContent =
+                        formatQty(required);
+
+                    productionCurrentStock.textContent =
+                        formatQty(productionStock);
+
+                    productionOnOrder.textContent =
+                        formatQty(onOrder);
+
+                    productionInventoryPosition.textContent =
+                        formatQty(inventoryPosition);
+
+                    productionShortage.textContent =
+                        formatQty(shortage);
+
+                    productionBox.style.display =
+                        'block';
+
+                } else {
+
+                    resetProductionReference();
+                }
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Item Change
+            |--------------------------------------------------------------------------
+            */
+
+            $(itemSelect).on(
+                'change',
+                loadSupplierInformation
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Initial Page State
+            |--------------------------------------------------------------------------
+            */
+
+            resetItemInformation();
+
+        });
+    </script>
 
 @endsection

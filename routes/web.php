@@ -465,9 +465,7 @@ Route::middleware(['auth'])->group(function () {
 Route::get(
     '/purchase-orders/{purchaseOrder}/product-models/{productModel}/items',
     [PurchaseOrderItemController::class, 'itemsByProductModel']
-)->name(
-    'purchase-orders.product-model-items'
-);
+)->name('purchase-orders.product-model-items');
 
     Route::post(
         '/supplier-invoices/{supplierInvoice}/items',

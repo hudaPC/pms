@@ -178,7 +178,7 @@
                                 </label>
 
                                 <select name="product_model_id" id="product_model_id" class="form-control no-clear
-                 @error('product_model_id') is-invalid @enderror" required>
+                     @error('product_model_id') is-invalid @enderror" required>
 
                                     <option value="">
                                         -- Select Product Model --
@@ -226,7 +226,7 @@
                                 </label>
 
                                 <select name="item_id" id="item_id" class="form-control no-clear
-                        @error('item_id') is-invalid @enderror" required disabled>
+                            @error('item_id') is-invalid @enderror" required disabled>
 
                                     <option value="">
                                         -- Select Product Model First --
@@ -371,7 +371,7 @@
 
                                 <input type="number" name="quantity" id="quantity" value="{{ old('quantity') }}"
                                     step="0.001" min="0.001" class="form-control
-                                            @error('quantity') is-invalid @enderror" required>
+                                                @error('quantity') is-invalid @enderror" required>
 
 
                                 @error('quantity')
@@ -405,7 +405,7 @@
 
                                 <input type="number" name="unit_price" id="unit_price" value="{{ old('unit_price') }}"
                                     step="0.0001" min="0" class="form-control
-                                            @error('unit_price') is-invalid @enderror" required>
+                                                @error('unit_price') is-invalid @enderror" required>
 
 
                                 @error('unit_price')
@@ -456,7 +456,7 @@
 
 
                                 <textarea name="remarks" id="remarks" rows="2" class="form-control
-                                            @error('remarks') is-invalid @enderror"
+                                                @error('remarks') is-invalid @enderror"
                                     placeholder="Optional remarks">{{ old('remarks') }}</textarea>
 
 
@@ -673,9 +673,9 @@
 
                     let url =
                         "{{ route('supplier-invoices.product-model-items', [
-                            'supplierInvoice' => $supplierInvoice->id,
-                            'productModel' => '__PRODUCT_MODEL__',
-                        ]) }}";
+        'supplierInvoice' => $supplierInvoice->id,
+        'productModel' => '__PRODUCT_MODEL__',
+    ]) }}";
 
                     url = url.replace(
                         '__PRODUCT_MODEL__',
@@ -753,6 +753,12 @@
                                                 item.id
                                             )
                                             .text(
+                                                '[' +
+                                                productModelSelect
+                                                    .find('option:selected')
+                                                    .text()
+                                                    .trim() +
+                                                '] ' +
                                                 item.item_code +
                                                 ' - ' +
                                                 item.item_name

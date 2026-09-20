@@ -206,11 +206,11 @@ class SupplierInvoiceItemController extends Controller
         );
     }
 
- public function itemsByProductModel(
-    SupplierInvoice $supplierInvoice,
-    ProductModel $productModel,
-    ItemPurchasePlanningService $itemPurchasePlanningService
-) {
+    public function itemsByProductModel(
+        SupplierInvoice $supplierInvoice,
+        ProductModel $productModel,
+        ItemPurchasePlanningService $itemPurchasePlanningService
+    ) {
         /*
     |--------------------------------------------------------------------------
     | Invoice Must Be Draft
@@ -237,18 +237,18 @@ class SupplierInvoiceItemController extends Controller
 |--------------------------------------------------------------------------
 */
 
-$productionPlan =
-    $supplierInvoice->productionPlan;
+        $productionPlan =
+            $supplierInvoice->productionPlan;
 
-$productionQuantity =
-    $productionPlan
-        ? (float) $productionPlan->required_quantity
-        : 0;
+        $productionQuantity =
+            $productionPlan
+            ? (float) $productionPlan->required_quantity
+            : 0;
 
-$productionPlanProductModelId =
-    $productionPlan
-        ? (int) $productionPlan->product_model_id
-        : null;
+        $productionPlanProductModelId =
+            $productionPlan
+            ? (int) $productionPlan->product_model_id
+            : null;
 
         /*
     |--------------------------------------------------------------------------
@@ -281,16 +281,16 @@ $productionPlanProductModelId =
                 ->modelItems()
                 ->with([
                     'item.unit',
-                    'item.suppliers' => function ($query) use ($supplierInvoice) {
+
+                    'item.suppliers' => function ($query) {
 
                         $query
-                            ->where(
-                                'suppliers.id',
-                                $supplierInvoice->supplier_id
-                            )
                             ->wherePivot(
                                 'status',
                                 true
+                            )
+                            ->orderByDesc(
+                                'item_suppliers.is_preferred'
                             );
                     },
                 ])
@@ -323,113 +323,143 @@ $productionPlanProductModelId =
                     return false;
                 }
 
-                /*
-            |--------------------------------------------------------------------------
-            | Item Must Belong To Invoice Supplier
-            |--------------------------------------------------------------------------
-            */
+         
 
-                return
-                    $modelItem->item
-                        ->suppliers
-                        ->isNotEmpty();
+                return true;
             })
             ->map(function ($modelItem) use (
     $productionPlan,
     $productionQuantity,
     $productionPlanProductModelId,
     $productModel,
-    $itemPurchasePlanningService
+    $itemPurchasePlanningService,
+    $supplierInvoice
 ) {
 
                 $item =
                     $modelItem->item;
 
-                $supplier =
-                    $item->suppliers->first();
-                    /*
+                /*
+|--------------------------------------------------------------------------
+| Unit Price Supplier
+|--------------------------------------------------------------------------
+|
+| Priority:
+|
+| 1. Selected Supplier Invoice Supplier
+| 2. Preferred Supplier
+| 3. No price -> manual Unit Price
+|
+*/
+
+$selectedSupplierItem =
+    $item->suppliers->firstWhere(
+        'id',
+        $supplierInvoice->supplier_id
+    );
+
+
+$preferredSupplierItem =
+    $item->suppliers->first(
+        function ($supplier) {
+
+            return (bool) (
+                $supplier->pivot->is_preferred
+                ?? false
+            );
+        }
+    );
+
+
+$priceSupplier =
+    $selectedSupplierItem
+    ?? $preferredSupplierItem;
+
+
+
+                /*
 |--------------------------------------------------------------------------
 | Production Requirement Reference
 |--------------------------------------------------------------------------
 */
 
-$requiredQuantity = 0;
-$currentStock = 0;
-$onOrderQuantity = 0;
-$inventoryPosition = 0;
-$shortageQuantity = 0;
+                $requiredQuantity = 0;
+                $currentStock = 0;
+                $onOrderQuantity = 0;
+                $inventoryPosition = 0;
+                $shortageQuantity = 0;
 
-$hasProductionRequirement =
-    $productionPlan
-    &&
-    $productionPlanProductModelId === (int) $productModel->id;
-
-
-if ($hasProductionRequirement) {
-
-    /*
-    |--------------------------------------------------------------------------
-    | Production Required Quantity
-    |--------------------------------------------------------------------------
-    */
-
-    $bomQuantity =
-        (float) $modelItem->quantity;
-
-    $requiredQuantity =
-        $productionQuantity * $bomQuantity;
+                $hasProductionRequirement =
+                    $productionPlan
+                    &&
+                    $productionPlanProductModelId === (int) $productModel->id;
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Existing Purchase Planning Service
-    |--------------------------------------------------------------------------
-    */
+                if ($hasProductionRequirement) {
 
-    $planning =
-        $itemPurchasePlanningService->calculate(
-            $item,
-            $requiredQuantity,
-            $requiredQuantity
-        );
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Production Required Quantity
+                    |--------------------------------------------------------------------------
+                    */
 
+                    $bomQuantity =
+                        (float) $modelItem->quantity;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Stock Position
-    |--------------------------------------------------------------------------
-    */
-
-    $currentStock =
-        (float) (
-            $planning['current_stock']
-            ?? $item->current_stock
-        );
-
-    $onOrderQuantity =
-        (float) (
-            $planning['on_order_quantity']
-            ?? 0
-        );
-
-    $inventoryPosition =
-        $currentStock
-        + $onOrderQuantity;
+                    $requiredQuantity =
+                        $productionQuantity * $bomQuantity;
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Production Shortage
-    |--------------------------------------------------------------------------
-    */
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Existing Purchase Planning Service
+                    |--------------------------------------------------------------------------
+                    */
 
-    $shortageQuantity =
-        max(
-            0,
-            $requiredQuantity
-            - $inventoryPosition
-        );
-}
+                    $planning =
+                        $itemPurchasePlanningService->calculate(
+                            $item,
+                            $requiredQuantity,
+                            $requiredQuantity
+                        );
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Stock Position
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $currentStock =
+                        (float) (
+                            $planning['current_stock']
+                            ?? $item->current_stock
+                        );
+
+                    $onOrderQuantity =
+                        (float) (
+                            $planning['on_order_quantity']
+                            ?? 0
+                        );
+
+                    $inventoryPosition =
+                        $currentStock
+                        + $onOrderQuantity;
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Production Shortage
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $shortageQuantity =
+                        max(
+                            0,
+                            $requiredQuantity
+                            - $inventoryPosition
+                        );
+                }
 
 
                 return [
@@ -447,27 +477,24 @@ if ($hasProductionRequirement) {
                         $item->unit->name ?? '',
 
                     'unit_price' =>
-                        (float) (
-                            $supplier->pivot->unit_price
-                            ?? 0
-                        ),
-                        'has_production_requirement' =>
-    $hasProductionRequirement,
+    $priceSupplier?->pivot?->unit_price,
+                    'has_production_requirement' =>
+                        $hasProductionRequirement,
 
-'required_quantity' =>
-    $requiredQuantity,
+                    'required_quantity' =>
+                        $requiredQuantity,
 
-'current_stock' =>
-    $currentStock,
+                    'current_stock' =>
+                        $currentStock,
 
-'on_order_quantity' =>
-    $onOrderQuantity,
+                    'on_order_quantity' =>
+                        $onOrderQuantity,
 
-'inventory_position' =>
-    $inventoryPosition,
+                    'inventory_position' =>
+                        $inventoryPosition,
 
-'shortage_quantity' =>
-    $shortageQuantity,
+                    'shortage_quantity' =>
+                        $shortageQuantity,
 
                 ];
             })
@@ -574,47 +601,7 @@ if ($hasProductionRequirement) {
         }
 
 
-        /*
-|--------------------------------------------------------------------------
-| Verify Item Is Active For Invoice Supplier
-|--------------------------------------------------------------------------
-|
-| The selected item must have an active relationship with the Supplier
-| of this Supplier Invoice.
-|
-| This protects against manually submitting an item_id that is not
-| supplied by this supplier.
-|
-*/
-
-$itemAvailableForSupplier =
-    DB::table('item_suppliers')
-        ->where(
-            'supplier_id',
-            $supplierInvoice->supplier_id
-        )
-        ->where(
-            'item_id',
-            $validated['item_id']
-        )
-        ->where(
-            'status',
-            1
-        )
-        ->exists();
-
-
-if (!$itemAvailableForSupplier) {
-
-    return back()
-        ->withInput()
-        ->withErrors([
-
-            'item_id' =>
-                'The selected item is not active for this supplier.',
-
-        ]);
-}
+       
         /*
     |--------------------------------------------------------------------------
     | Prevent Duplicate Item On Same Invoice
@@ -815,94 +802,357 @@ if (!$itemAvailableForSupplier) {
             compact('supplierInvoice')
         );
     }
-    public function edit(
-        SupplierInvoice $supplierInvoice,
-        SupplierInvoiceItem $supplierInvoiceItem
-    ) {
-        /*
+   public function edit(
+    SupplierInvoice $supplierInvoice,
+    SupplierInvoiceItem $supplierInvoiceItem,
+    ItemPurchasePlanningService $itemPurchasePlanningService
+) {
+    /*
     |--------------------------------------------------------------------------
     | Only Draft Invoice Can Be Modified
     |--------------------------------------------------------------------------
     */
 
-        abort_if(
-            $supplierInvoice->status !== 'draft',
-            403,
-            'Only draft supplier invoices can be modified.'
-        );
+    abort_if(
+        $supplierInvoice->status !== 'draft',
+        403,
+        'Only draft supplier invoices can be modified.'
+    );
 
 
-        /*
+    /*
     |--------------------------------------------------------------------------
     | Make Sure Item Belongs To This Invoice
     |--------------------------------------------------------------------------
     */
 
-        abort_if(
-            $supplierInvoiceItem->supplier_invoice_id
+    abort_if(
+        $supplierInvoiceItem->supplier_invoice_id
             !== $supplierInvoice->id,
-            404
-        );
+        404
+    );
 
 
-        /*
+    /*
     |--------------------------------------------------------------------------
     | Load Invoice + Item Information
     |--------------------------------------------------------------------------
     */
 
-        $supplierInvoice->load(
-            'supplier'
-        );
+    $supplierInvoice->load([
+        'supplier',
+        'productionPlan',
+    ]);
 
-        $supplierInvoiceItem->load([
-            'productModel',
-            'item.unit',
-        ]);
+    $supplierInvoiceItem->load([
+        'productModel',
+        'item.unit',
+        'item.purchaseSettings',
+    ]);
 
 
-        /*
+    /*
     |--------------------------------------------------------------------------
-    | Supplier-Specific Item Price
+    | Active Suppliers For This Item
+    |--------------------------------------------------------------------------
+    |
+    | Price priority:
+    |
+    | 1. Supplier selected on this Supplier Invoice
+    | 2. Preferred supplier
+    | 3. Saved Supplier Invoice Item price
+    |
+    */
+
+    $activeSuppliers =
+        $supplierInvoiceItem
+            ->item
+            ->suppliers()
+            ->wherePivot(
+                'status',
+                true
+            )
+            ->get();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Current Invoice Supplier
     |--------------------------------------------------------------------------
     */
 
-        $supplierItem =
-            $supplierInvoiceItem
-                ->item
-                ->suppliers()
+    $selectedSupplierItem =
+        $activeSuppliers->firstWhere(
+            'id',
+            $supplierInvoice->supplier_id
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Preferred Supplier
+    |--------------------------------------------------------------------------
+    */
+
+    $preferredSupplierItem =
+        $activeSuppliers->first(
+            function ($supplier) {
+
+                return (bool) (
+                    $supplier->pivot->is_preferred
+                    ?? false
+                );
+            }
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Select Price Supplier
+    |--------------------------------------------------------------------------
+    */
+
+    $priceSupplier =
+        $selectedSupplierItem
+        ?? $preferredSupplierItem;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reference Unit Price
+    |--------------------------------------------------------------------------
+    */
+
+    $supplierUnitPrice =
+        $priceSupplier?->pivot?->unit_price;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | No Supplier Price - Use Saved Invoice Price As Reference
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $supplierUnitPrice === null
+        || $supplierUnitPrice === ''
+    ) {
+
+        $supplierUnitPrice =
+            (float) $supplierInvoiceItem->unit_price;
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reference Supplier Name
+    |--------------------------------------------------------------------------
+    */
+
+    $priceSupplierName =
+        $priceSupplier?->name;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Is Preferred Supplier Fallback?
+    |--------------------------------------------------------------------------
+    */
+
+    $isPreferredPriceFallback =
+        !$selectedSupplierItem
+        && $preferredSupplierItem;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Production Requirement Reference
+    |--------------------------------------------------------------------------
+    */
+
+    $productionRequirementReference = null;
+
+    $productionPlan =
+        $supplierInvoice->productionPlan;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Production Plan Must Match Item Product Model
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $productionPlan
+        &&
+        (int) $productionPlan->product_model_id
+            === (int) $supplierInvoiceItem->product_model_id
+    ) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Find BOM Item
+        |--------------------------------------------------------------------------
+        */
+
+        $modelItem =
+            ProductModelItem::where(
+                'product_model_id',
+                $supplierInvoiceItem->product_model_id
+            )
                 ->where(
-                    'suppliers.id',
-                    $supplierInvoice->supplier_id
-                )
-                ->wherePivot(
-                    'status',
-                    true
+                    'item_id',
+                    $supplierInvoiceItem->item_id
                 )
                 ->first();
 
 
-        $supplierUnitPrice =
-            $supplierItem
-            ? (float) $supplierItem->pivot->unit_price
-            : (float) $supplierInvoiceItem->unit_price;
+        if ($modelItem) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Production Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $productionQuantity =
+                (float) $productionPlan->required_quantity;
 
 
-        /*
+            /*
+            |--------------------------------------------------------------------------
+            | BOM Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $bomQuantity =
+                (float) $modelItem->quantity;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Required Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $requiredQuantity =
+                $productionQuantity
+                * $bomQuantity;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Purchase Planning Information
+            |--------------------------------------------------------------------------
+            */
+
+            $planning =
+                $itemPurchasePlanningService->calculate(
+                    $supplierInvoiceItem->item,
+                    $requiredQuantity,
+                    $requiredQuantity
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Current Stock
+            |--------------------------------------------------------------------------
+            */
+
+            $currentStock =
+                (float) (
+                    $planning['current_stock']
+                    ?? $supplierInvoiceItem
+                        ->item
+                        ->current_stock
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | On Order Quantity
+            |--------------------------------------------------------------------------
+            */
+
+            $onOrderQuantity =
+                (float) (
+                    $planning['on_order_quantity']
+                    ?? 0
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Inventory Position
+            |--------------------------------------------------------------------------
+            */
+
+            $inventoryPosition =
+                $currentStock
+                + $onOrderQuantity;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Production Shortage
+            |--------------------------------------------------------------------------
+            */
+
+            $shortageQuantity =
+                max(
+                    0,
+                    $requiredQuantity
+                    - $inventoryPosition
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Production Requirement Reference Data
+            |--------------------------------------------------------------------------
+            */
+
+            $productionRequirementReference = [
+
+                'required_quantity' =>
+                    $requiredQuantity,
+
+                'current_stock' =>
+                    $currentStock,
+
+                'on_order_quantity' =>
+                    $onOrderQuantity,
+
+                'inventory_position' =>
+                    $inventoryPosition,
+
+                'shortage_quantity' =>
+                    $shortageQuantity,
+
+            ];
+        }
+    }
+
+
+    /*
     |--------------------------------------------------------------------------
     | Edit View
     |--------------------------------------------------------------------------
     */
 
-        return view(
-            'supplier-invoices.items.edit',
-            compact(
-                'supplierInvoice',
-                'supplierInvoiceItem',
-                'supplierUnitPrice'
-            )
-        );
-    }
+    return view(
+        'supplier-invoices.items.edit',
+        compact(
+            'supplierInvoice',
+            'supplierInvoiceItem',
+            'supplierUnitPrice',
+            'priceSupplierName',
+            'isPreferredPriceFallback',
+            'productionRequirementReference'
+        )
+    );
+}
 
     public function update(
         Request $request,

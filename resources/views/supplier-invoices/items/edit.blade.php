@@ -7,8 +7,8 @@
     <div class="container-fluid py-4">
 
         {{-- =====================================================
-         PAGE HEADER
-    ====================================================== --}}
+        PAGE HEADER
+        ====================================================== --}}
         <div class="d-flex justify-content-between align-items-center mb-4">
 
             <div>
@@ -24,8 +24,7 @@
 
             </div>
 
-            <a href="{{ route('supplier-invoices.show', $supplierInvoice) }}"
-                class="btn btn-secondary">
+            <a href="{{ route('supplier-invoices.show', $supplierInvoice) }}" class="btn btn-secondary">
 
                 <i class="fas fa-arrow-left mr-1"></i>
 
@@ -37,8 +36,8 @@
 
 
         {{-- =====================================================
-         VALIDATION ERRORS
-    ====================================================== --}}
+        VALIDATION ERRORS
+        ====================================================== --}}
         @if ($errors->any())
 
             <div class="alert alert-danger">
@@ -59,8 +58,8 @@
 
 
         {{-- =====================================================
-         INVOICE INFORMATION
-    ====================================================== --}}
+        INVOICE INFORMATION
+        ====================================================== --}}
         <div class="card card-primary card-outline mb-4">
 
             <div class="card-header">
@@ -122,8 +121,8 @@
                         <div class="mt-1">
 
                             {{ $supplierInvoice->invoice_date
-                                ? \Carbon\Carbon::parse($supplierInvoice->invoice_date)->format('d-M-Y')
-                                : '-' }}
+        ? \Carbon\Carbon::parse($supplierInvoice->invoice_date)->format('d-M-Y')
+        : '-' }}
 
                         </div>
 
@@ -137,8 +136,8 @@
 
 
         {{-- =====================================================
-         ITEM INFORMATION
-    ====================================================== --}}
+        ITEM INFORMATION
+        ====================================================== --}}
         <div class="card card-info card-outline mb-4">
 
             <div class="card-header">
@@ -229,10 +228,9 @@
 
 
         {{-- =====================================================
-         EDIT FORM
-    ====================================================== --}}
-        <form
-            action="{{ route('supplier-invoices.items.update', [$supplierInvoice, $supplierInvoiceItem]) }}"
+        EDIT FORM
+        ====================================================== --}}
+        <form action="{{ route('supplier-invoices.items.update', [$supplierInvoice, $supplierInvoiceItem]) }}"
             method="POST">
 
             @csrf
@@ -259,8 +257,8 @@
                     <div class="row">
 
                         {{-- =====================================================
-                         INVOICE QUANTITY
-                    ====================================================== --}}
+                        INVOICE QUANTITY
+                        ====================================================== --}}
                         <div class="col-md-4">
 
                             <div class="form-group">
@@ -276,12 +274,10 @@
                                 </label>
 
                                 <input type="number" name="quantity" id="quantity" step="0.001" min="0.001"
-                                    value="{{ old('quantity', $supplierInvoiceItem->quantity) }}"
-                                    class="form-control
-                                    @error('quantity')
-                                        is-invalid
-                                    @enderror"
-                                    required>
+                                    value="{{ old('quantity', $supplierInvoiceItem->quantity) }}" class="form-control
+                                        @error('quantity')
+                                            is-invalid
+                                        @enderror" required>
 
                                 @error('quantity')
                                     <div class="invalid-feedback">
@@ -302,8 +298,8 @@
 
 
                         {{-- =====================================================
-                         UNIT PRICE
-                    ====================================================== --}}
+                        UNIT PRICE
+                        ====================================================== --}}
                         <div class="col-md-4">
 
                             <div class="form-group">
@@ -319,12 +315,10 @@
                                 </label>
 
                                 <input type="number" name="unit_price" id="unit_price" step="0.0001" min="0"
-                                    value="{{ old('unit_price', $supplierInvoiceItem->unit_price) }}"
-                                    class="form-control
-                                    @error('unit_price')
-                                        is-invalid
-                                    @enderror"
-                                    required>
+                                    value="{{ old('unit_price', $supplierInvoiceItem->unit_price) }}" class="form-control
+                                        @error('unit_price')
+                                            is-invalid
+                                        @enderror" required>
 
                                 @error('unit_price')
                                     <div class="invalid-feedback">
@@ -334,9 +328,30 @@
 
                                 <small class="form-text text-muted">
 
-                                    Current supplier price:
+                                    @if ($priceSupplierName)
 
-                                    {{ number_format((float) $supplierUnitPrice, 4) }}
+                                        @if ($isPreferredPriceFallback)
+
+                                            Preferred supplier price
+                                            ({{ $priceSupplierName }}):
+
+                                        @else
+
+                                            Current supplier price
+                                            ({{ $priceSupplierName }}):
+
+                                        @endif
+
+                                        {{ number_format((float) $supplierUnitPrice, 4) }}
+
+                                    @else
+
+                                        No active supplier price configured.
+                                        Saved invoice price:
+
+                                        {{ number_format((float) $supplierUnitPrice, 4) }}
+
+                                    @endif
 
                                 </small>
 
@@ -346,8 +361,8 @@
 
 
                         {{-- =====================================================
-                         LINE TOTAL
-                    ====================================================== --}}
+                        LINE TOTAL
+                        ====================================================== --}}
                         <div class="col-md-4">
 
                             <div class="form-group">
@@ -370,8 +385,8 @@
 
 
                         {{-- =====================================================
-                         REMARKS
-                    ====================================================== --}}
+                        REMARKS
+                        ====================================================== --}}
                         <div class="col-md-12">
 
                             <div class="form-group">
@@ -380,11 +395,10 @@
                                     Remarks
                                 </label>
 
-                                <textarea name="remarks" id="remarks" rows="3"
-                                    class="form-control
-                                    @error('remarks')
-                                        is-invalid
-                                    @enderror">{{ old('remarks', $supplierInvoiceItem->remarks) }}</textarea>
+                                <textarea name="remarks" id="remarks" rows="3" class="form-control
+                                        @error('remarks')
+                                            is-invalid
+                                        @enderror">{{ old('remarks', $supplierInvoiceItem->remarks) }}</textarea>
 
                                 @error('remarks')
                                     <div class="invalid-feedback">
@@ -398,13 +412,130 @@
 
                     </div>
 
+                    {{-- =====================================================
+PRODUCTION REQUIREMENT REFERENCE
+===================================================== --}}
+
+@if ($productionRequirementReference)
+
+    <div class="col-md-12">
+
+        <div class="alert alert-info">
+
+            <div class="mb-2">
+
+                <strong>
+                    <i class="fas fa-industry mr-1"></i>
+                    Production Requirement Reference
+                </strong>
+
+                <small class="text-muted ml-2">
+                    Reference only — enter the actual Supplier Invoice Qty below.
+                </small>
+
+            </div>
+
+
+            <div class="row">
+
+                {{-- Required --}}
+                <div class="col-md-2">
+
+                    <small class="text-muted d-block">
+                        Required
+                    </small>
+
+                    <strong>
+                        {{ number_format(
+                            (float) $productionRequirementReference['required_quantity'],
+                            3
+                        ) }}
+                    </strong>
+
+                </div>
+
+
+                {{-- Current Stock --}}
+                <div class="col-md-2">
+
+                    <small class="text-muted d-block">
+                        Current Stock
+                    </small>
+
+                    <strong>
+                        {{ number_format(
+                            (float) $productionRequirementReference['current_stock'],
+                            3
+                        ) }}
+                    </strong>
+
+                </div>
+
+
+                {{-- On Order --}}
+                <div class="col-md-2">
+
+                    <small class="text-muted d-block">
+                        On Order
+                    </small>
+
+                    <strong>
+                        {{ number_format(
+                            (float) $productionRequirementReference['on_order_quantity'],
+                            3
+                        ) }}
+                    </strong>
+
+                </div>
+
+
+                {{-- Inventory Position --}}
+                <div class="col-md-3">
+
+                    <small class="text-muted d-block">
+                        Inventory Position
+                    </small>
+
+                    <strong>
+                        {{ number_format(
+                            (float) $productionRequirementReference['inventory_position'],
+                            3
+                        ) }}
+                    </strong>
+
+                </div>
+
+
+                {{-- Production Shortage --}}
+                <div class="col-md-3">
+
+                    <small class="text-muted d-block">
+                        Production Shortage
+                    </small>
+
+                    <strong class="text-danger">
+                        {{ number_format(
+                            (float) $productionRequirementReference['shortage_quantity'],
+                            3
+                        ) }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+@endif
+
                 </div>
 
 
                 <div class="card-footer d-flex justify-content-between">
 
-                    <a href="{{ route('supplier-invoices.show', $supplierInvoice) }}"
-                        class="btn btn-secondary">
+                    <a href="{{ route('supplier-invoices.show', $supplierInvoice) }}" class="btn btn-secondary">
 
                         <i class="fas fa-times mr-1"></i>
 
@@ -431,12 +562,12 @@
 
 
     {{-- =====================================================
-     LINE TOTAL CALCULATION
-===================================================== --}}
+    LINE TOTAL CALCULATION
+    ===================================================== --}}
     <script>
         document.addEventListener(
             'DOMContentLoaded',
-            function() {
+            function () {
 
                 const quantityInput =
                     document.getElementById(

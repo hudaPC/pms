@@ -109,6 +109,35 @@
                 </div>
             @enderror
 
+
+                    {{-- Order Date --}}
+        <div class="form-group mb-2">
+
+            <label for="order_date" class="mb-1">
+
+                <small>
+                    Order Date
+                </small>
+
+            </label>
+
+            <input
+                type="date"
+                name="order_date"
+                id="order_date"
+                class="form-control form-control-sm @error('order_date') is-invalid @enderror"
+                value="{{ old('order_date', now()->format('Y-m-d')) }}"
+                required
+            >
+
+            @error('order_date')
+                <div class="invalid-feedback">
+                    {{ $message }}
+                </div>
+            @enderror
+
+        </div>
+
         </div>
 
 

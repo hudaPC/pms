@@ -24,7 +24,8 @@
 
             </div>
 
-            <a href="{{ route('supplier-invoices.show', $supplierInvoice) }}" class="btn btn-secondary">
+            <a href="{{ route('supplier-invoices.show', $supplierInvoice) }}"
+                class="btn btn-secondary">
 
                 <i class="fas fa-arrow-left mr-1"></i>
 
@@ -45,9 +46,11 @@
                 <ul class="mb-0">
 
                     @foreach ($errors->all() as $error)
+
                         <li>
                             {{ $error }}
                         </li>
+
                     @endforeach
 
                 </ul>
@@ -121,8 +124,8 @@
                         <div class="mt-1">
 
                             {{ $supplierInvoice->invoice_date
-        ? \Carbon\Carbon::parse($supplierInvoice->invoice_date)->format('d-M-Y')
-        : '-' }}
+                                ? \Carbon\Carbon::parse($supplierInvoice->invoice_date)->format('d-M-Y')
+                                : '-' }}
 
                         </div>
 
@@ -230,7 +233,8 @@
         {{-- =====================================================
         EDIT FORM
         ====================================================== --}}
-        <form action="{{ route('supplier-invoices.items.update', [$supplierInvoice, $supplierInvoiceItem]) }}"
+        <form
+            action="{{ route('supplier-invoices.items.update', [$supplierInvoice, $supplierInvoiceItem]) }}"
             method="POST">
 
             @csrf
@@ -256,6 +260,7 @@
 
                     <div class="row">
 
+
                         {{-- =====================================================
                         INVOICE QUANTITY
                         ====================================================== --}}
@@ -273,16 +278,26 @@
 
                                 </label>
 
-                                <input type="number" name="quantity" id="quantity" step="0.001" min="0.001"
-                                    value="{{ old('quantity', $supplierInvoiceItem->quantity) }}" class="form-control
+                                <input
+                                    type="number"
+                                    name="quantity"
+                                    id="quantity"
+                                    step="0.001"
+                                    min="0.001"
+                                    value="{{ old('quantity', $supplierInvoiceItem->quantity) }}"
+                                    class="form-control
                                         @error('quantity')
                                             is-invalid
-                                        @enderror" required>
+                                        @enderror"
+                                    required
+                                >
 
                                 @error('quantity')
+
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
+
                                 @enderror
 
                                 <small class="form-text text-muted">
@@ -314,17 +329,28 @@
 
                                 </label>
 
-                                <input type="number" name="unit_price" id="unit_price" step="0.0001" min="0"
-                                    value="{{ old('unit_price', $supplierInvoiceItem->unit_price) }}" class="form-control
+                                <input
+                                    type="number"
+                                    name="unit_price"
+                                    id="unit_price"
+                                    step="0.0001"
+                                    min="0"
+                                    value="{{ old('unit_price', $supplierInvoiceItem->unit_price) }}"
+                                    class="form-control
                                         @error('unit_price')
                                             is-invalid
-                                        @enderror" required>
+                                        @enderror"
+                                    required
+                                >
 
                                 @error('unit_price')
+
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
+
                                 @enderror
+
 
                                 <small class="form-text text-muted">
 
@@ -342,14 +368,20 @@
 
                                         @endif
 
-                                        {{ number_format((float) $supplierUnitPrice, 4) }}
+                                        {{ number_format(
+                                            (float) $supplierUnitPrice,
+                                            4
+                                        ) }}
 
                                     @else
 
                                         No active supplier price configured.
                                         Saved invoice price:
 
-                                        {{ number_format((float) $supplierUnitPrice, 4) }}
+                                        {{ number_format(
+                                            (float) $supplierUnitPrice,
+                                            4
+                                        ) }}
 
                                     @endif
 
@@ -371,9 +403,18 @@
                                     Line Total
                                 </label>
 
-                                <input type="text" id="line_total" class="form-control"
-                                    value="{{ number_format((float) $supplierInvoiceItem->line_total, 4, '.', '') }}"
-                                    readonly>
+                                <input
+                                    type="text"
+                                    id="line_total"
+                                    class="form-control"
+                                    value="{{ number_format(
+                                        (float) $supplierInvoiceItem->line_total,
+                                        4,
+                                        '.',
+                                        ''
+                                    ) }}"
+                                    readonly
+                                >
 
                                 <small class="form-text text-muted">
                                     Invoice Quantity × Unit Price
@@ -382,6 +423,162 @@
                             </div>
 
                         </div>
+
+
+                        {{-- =====================================================
+                        PRODUCTION REQUIREMENT REFERENCE
+                        ====================================================== --}}
+                        @if (!empty($productionRequirementReference))
+
+                            <div class="col-md-12 mb-3">
+
+                                <div class="alert alert-info mb-0">
+
+                                    <div class="mb-2">
+
+                                        <strong>
+
+                                            <i class="fas fa-industry mr-1"></i>
+
+                                            Production Requirement Reference
+
+                                        </strong>
+
+                                        <small class="ml-2">
+
+                                            Reference only — enter the actual
+                                            Supplier Invoice Qty above.
+
+                                        </small>
+
+                                    </div>
+
+
+                                    <div class="row">
+
+
+                                        {{-- Required --}}
+                                        <div class="col-md-2">
+
+                                            <small class="d-block">
+                                                Required
+                                            </small>
+
+                                            <strong>
+
+                                                {{ number_format(
+                                                    (float) (
+                                                        $productionRequirementReference[
+                                                            'required_quantity'
+                                                        ] ?? 0
+                                                    ),
+                                                    3
+                                                ) }}
+
+                                            </strong>
+
+                                        </div>
+
+
+                                        {{-- Current Stock --}}
+                                        <div class="col-md-2">
+
+                                            <small class="d-block">
+                                                Current Stock
+                                            </small>
+
+                                            <strong>
+
+                                                {{ number_format(
+                                                    (float) (
+                                                        $productionRequirementReference[
+                                                            'current_stock'
+                                                        ] ?? 0
+                                                    ),
+                                                    3
+                                                ) }}
+
+                                            </strong>
+
+                                        </div>
+
+
+                                        {{-- On Order --}}
+                                        <div class="col-md-2">
+
+                                            <small class="d-block">
+                                                On Order
+                                            </small>
+
+                                            <strong>
+
+                                                {{ number_format(
+                                                    (float) (
+                                                        $productionRequirementReference[
+                                                            'on_order_quantity'
+                                                        ] ?? 0
+                                                    ),
+                                                    3
+                                                ) }}
+
+                                            </strong>
+
+                                        </div>
+
+
+                                        {{-- Inventory Position --}}
+                                        <div class="col-md-3">
+
+                                            <small class="d-block">
+                                                Inventory Position
+                                            </small>
+
+                                            <strong>
+
+                                                {{ number_format(
+                                                    (float) (
+                                                        $productionRequirementReference[
+                                                            'inventory_position'
+                                                        ] ?? 0
+                                                    ),
+                                                    3
+                                                ) }}
+
+                                            </strong>
+
+                                        </div>
+
+
+                                        {{-- Production Shortage --}}
+                                        <div class="col-md-3">
+
+                                            <small class="d-block">
+                                                Production Shortage
+                                            </small>
+
+                                            <strong class="text-danger">
+
+                                                {{ number_format(
+                                                    (float) (
+                                                        $productionRequirementReference[
+                                                            'shortage_quantity'
+                                                        ] ?? 0
+                                                    ),
+                                                    3
+                                                ) }}
+
+                                            </strong>
+
+                                        </div>
+
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        @endif
 
 
                         {{-- =====================================================
@@ -395,147 +592,43 @@
                                     Remarks
                                 </label>
 
-                                <textarea name="remarks" id="remarks" rows="3" class="form-control
+                                <textarea
+                                    name="remarks"
+                                    id="remarks"
+                                    rows="3"
+                                    class="form-control
                                         @error('remarks')
                                             is-invalid
-                                        @enderror">{{ old('remarks', $supplierInvoiceItem->remarks) }}</textarea>
+                                        @enderror"
+                                >{{ old('remarks', $supplierInvoiceItem->remarks) }}</textarea>
 
                                 @error('remarks')
+
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
+
                                 @enderror
 
                             </div>
 
                         </div>
 
+
                     </div>
 
-                    {{-- =====================================================
-PRODUCTION REQUIREMENT REFERENCE
-===================================================== --}}
-
-@if ($productionRequirementReference)
-
-    <div class="col-md-12">
-
-        <div class="alert alert-info">
-
-            <div class="mb-2">
-
-                <strong>
-                    <i class="fas fa-industry mr-1"></i>
-                    Production Requirement Reference
-                </strong>
-
-                <small class="text-muted ml-2">
-                    Reference only — enter the actual Supplier Invoice Qty below.
-                </small>
-
-            </div>
-
-
-            <div class="row">
-
-                {{-- Required --}}
-                <div class="col-md-2">
-
-                    <small class="text-muted d-block">
-                        Required
-                    </small>
-
-                    <strong>
-                        {{ number_format(
-                            (float) $productionRequirementReference['required_quantity'],
-                            3
-                        ) }}
-                    </strong>
-
                 </div>
 
 
-                {{-- Current Stock --}}
-                <div class="col-md-2">
-
-                    <small class="text-muted d-block">
-                        Current Stock
-                    </small>
-
-                    <strong>
-                        {{ number_format(
-                            (float) $productionRequirementReference['current_stock'],
-                            3
-                        ) }}
-                    </strong>
-
-                </div>
-
-
-                {{-- On Order --}}
-                <div class="col-md-2">
-
-                    <small class="text-muted d-block">
-                        On Order
-                    </small>
-
-                    <strong>
-                        {{ number_format(
-                            (float) $productionRequirementReference['on_order_quantity'],
-                            3
-                        ) }}
-                    </strong>
-
-                </div>
-
-
-                {{-- Inventory Position --}}
-                <div class="col-md-3">
-
-                    <small class="text-muted d-block">
-                        Inventory Position
-                    </small>
-
-                    <strong>
-                        {{ number_format(
-                            (float) $productionRequirementReference['inventory_position'],
-                            3
-                        ) }}
-                    </strong>
-
-                </div>
-
-
-                {{-- Production Shortage --}}
-                <div class="col-md-3">
-
-                    <small class="text-muted d-block">
-                        Production Shortage
-                    </small>
-
-                    <strong class="text-danger">
-                        {{ number_format(
-                            (float) $productionRequirementReference['shortage_quantity'],
-                            3
-                        ) }}
-                    </strong>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-@endif
-
-                </div>
-
-
+                {{-- =====================================================
+                CARD FOOTER
+                ====================================================== --}}
                 <div class="card-footer d-flex justify-content-between">
 
-                    <a href="{{ route('supplier-invoices.show', $supplierInvoice) }}" class="btn btn-secondary">
+                    <a
+                        href="{{ route('supplier-invoices.show', $supplierInvoice) }}"
+                        class="btn btn-secondary"
+                    >
 
                         <i class="fas fa-times mr-1"></i>
 
@@ -544,7 +637,10 @@ PRODUCTION REQUIREMENT REFERENCE
                     </a>
 
 
-                    <button type="submit" class="btn btn-primary">
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
 
                         <i class="fas fa-save mr-1"></i>
 
@@ -563,8 +659,9 @@ PRODUCTION REQUIREMENT REFERENCE
 
     {{-- =====================================================
     LINE TOTAL CALCULATION
-    ===================================================== --}}
+    ====================================================== --}}
     <script>
+
         document.addEventListener(
             'DOMContentLoaded',
             function () {
@@ -585,7 +682,14 @@ PRODUCTION REQUIREMENT REFERENCE
                     );
 
 
+                /*
+                |--------------------------------------------------------------------------
+                | Calculate Line Total
+                |--------------------------------------------------------------------------
+                */
+
                 function calculateLineTotal() {
+
                     const quantity =
                         Number(
                             quantityInput.value || 0
@@ -604,11 +708,23 @@ PRODUCTION REQUIREMENT REFERENCE
                 }
 
 
+                /*
+                |--------------------------------------------------------------------------
+                | Quantity Changed
+                |--------------------------------------------------------------------------
+                */
+
                 quantityInput.addEventListener(
                     'input',
                     calculateLineTotal
                 );
 
+
+                /*
+                |--------------------------------------------------------------------------
+                | Unit Price Changed
+                |--------------------------------------------------------------------------
+                */
 
                 unitPriceInput.addEventListener(
                     'input',
@@ -617,6 +733,7 @@ PRODUCTION REQUIREMENT REFERENCE
 
             }
         );
+
     </script>
 
 @endsection

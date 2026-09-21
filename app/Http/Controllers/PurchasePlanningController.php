@@ -14,29 +14,155 @@ use Illuminate\Http\Request;
 
 class PurchasePlanningController extends Controller
 {
-  public function index(
-    Request $request,
-    Item $item,
-    StockProjectionService $stockProjectionService,
-    ItemPurchasePlanningService $itemPurchasePlanningService
-) {
 
-    /*
+    public function overview(
+        Request $request,
+        ItemPurchasePlanningService $itemPurchasePlanningService
+    ) {
+        /*
+    |--------------------------------------------------------------------------
+    | Global Purchase Planning Overview
+    |--------------------------------------------------------------------------
+    */
+
+        $query = Item::query()
+            ->where('status', true)
+            ->with([
+                'productModel',
+                'unit',
+                'purchaseSettings',
+            ]);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Product Model Filter
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('product_model_id')) {
+
+            $query->where(
+                'product_model_id',
+                $request->product_model_id
+            );
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Item Search
+    |--------------------------------------------------------------------------
+    |
+    | Search by Item Code or Item Name.
+    |
+    */
+
+        if ($request->filled('search')) {
+
+            $search = trim($request->search);
+
+            $query->where(function ($itemQuery) use ($search) {
+
+                $itemQuery
+                    ->where(
+                        'item_code',
+                        'like',
+                        '%' . $search . '%'
+                    )
+                    ->orWhere(
+                        'item_name',
+                        'like',
+                        '%' . $search . '%'
+                    );
+            });
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Items
+    |--------------------------------------------------------------------------
+    */
+
+        $items = $query
+            ->orderBy('item_code')
+            ->paginate(20)
+            ->withQueryString();
+
+            /*
+|--------------------------------------------------------------------------
+| Common Planning Position
+|--------------------------------------------------------------------------
+|
+| Reuse the existing tested ItemPurchasePlanningService.
+| No planning formula is duplicated here.
+|
+*/
+
+$items->getCollection()->transform(
+    function ($item) use ($itemPurchasePlanningService) {
+
+        $planning =
+            $itemPurchasePlanningService
+                ->calculate($item);
+
+        $item->planning_summary =
+            $planning;
+
+        return $item;
+    }
+);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Product Models For Filter
+    |--------------------------------------------------------------------------
+    */
+
+        $productModels = \App\Models\ProductModel::query()
+            ->orderBy('model_code')
+            ->get();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Return View
+    |--------------------------------------------------------------------------
+    */
+
+        return view(
+            'purchase-planning.index',
+            compact(
+                'items',
+                'productModels'
+            )
+        );
+    }
+    public function index(
+        Request $request,
+        Item $item,
+        StockProjectionService $stockProjectionService,
+        ItemPurchasePlanningService $itemPurchasePlanningService
+    ) {
+
+        /*
     |--------------------------------------------------------------------------
     | Purchase Settings
     |--------------------------------------------------------------------------
     */
 
-    $settings = $item->purchaseSettings;
+        $settings = $item->purchaseSettings;
 
-    abort_if(
-        !$settings,
-        404,
-        'Purchase settings have not been configured for this item.'
-    );
+        abort_if(
+            !$settings,
+            404,
+            'Purchase settings have not been configured for this item.'
+        );
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Common Purchase Planning
     |--------------------------------------------------------------------------
@@ -53,145 +179,127 @@ class PurchasePlanningController extends Controller
     |
     */
 
-    $commonPlanning =
-        $itemPurchasePlanningService
+        $commonPlanning =
+            $itemPurchasePlanningService
             ->calculate($item);
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Basic Values
     |--------------------------------------------------------------------------
     */
 
-    $openingStock =
-        (float) $commonPlanning['opening_stock'];
+        $openingStock =
+            (float) $commonPlanning['opening_stock'];
 
-    $monthlyUsage =
-        (float) $commonPlanning['monthly_usage'];
+        $monthlyUsage =
+            (float) $commonPlanning['monthly_usage'];
 
-    $orderCycleDays =
-        (int) $commonPlanning['order_cycle_days'];
+        $orderCycleDays =
+            (int) $commonPlanning['order_cycle_days'];
 
-    $safetyStock =
-        (float) $commonPlanning['safety_stock'];
+        $safetyStock =
+            (float) $commonPlanning['safety_stock'];
 
-    $orderQuantity =
-        (float) $commonPlanning['order_quantity'];
+        $orderQuantity =
+            (float) $commonPlanning['order_quantity'];
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Planning Start Date
     |--------------------------------------------------------------------------
     */
 
-   $planningStartDate =
-    $settings->planning_start_date
-        ? Carbon::parse(
+        $planningStartDate =
             $settings->planning_start_date
-        )
-        : now()->startOfDay();
+            ? Carbon::parse(
+                $settings->planning_start_date
+            )
+            : now()->startOfDay();
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Preferred Supplier
     |--------------------------------------------------------------------------
     */
 
-    $planningItemSupplier =
-        $commonPlanning[
-            'planning_item_supplier'
-        ];
+        $planningItemSupplier =
+            $commonPlanning['planning_item_supplier'];
 
-    $planningSupplier =
-        $commonPlanning[
-            'planning_supplier'
-        ];
+        $planningSupplier =
+            $commonPlanning['planning_supplier'];
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Effective Lead Time
     |--------------------------------------------------------------------------
     */
 
-    $leadTimeDays =
-        (int) $commonPlanning[
-            'lead_time_days'
-        ];
+        $leadTimeDays =
+            (int) $commonPlanning['lead_time_days'];
 
-    $leadTimeSource =
-        $commonPlanning[
-            'lead_time_source'
-        ];
+        $leadTimeSource =
+            $commonPlanning['lead_time_source'];
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Dynamic Production-Driven Planning Values
     |--------------------------------------------------------------------------
     */
 
-    $productionDemand =
-        $itemPurchasePlanningService
+        $productionDemand =
+            $itemPurchasePlanningService
             ->getProductionDemand(
                 $item,
                 $leadTimeDays
             );
 
 
-    if ($productionDemand['has_plan']) {
+        if ($productionDemand['has_plan']) {
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Dynamic Monthly Usage
         |--------------------------------------------------------------------------
         */
 
-        $monthlyUsage =
-            (float) $productionDemand[
-                'monthly_usage'
-            ];
+            $monthlyUsage =
+                (float) $productionDemand['monthly_usage'];
 
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Dynamic Safety Stock
         |--------------------------------------------------------------------------
         */
 
-        $safetyStock =
-            (float) $productionDemand[
-                'safety_stock'
-            ];
+            $safetyStock =
+                (float) $productionDemand['safety_stock'];
 
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Dynamic Planning Start Date
         |--------------------------------------------------------------------------
         */
 
-        if (
-            !empty(
-                $productionDemand[
-                    'planning_start_date'
-                ]
-            )
-        ) {
+            if (
+                !empty($productionDemand['planning_start_date'])
+            ) {
 
-            $planningStartDate =
-                Carbon::parse(
-                    $productionDemand[
-                        'planning_start_date'
-                    ]
-                );
-        }
+                $planningStartDate =
+                    Carbon::parse(
+                        $productionDemand['planning_start_date']
+                    );
+            }
 
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | Update Settings In Memory
         |--------------------------------------------------------------------------
@@ -201,69 +309,63 @@ class PurchasePlanningController extends Controller
         |
         */
 
-        $settings->monthly_usage =
-            $monthlyUsage;
+            $settings->monthly_usage =
+                $monthlyUsage;
 
-        $settings->safety_stock =
-            $safetyStock;
+            $settings->safety_stock =
+                $safetyStock;
 
-        $settings->planning_start_date =
-            $planningStartDate
+            $settings->planning_start_date =
+                $planningStartDate
                 ->format('Y-m-d');
 
-        $item->setRelation(
-            'purchaseSettings',
-            $settings
-        );
-        /*
+            $item->setRelation(
+                'purchaseSettings',
+                $settings
+            );
+            /*
 |--------------------------------------------------------------------------
 | Recalculate Common Planning With Dynamic Production Values
 |--------------------------------------------------------------------------
 */
 
-$commonPlanning =
-    $itemPurchasePlanningService
-        ->calculate(
-            $item,
-            $monthlyUsage,
-            $safetyStock
-        );
-    }
+            $commonPlanning =
+                $itemPurchasePlanningService
+                ->calculate(
+                    $item,
+                    $monthlyUsage,
+                    $safetyStock
+                );
+        }
 
-       /*
+        /*
 |--------------------------------------------------------------------------
 | Real Current Stock
 |--------------------------------------------------------------------------
 */
 
-$currentStock =
-    (float) $commonPlanning[
-        'current_stock'
-    ];
+        $currentStock =
+            (float) $commonPlanning['current_stock'];
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Confirmed On Order
 |--------------------------------------------------------------------------
 */
 
-$onOrderQuantity =
-    (float) $commonPlanning[
-        'on_order_quantity'
-    ];
+        $onOrderQuantity =
+            (float) $commonPlanning['on_order_quantity'];
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Inventory Position
 |--------------------------------------------------------------------------
 */
 
-$inventoryPosition =
-    (float) $commonPlanning[
-        'inventory_position'
-    ];
+        $inventoryPosition =
+            (float) $commonPlanning['inventory_position'];
 
 
         /*
@@ -345,10 +447,10 @@ $inventoryPosition =
         */
 
         $leadTimeMonths =
-    $leadTimeDays / 30;
+            $leadTimeDays / 30;
 
-$orderCycleMonths =
-    $orderCycleDays / 30;
+        $orderCycleMonths =
+            $orderCycleDays / 30;
 
 
         /*
@@ -357,133 +459,117 @@ $orderCycleMonths =
 |--------------------------------------------------------------------------
 */
 
-$dailyUsage =
-    (float) $commonPlanning[
-        'daily_usage'
-    ];
+        $dailyUsage =
+            (float) $commonPlanning['daily_usage'];
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Lead Time Demand
 |--------------------------------------------------------------------------
 */
 
-$leadTimeDemand =
-    (float) $commonPlanning[
-        'lead_time_demand'
-    ];
+        $leadTimeDemand =
+            (float) $commonPlanning['lead_time_demand'];
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Reorder Point
 |--------------------------------------------------------------------------
 */
 
-$reorderPoint =
-    (float) $commonPlanning[
-        'reorder_point'
-    ];
+        $reorderPoint =
+            (float) $commonPlanning['reorder_point'];
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Stock Required Today
 |--------------------------------------------------------------------------
 */
 
-$stockRequiredToTarget =
-    (float) $commonPlanning[
-        'stock_required_to_target'
-    ];
+        $stockRequiredToTarget =
+            (float) $commonPlanning['stock_required_to_target'];
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Critical Shortage
 |--------------------------------------------------------------------------
 */
 
-$criticalShortage =
-    (bool) $commonPlanning[
-        'critical_shortage'
-    ];
+        $criticalShortage =
+            (bool) $commonPlanning['critical_shortage'];
 
 
-      /*
+        /*
 |--------------------------------------------------------------------------
 | Initial Recovery Order
 |--------------------------------------------------------------------------
 */
 
-$recoveryOrderQuantity =
-    (float) $commonPlanning[
-        'recovery_order_quantity'
-    ];
+        $recoveryOrderQuantity =
+            (float) $commonPlanning['recovery_order_quantity'];
 
         /*
         |--------------------------------------------------------------------------
         | First Planned Order Quantity
         |--------------------------------------------------------------------------
         */
-$firstOrderQuantity =
-    (float) $commonPlanning[
-        'first_order_quantity'
-    ];
+        $firstOrderQuantity =
+            (float) $commonPlanning['first_order_quantity'];
 
 
-       /*
+        /*
 |--------------------------------------------------------------------------
 | Exact Days Until Reorder Point
 |--------------------------------------------------------------------------
 */
 
-$daysToTarget =
-    (int) $commonPlanning[
-        'days_to_target'
-    ];
+        $daysToTarget =
+            (int) $commonPlanning['days_to_target'];
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Months Until Target
 |--------------------------------------------------------------------------
 */
 
-$monthsToTarget =
-    $daysToTarget / 30;
+        $monthsToTarget =
+            $daysToTarget / 30;
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Purchase History
 |--------------------------------------------------------------------------
 */
 
-$hasPurchaseHistory =
-    PurchaseOrderItem::where(
-        'item_id',
-        $item->id
-    )
-    ->whereHas(
-        'purchaseOrder',
-        function ($query) {
+        $hasPurchaseHistory =
+            PurchaseOrderItem::where(
+                'item_id',
+                $item->id
+            )
+            ->whereHas(
+                'purchaseOrder',
+                function ($query) {
 
-            $query->whereIn(
-                'status',
-                [
-                    'confirmed',
-                    'partially_received',
-                    'received',
-                ]
-            );
-        }
-    )
-    ->exists();
+                    $query->whereIn(
+                        'status',
+                        [
+                            'confirmed',
+                            'partially_received',
+                            'received',
+                        ]
+                    );
+                }
+            )
+            ->exists();
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | First / Next Planned Order Date
 |--------------------------------------------------------------------------
@@ -493,43 +579,42 @@ $hasPurchaseHistory =
 |
 */
 
-if ($hasPurchaseHistory) {
+        if ($hasPurchaseHistory) {
 
-    $firstOrderDate =
-        now()
-            ->startOfDay()
-            ->addDays(
-                $daysToTarget
-            );
+            $firstOrderDate =
+                now()
+                ->startOfDay()
+                ->addDays(
+                    $daysToTarget
+                );
+        } else {
 
-} else {
-
-    $firstOrderDate =
-        $planningStartDate
-            ->copy()
-            ->addDays(
-                $daysToTarget
-            );
-}
+            $firstOrderDate =
+                $planningStartDate
+                ->copy()
+                ->addDays(
+                    $daysToTarget
+                );
+        }
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Overdue First Order Protection
 |--------------------------------------------------------------------------
 */
 
-$today =
-    now()->startOfDay();
+        $today =
+            now()->startOfDay();
 
-$isFirstOrderOverdue =
-    $firstOrderDate
-        ->copy()
-        ->startOfDay()
-        ->lt($today);
+        $isFirstOrderOverdue =
+            $firstOrderDate
+            ->copy()
+            ->startOfDay()
+            ->lt($today);
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Effective First Order Date
 |--------------------------------------------------------------------------
@@ -539,52 +624,48 @@ $isFirstOrderOverdue =
 |
 */
 
-$effectiveFirstOrderDate =
-    $isFirstOrderOverdue
-        ? $today->copy()
-        : $firstOrderDate->copy();
+        $effectiveFirstOrderDate =
+            $isFirstOrderOverdue
+            ? $today->copy()
+            : $firstOrderDate->copy();
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | First Delivery Date
 |--------------------------------------------------------------------------
 */
 
-$firstDeliveryDate =
-    $effectiveFirstOrderDate
-        ->copy()
-        ->addDays(
-            $leadTimeDays
-        );
+        $firstDeliveryDate =
+            $effectiveFirstOrderDate
+            ->copy()
+            ->addDays(
+                $leadTimeDays
+            );
 
 
 
 
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Days Of Supply
 |--------------------------------------------------------------------------
 */
 
-$daysOfSupply =
-    (float) $commonPlanning[
-        'days_of_supply'
-    ];
+        $daysOfSupply =
+            (float) $commonPlanning['days_of_supply'];
 
 
-/*
+        /*
 |--------------------------------------------------------------------------
 | Effective Order Cycle
 |--------------------------------------------------------------------------
 */
 
-$effectiveOrderCycleDays =
-    (int) $commonPlanning[
-        'effective_order_cycle_days'
-    ];
+        $effectiveOrderCycleDays =
+            (int) $commonPlanning['effective_order_cycle_days'];
 
 
         /*

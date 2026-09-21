@@ -144,25 +144,39 @@ Route::middleware(['auth'])->group(function () {
     )->name('items.suppliers.destroy');
 
 
-    // Item Purchase Planning (Settings form)
+    // ============================================================
+// Global Purchase Planning Overview
+// ============================================================
 
-    Route::get(
-        '/items/{item}/purchase-planning/edit',
-        [ItemPurchaseSettingController::class, 'edit']
-    )->name('items.purchase-planning.edit');
-
-    Route::put(
-        '/items/{item}/purchase-planning',
-        [ItemPurchaseSettingController::class, 'update']
-    )->name('items.purchase-planning.update');
+Route::get(
+    '/purchase-planning',
+    [PurchasePlanningController::class, 'overview']
+)->name('purchase-planning.index');
 
 
-    // Purchase Planning (Calendar / summary view)
+// ============================================================
+// Item Purchase Planning Settings
+// ============================================================
 
-    Route::get(
-        '/items/{item}/purchase-planning',
-        [PurchasePlanningController::class, 'index']
-    )->name('items.purchase-planning.index');
+Route::get(
+    '/items/{item}/purchase-planning/edit',
+    [ItemPurchaseSettingController::class, 'edit']
+)->name('items.purchase-planning.edit');
+
+Route::put(
+    '/items/{item}/purchase-planning',
+    [ItemPurchaseSettingController::class, 'update']
+)->name('items.purchase-planning.update');
+
+
+// ============================================================
+// Detailed Item Purchase Planning
+// ============================================================
+
+Route::get(
+    '/items/{item}/purchase-planning',
+    [PurchasePlanningController::class, 'index']
+)->name('items.purchase-planning.index');
 
 
     // Usage Logs

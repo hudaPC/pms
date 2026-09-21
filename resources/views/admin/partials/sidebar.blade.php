@@ -276,53 +276,33 @@
 
 
 
-                {{-- ===================================================== --}}
-                {{-- PURCHASE PLANNING --}}
-                {{-- ===================================================== --}}
+                {{-- ========================================================= --}}
+{{-- Purchase Planning --}}
+{{-- ========================================================= --}}
 
-                @php
+@php
+    $purchasePlanningActive =
+        request()->is('purchase-planning*') ||
+        request()->is('items/*/purchase-planning*');
+@endphp
 
-                    $purchasePlanningActive =
-                        request()->is('items/*/purchase-planning*');
+<li class="nav-item">
 
-                    $currentItem =
-                        request()->route('item');
+    <a
+        href="{{ route('purchase-planning.index') }}"
+        class="nav-link
+            {{ $purchasePlanningActive ? 'active' : '' }}"
+    >
 
-                @endphp
+        <i class="nav-icon fas fa-chart-line"></i>
 
+        <p>
+            Purchase Planning
+        </p>
 
-                <li class="nav-item">
+    </a>
 
-                    @if($currentItem)
-
-                        <a
-                            href="{{ route(
-                                'items.purchase-planning.index',
-                                $currentItem
-                            ) }}"
-                            class="nav-link
-                                {{ $purchasePlanningActive ? 'active' : '' }}"
-                        >
-
-                    @else
-
-                        <a
-                            href="{{ route('items.index') }}"
-                            class="nav-link
-                                {{ $purchasePlanningActive ? 'active' : '' }}"
-                        >
-
-                    @endif
-
-                            <i class="nav-icon fas fa-chart-line"></i>
-
-                            <p>
-                                Purchase Planning
-                            </p>
-
-                        </a>
-
-                </li>
+</li>
 
 
 

@@ -352,11 +352,15 @@
 
                         </button>
 
-                        <a href="{{ route('items.usage-logs.index', $item) }}" class="btn btn-secondary">
-
-                            Cancel
-
-                        </a>
+                        @if (request('redirect_to') === 'material-usage')
+                            <a href="{{ route('material-usage.index') }}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                        @else
+                            <a href="{{ route('items.usage-logs.index', $item) }}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                        @endif
 
                     </div>
 

@@ -187,6 +187,12 @@ Route::middleware(['auth'])->group(function () {
         '/material-usage/create',
         [UsageLogController::class, 'createMaterialUsage']
     )->name('material-usage.create');
+    
+    Route::post(
+    '/material-usage',
+    [UsageLogController::class, 'storeMaterialUsage']
+)->name('material-usage.store');
+
     Route::get(
         '/material-usage/product-models/{productModel}/items',
         [UsageLogController::class, 'materialUsageItems']

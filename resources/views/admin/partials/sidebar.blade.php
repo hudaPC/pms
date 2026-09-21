@@ -120,7 +120,7 @@
                     </a>
 
                 </li>
-                
+
                 {{-- ================================================= --}}
                 {{-- PRODUCT MODEL --}}
                 {{-- ================================================= --}}
@@ -140,7 +140,7 @@
 
                 </li>
 
-                   {{-- ================================================= --}}
+                {{-- ================================================= --}}
                 {{-- PRODUCTION PLANNING --}}
                 {{-- ================================================= --}}
 
@@ -162,7 +162,7 @@
 
 
 
-             
+
 
 
 
@@ -372,7 +372,7 @@
 
                             @if ($hasCurrentItem)
                                 <a href="{{ route('items.purchase-planning.index', $currentItem) }}" class="nav-link
-                                        {{ request()->is('items/*/purchase-planning*') ? 'active' : '' }}">
+                                            {{ request()->is('items/*/purchase-planning*') ? 'active' : '' }}">
                             @else
                                     <a href="{{ route('items.index') }}" class="nav-link">
                                 @endif
@@ -396,7 +396,7 @@
 
                             @if ($hasCurrentItem)
                                 <a href="{{ route('items.usage-logs.index', $currentItem) }}" class="nav-link
-                                        {{ request()->is('items/*/usage-logs*') ? 'active' : '' }}">
+                                            {{ request()->is('items/*/usage-logs*') ? 'active' : '' }}">
                             @else
                                     <a href="{{ route('items.index') }}" class="nav-link">
                                 @endif
@@ -507,7 +507,58 @@
 
                 </li>
 
- {{-- ===================================================== --}}
+                {{-- ===================================================== --}}
+                {{-- USAGE-LOGS --}}
+                {{-- ===================================================== --}}
+
+                @php
+                    $materialUsageActive = request()->is('material-usage*');
+                @endphp
+
+                <li class="nav-item has-treeview
+                    {{ $materialUsageActive ? 'menu-open' : '' }}">
+
+                    <a href="#" class="nav-link
+                        {{ $materialUsageActive ? 'active' : '' }}">
+
+                        <i class="nav-icon fas fa-clipboard-list"></i>
+
+                        <p>
+
+                            Material Usage
+
+                            <i class="right fas fa-angle-left"></i>
+
+                        </p>
+
+                    </a>
+
+                    <ul class="nav nav-treeview">
+
+                        {{-- ================================================= --}}
+                        {{-- Material Usage --}}
+                        {{-- ================================================= --}}
+
+                        <li class="nav-item">
+
+                            <a href="{{ url('/material-usage') }}" class="nav-link
+                                {{ request()->is('material-usage*') ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon"></i>
+
+                                <p>
+                                    Item Usage
+                                </p>
+
+                            </a>
+
+                        </li>
+
+                    </ul>
+                </li>
+
+
+                {{-- ===================================================== --}}
                 {{-- INVOICING --}}
                 {{-- ===================================================== --}}
 
@@ -562,6 +613,16 @@
                     </ul>
 
                 </li>
+
+
+
+
+
+
+
+
+
+                7
                 {{-- ===================================================== --}}
                 {{-- INVENTORY --}}
                 {{-- ===================================================== --}}
@@ -638,7 +699,7 @@
 
                 </li>
 
-               
+
 
 
                 {{-- ===================================================== --}}

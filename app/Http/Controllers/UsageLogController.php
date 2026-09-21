@@ -292,7 +292,250 @@ class UsageLogController extends Controller
             'items' => $items,
         ]);
     }
+    /**
+     * Store a manual Material Usage record.
+     */
+    public function storeMaterialUsage(Request $request)
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | Validation
+        |--------------------------------------------------------------------------
+        */
 
+        $validated = $request->validate([
+
+            'product_model_id' => [
+                'required',
+                'exists:product_models,id',
+            ],
+
+            'item_id' => [
+                'required',
+                'exists:items,id',
+            ],
+
+            'usage_date' => [
+                'required',
+                'date',
+            ],
+
+            'quantity' => [
+                'required',
+                'numeric',
+                'min:0.001',
+            ],
+
+            'reference' => [
+                'nullable',
+                'string',
+                'max:100',
+            ],
+
+            'remarks' => [
+                'nullable',
+                'string',
+            ],
+
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Item
+        |--------------------------------------------------------------------------
+        */
+
+        $item = Item::with('unit')
+            ->findOrFail(
+                $validated['item_id']
+            );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Verify Product Model ↔ BOM Item
+        |--------------------------------------------------------------------------
+        */
+
+        $itemBelongsToProductModel =
+            $item->productModelItems()
+                ->where(
+                    'product_model_id',
+                    $validated['product_model_id']
+                )
+                ->exists();
+
+        if (!$itemBelongsToProductModel) {
+
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'item_id' =>
+                        'The selected item does not belong to the selected Product Model.',
+                ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Current Available Stock
+        |--------------------------------------------------------------------------
+        */
+
+        $currentAvailableStock =
+            (float) $item->current_stock;
+
+        $usageQuantity =
+            (float) $validated['quantity'];
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Prevent Usage Greater Than Available Stock
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $usageQuantity >
+            ($currentAvailableStock + 0.000001)
+        ) {
+
+            return back()
+                ->withInput()
+                ->withErrors([
+
+                    'quantity' =>
+                        'Usage quantity cannot exceed current available stock of '
+                        . number_format(
+                            $currentAvailableStock,
+                            3
+                        )
+                        . ' '
+                        . ($item->unit->name ?? 'units')
+                        . '.',
+
+                ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Reference
+        |--------------------------------------------------------------------------
+        |
+        | If the user leaves Reference blank, reuse the existing reference
+        | generator:
+        |
+        | ISSUE-{ITEM_CODE}-{YYYYMMDD}-00001
+        |
+        */
+
+        $reference =
+            !empty(trim($validated['reference'] ?? ''))
+            ? trim($validated['reference'])
+            : $this->buildReference(
+                $item,
+                $validated['usage_date']
+            );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Save Usage + Stock OUT
+        |--------------------------------------------------------------------------
+        */
+
+        DB::transaction(function () use ($validated, $item, $reference) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Usage Log
+            |--------------------------------------------------------------------------
+            */
+
+            $usageLog = UsageLog::create([
+
+                'item_id' =>
+                    $item->id,
+
+                'source' =>
+                    'manual',
+
+                'production_plan_id' =>
+                    null,
+
+                'usage_date' =>
+                    $validated['usage_date'],
+
+                'quantity' =>
+                    $validated['quantity'],
+
+                'reference' =>
+                    $reference,
+
+                'remarks' =>
+                    $validated['remarks'] ?? null,
+
+                'status' =>
+                    'active',
+
+            ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Stock Movement
+            |--------------------------------------------------------------------------
+            */
+
+            StockMovement::create([
+
+                'item_id' =>
+                    $item->id,
+
+                'movement_date' =>
+                    $usageLog->usage_date,
+
+                'movement_type' =>
+                    'usage',
+
+                'direction' =>
+                    'out',
+
+                'quantity' =>
+                    $usageLog->quantity,
+
+                'source_type' =>
+                    'usage_log',
+
+                'source_id' =>
+                    $usageLog->id,
+
+                'reference' =>
+                    $usageLog->reference,
+
+                'remarks' =>
+                    $usageLog->remarks,
+
+            ]);
+
+        });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Redirect
+        |--------------------------------------------------------------------------
+        */
+
+        return redirect()
+            ->route('material-usage.index')
+            ->with(
+                'success',
+                'Material usage recorded successfully.'
+            );
+    }
     /**
      * Display usage logs for an item.
      */

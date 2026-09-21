@@ -742,183 +742,205 @@
                 | Void GRN Button
                 |--------------------------------------------------------------------------
                 */
+$('#btnVoidGrn').on('click', function() {
 
-                $('#btnVoidGrn').on('click', function() {
+    Swal.fire({
 
-                    Swal.fire({
+        title: 'Void Goods Receipt?',
 
-                        title: 'Void Goods Receipt?',
+        html: `
+            <div class="text-left">
 
-                        html: '<div class="text-left">' +
+                <p class="mb-2">
+                    You are about to void
+                    <strong>{{ $goodsReceipt->grn_number }}</strong>.
+                </p>
 
-                            '<p class="mb-2">' +
+                <p class="text-danger mb-3">
+                    This will reverse the received stock
+                    and restore the PO outstanding quantity.
+                </p>
 
-                            'You are about to void ' +
+                <div class="form-group mb-3">
 
-                            '<strong>' +
-                            @json($goodsReceipt->grn_number) +
-                            '</strong>.' +
+                    <label for="swalVoidReason">
+                        Void Reason
+                    </label>
 
-                            '</p>' +
+                    <select
+                        id="swalVoidReason"
+                        class="form-control"
+                    >
+                        <option value="">
+                            Select void reason
+                        </option>
 
-                            '<p class="text-danger mb-3">' +
+                        <option value="Wrong quantity received">
+                            Wrong quantity received
+                        </option>
 
-                            'This will reverse the received stock and restore the PO outstanding quantity.' +
+                        <option value="Wrong item received">
+                            Wrong item received
+                        </option>
 
-                            '</p>' +
+                        <option value="Duplicate goods receipt">
+                            Duplicate goods receipt
+                        </option>
 
-                            '</div>',
+                        <option value="Supplier delivery rejected">
+                            Supplier delivery rejected
+                        </option>
 
-                        input: 'select',
+                        <option value="Data entry mistake">
+                            Data entry mistake
+                        </option>
 
-                        inputOptions: {
+                        <option value="Other">
+                            Other
+                        </option>
 
-                            'Wrong quantity received': 'Wrong quantity received',
+                    </select>
 
-                            'Wrong item received': 'Wrong item received',
+                </div>
 
-                            'Duplicate goods receipt': 'Duplicate goods receipt',
+                <div
+                    id="otherVoidReasonWrapper"
+                    class="form-group mb-0"
+                    style="display: none;"
+                >
 
-                            'Supplier delivery rejected': 'Supplier delivery rejected',
+                    <label for="otherVoidReason">
+                        Specify Other Reason
+                        <span class="text-danger">*</span>
+                    </label>
 
-                            'Data entry mistake': 'Data entry mistake',
+                    <textarea
+                        id="otherVoidReason"
+                        class="form-control"
+                        rows="3"
+                        maxlength="1000"
+                        placeholder="Enter the reason for voiding this Goods Receipt..."
+                    ></textarea>
 
-                            'Other': 'Other'
+                    <small class="text-muted">
+                        Maximum 1000 characters.
+                    </small>
 
-                        },
+                </div>
 
-                        inputPlaceholder: 'Select void reason',
+            </div>
+        `,
 
-                        showCancelButton: true,
+        showCancelButton: true,
 
-                        confirmButtonText: 'Continue',
+        confirmButtonText: 'Void GRN',
 
-                        confirmButtonColor: '#dc3545',
+        confirmButtonColor: '#dc3545',
 
-                        cancelButtonText: 'Cancel',
+        cancelButtonText: 'Cancel',
 
-                        reverseButtons: false,
+        focusConfirm: false,
 
-                        focusCancel: false,
+        didOpen: function() {
 
-                        inputValidator: function(value) {
+            const reasonSelect =
+                document.getElementById(
+                    'swalVoidReason'
+                );
 
-                            if (!value) {
+            const otherWrapper =
+                document.getElementById(
+                    'otherVoidReasonWrapper'
+                );
 
-                                return 'Please select a void reason.';
+            const otherInput =
+                document.getElementById(
+                    'otherVoidReason'
+                );
 
-                            }
+            reasonSelect.addEventListener(
+                'change',
+                function() {
 
-                        }
+                    if (this.value === 'Other') {
 
-                    }).then(function(result) {
+                        otherWrapper.style.display =
+                            'block';
 
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Cancelled
-                        |--------------------------------------------------------------------------
-                        */
+                        setTimeout(function() {
+                            otherInput.focus();
+                        }, 100);
 
-                        if (!result.isConfirmed) {
+                    } else {
 
-                            return;
+                        otherWrapper.style.display =
+                            'none';
 
-                        }
+                        otherInput.value = '';
 
+                    }
 
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Other Reason
-                        |--------------------------------------------------------------------------
-                        */
+                }
+            );
 
-                        if (result.value === 'Other') {
+        },
 
-                            Swal.fire({
+        preConfirm: function() {
 
-                                title: 'Enter Void Reason',
+            const reason =
+                document.getElementById(
+                    'swalVoidReason'
+                ).value;
 
-                                text: 'Please explain why this Goods Receipt should be voided.',
+            const otherReason =
+                document.getElementById(
+                    'otherVoidReason'
+                ).value.trim();
 
-                                input: 'textarea',
+            if (!reason) {
 
-                                inputPlaceholder: 'Explain why this Goods Receipt is being voided...',
+                Swal.showValidationMessage(
+                    'Please select a void reason.'
+                );
 
-                                inputAttributes: {
+                return false;
+            }
 
-                                    maxlength: 1000,
+            if (
+                reason === 'Other' &&
+                !otherReason
+            ) {
 
-                                    rows: 4
+                Swal.showValidationMessage(
+                    'Please specify the other reason.'
+                );
 
-                                },
+                return false;
+            }
 
-                                showCancelButton: true,
+            if (reason === 'Other') {
 
-                                confirmButtonText: 'Void GRN',
+                return otherReason;
 
-                                confirmButtonColor: '#dc3545',
+            }
 
-                                cancelButtonText: 'Cancel',
+            return reason;
 
-                                focusCancel: false,
+        }
 
-                                inputValidator: function(value) {
+    }).then(function(result) {
 
-                                    if (
-                                        !value ||
-                                        !value.trim()
-                                    ) {
+        if (!result.isConfirmed) {
+            return;
+        }
 
-                                        return 'Void reason is required.';
+        submitVoidGrn(
+            result.value
+        );
 
-                                    }
+    });
 
-                                }
-
-                            }).then(function(reasonResult) {
-
-                                /*
-                                |--------------------------------------------------------------------------
-                                | Cancelled
-                                |--------------------------------------------------------------------------
-                                */
-
-                                if (!reasonResult.isConfirmed) {
-
-                                    return;
-
-                                }
-
-
-                                /*
-                                |--------------------------------------------------------------------------
-                                | Submit Other Reason
-                                |--------------------------------------------------------------------------
-                                */
-
-                                submitVoidGrn(
-                                    reasonResult.value.trim()
-                                );
-
-                            });
-
-                            return;
-                        }
-
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Predefined Reason
-                        |--------------------------------------------------------------------------
-                        */
-
-                        submitVoidGrn(
-                            result.value
-                        );
-
-                    });
-
-                });
+});
 
 
                 /*

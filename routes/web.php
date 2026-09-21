@@ -370,6 +370,13 @@ Route::middleware(['auth'])->group(function () {
 
     //STOCK ADJUSTMENT ROUTES
     Route::get(
+    '/stock-adjustments/product-models/{productModel}/items',
+    [StockAdjustmentController::class, 'itemsByProductModel']
+)->name(
+    'stock-adjustments.product-model-items'
+);
+
+    Route::get(
         '/stock-adjustments',
         [StockAdjustmentController::class, 'index']
     )->name('stock-adjustments.index');

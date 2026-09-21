@@ -232,3 +232,17 @@ WHERE pm.model_code = 'TM-2528H1-850'
 ORDER BY i.item_code;
 
 
+********************************
+ALTER TABLE stock_movements
+MODIFY COLUMN movement_type ENUM(
+    'opening_stock',
+    'customer_supply',
+    'purchase_receipt',
+    'usage',
+    'usage_reversal',
+    'purchase_receipt_reversal',
+    'stock_adjustment_in',
+    'stock_adjustment_out'
+) NOT NULL;
+
+

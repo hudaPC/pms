@@ -72,7 +72,58 @@
 
                 <div class="card-body">
 
+
+
+
+
+                    {{-- Product Model --}}
                     <div class="row">
+                        <div class="col-md-6">
+
+                            <div class="form-group">
+
+                                <label>
+                                    Product Model
+                                    <span class="text-danger">*</span>
+                                </label>
+
+                                <select name="product_model_id" id="product_model_id"
+                                    class="form-control @error('product_model_id') is-invalid @enderror" required>
+
+                                    <option value="">
+                                        -- Select Product Model --
+                                    </option>
+
+                                    @foreach($productModels as $productModel)
+
+                                        <option value="{{ $productModel->id }}" @selected(
+                                            old('product_model_id') == $productModel->id
+                                        )>
+                                            {{ $productModel->model_code }}
+
+                                            @if($productModel->model_name)
+                                                - {{ $productModel->model_name }}
+                                            @endif
+
+                                        </option>
+
+                                    @endforeach
+
+                                </select>
+                                @error('product_model_id')
+                                    <div class="invalid-feedback">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+
+                                <small class="form-text text-muted">
+                                    Select a Product Model first.
+                                </small>
+
+                            </div>
+
+                        </div>
+
 
                         {{-- Item --}}
                         <div class="col-md-6">
@@ -84,25 +135,12 @@
                                     <span class="text-danger">*</span>
                                 </label>
 
-                                <select name="item_id" id="item_id"
-    class="form-control no-select2 @error('item_id') is-invalid @enderror" required>
+                                <select name="item_id" id="item_id" class="form-control no-select2
+                                                    @error('item_id') is-invalid @enderror" required disabled>
 
                                     <option value="">
-                                        Select Item
+                                        -- Select Product Model First --
                                     </option>
-
-                                    @foreach($items as $item)
-
-                                        <option value="{{ $item->id }}" data-current-stock="{{ $item->current_stock }}"
-                                            data-unit="{{ $item->unit->name ?? '' }}" @selected(old('item_id') == $item->id)>
-
-                                            {{ $item->item_code }}
-                                            -
-                                            {{ $item->item_name }}
-
-                                        </option>
-
-                                    @endforeach
 
                                 </select>
 
@@ -114,16 +152,26 @@
 
                                 @enderror
 
-                                <small id="currentStockHelp" class="form-text text-muted">
-                                </small>
+                                <small id="currentStockHelp" class="form-text text-muted"></small>
 
                             </div>
 
                         </div>
 
 
+
+
+
+
+                    </div>
+
+
+
+
+                    <div class="row">
+
                         {{-- Adjustment Date --}}
-                        <div class="col-md-3">
+                        <div class="col-md-6">
 
                             <div class="form-group">
 
@@ -151,7 +199,7 @@
 
 
                         {{-- Direction --}}
-                        <div class="col-md-3">
+                        <div class="col-md-6">
 
                             <div class="form-group">
 
@@ -192,6 +240,21 @@
                             </div>
 
                         </div>
+                    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    <div class="row">
 
 
                         {{-- Quantity --}}
@@ -276,33 +339,41 @@
                             </div>
 
                         </div>
+                    </div>
 
 
-                        {{-- Remarks --}}
-                        <div class="col-md-12">
+                    {{-- Remarks --}}
+                    <div class="col-md-12">
 
-                            <div class="form-group">
+                        <div class="form-group">
 
-                                <label>
-                                    Remarks
-                                </label>
+                            <label>
+                                Remarks
+                            </label>
 
-                                <textarea name="remarks" rows="2"
-                                    class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
+                            <textarea name="remarks" rows="2"
+                                class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
 
-                                @error('remarks')
+                            @error('remarks')
 
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
+                                <div class="invalid-feedback">
+                                    {{ $message }}
+                                </div>
 
-                                @enderror
-
-                            </div>
+                            @enderror
 
                         </div>
 
                     </div>
+
+
+
+
+
+
+
+
+
 
                 </div>
 
@@ -325,91 +396,266 @@
 
     </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
 
-        var itemSelect = $('#item_id');
-        var currentStockHelp = document.getElementById('currentStockHelp');
-        var adjustmentDate = $('#adjustment_date');
-        var direction = $('#direction');
-        var reference = $('#reference');
+            var productModelSelect = $('#product_model_id');
+            var itemSelect = $('#item_id');
+            var currentStockHelp = document.getElementById('currentStockHelp');
+            var adjustmentDate = $('#adjustment_date');
+            var direction = $('#direction');
+            var reference = $('#reference');
 
-        var referenceSequence = @json($referenceSequence ?? '0001');
-        var referenceAutoFilled = false;
+            var referenceSequence = @json($referenceSequence ?? '0001');
+            var referenceAutoFilled = false;
+            var oldItemId = @json(old('item_id'));
 
-        // Custom Select2 init for Item — shows current stock inside the dropdown list
-        itemSelect.select2({
-            theme: 'default',
-            width: '100%',
-            placeholder: '-- Select Item --',
-            allowClear: true,
-            templateResult: function (option) {
-                if (!option.id) {
-                    return option.text; // the placeholder row
-                }
+            // Custom Select2 init for Item — shows current stock inside the dropdown list
+            itemSelect.select2({
+                theme: 'default',
+                width: '100%',
+                placeholder: '-- Select Item --',
+                allowClear: true,
+                templateResult: function (option) {
+                    if (!option.id) {
+                        return option.text; // the placeholder row
+                    }
 
-                var $option = $(option.element);
-                var stock = Number($option.data('current-stock') || 0);
-                var unit = $option.data('unit') || '';
+                    var $option = $(option.element);
+                    var stock = Number($option.data('current-stock') || 0);
+                    var unit = $option.data('unit') || '';
 
-                var formattedStock = stock.toLocaleString(undefined, {
-                    minimumFractionDigits: 3,
-                    maximumFractionDigits: 3
-                });
+                    var formattedStock = stock.toLocaleString(undefined, {
+                        minimumFractionDigits: 3,
+                        maximumFractionDigits: 3
+                    });
 
-                var $result = $(
-                    '<div class="d-flex justify-content-between align-items-center">' +
+                    var $result = $(
+                        '<div class="d-flex justify-content-between align-items-center">' +
                         '<span>' + option.text + '</span>' +
                         '<span class="badge badge-light border ml-2">' +
-                            formattedStock + ' ' + unit +
+                        formattedStock + ' ' + unit +
                         '</span>' +
-                    '</div>'
+                        '</div>'
+                    );
+
+                    return $result;
+                }
+            });
+
+
+            function loadItemsByProductModel() {
+
+                var productModelId = productModelSelect.val();
+
+                /*
+                |--------------------------------------------------------------------------
+                | Reset Item
+                |--------------------------------------------------------------------------
+                */
+
+                itemSelect
+                    .empty()
+                    .append(
+                        '<option value="">-- Select Item --</option>'
+                    )
+                    .prop('disabled', true)
+                    .trigger('change');
+
+                currentStockHelp.textContent = '';
+
+
+                if (!productModelId) {
+
+                    itemSelect
+                        .empty()
+                        .append(
+                            '<option value="">-- Select Product Model First --</option>'
+                        )
+                        .prop('disabled', true)
+                        .trigger('change');
+
+                    return;
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Loading
+                |--------------------------------------------------------------------------
+                */
+
+                itemSelect
+                    .empty()
+                    .append(
+                        '<option value="">Loading items...</option>'
+                    )
+                    .prop('disabled', true)
+                    .trigger('change');
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Load BOM Items
+                |--------------------------------------------------------------------------
+                */
+
+                var url =
+                    '{{ route(
+        "stock-adjustments.product-model-items",
+        ":productModel"
+    ) }}';
+
+                url = url.replace(
+                    ':productModel',
+                    productModelId
                 );
 
-                return $result;
+
+                $.ajax({
+
+                    url: url,
+                    type: 'GET',
+
+                    success: function (response) {
+
+                        itemSelect.empty();
+
+                        itemSelect.append(
+                            '<option value="">-- Select Item --</option>'
+                        );
+
+
+                        if (
+                            !response.items ||
+                            response.items.length === 0
+                        ) {
+
+                            itemSelect.append(
+                                '<option value="" disabled>' +
+                                'No active items found for this Product Model' +
+                                '</option>'
+                            );
+
+                            itemSelect.prop('disabled', false);
+
+                            if (oldItemId) {
+
+                                itemSelect
+                                    .val(String(oldItemId))
+                                    .trigger('change');
+
+                                oldItemId = null;
+
+                            } else {
+
+                                itemSelect.trigger('change');
+                            }
+
+                            return;
+                        }
+
+
+                        $.each(
+                            response.items,
+                            function (index, item) {
+
+                                var option =
+                                    $('<option></option>')
+                                        .val(item.id)
+                                        .text(
+                                            '[' +
+                                            item.product_model +
+                                            ']' + ' - ' +
+                                            item.item_code +
+                                            ' - ' +
+                                            item.item_name
+                                        )
+                                        .attr(
+                                            'data-current-stock',
+                                            item.current_stock
+                                        )
+                                        .attr(
+                                            'data-unit',
+                                            item.unit || ''
+                                        );
+
+                                itemSelect.append(option);
+                            }
+                        );
+
+
+                        itemSelect
+                            .prop('disabled', false)
+                            .trigger('change');
+                    },
+
+
+                    error: function () {
+
+                        itemSelect
+                            .empty()
+                            .append(
+                                '<option value="">' +
+                                'Unable to load items' +
+                                '</option>'
+                            )
+                            .prop('disabled', true)
+                            .trigger('change');
+
+                        currentStockHelp.textContent =
+                            'Unable to load items for the selected Product Model.';
+                    }
+
+                });
+            }
+
+            function showCurrentStock() {
+                var option = itemSelect.find('option:selected');
+                if (!option.val()) {
+                    currentStockHelp.textContent = '';
+                    return;
+                }
+                var stock = Number(option.data('current-stock') || 0);
+                var unit = option.data('unit') || '';
+                currentStockHelp.textContent =
+                    'Current stock: ' +
+                    stock.toLocaleString(undefined, {
+                        minimumFractionDigits: 3,
+                        maximumFractionDigits: 3
+                    }) + ' ' + unit;
+            }
+
+            function generateReference(isInitial) {
+                if (!adjustmentDate.val() || !direction.val()) return;
+                if (reference.val() && !referenceAutoFilled && !isInitial) return;
+
+                var datePart = adjustmentDate.val().replace(/-/g, '');
+                var typePart = direction.val().toUpperCase();
+
+                reference.val('ADJ-' + datePart + '-' + typePart + '-' + referenceSequence);
+                referenceAutoFilled = true;
+            }
+            productModelSelect.on(
+                'change select2:select select2:clear',
+                function () {
+                    loadItemsByProductModel();
+                }
+            );
+
+            itemSelect.on('change select2:select', showCurrentStock);
+            adjustmentDate.on('change', function () { generateReference(false); });
+            direction.on('change select2:select', function () { generateReference(false); });
+
+            reference.on('input', function () {
+                referenceAutoFilled = false;
+            });
+
+            if (itemSelect.val()) showCurrentStock();
+            if (adjustmentDate.val() && direction.val() && !reference.val()) {
+                generateReference(true);
             }
         });
-
-        function showCurrentStock() {
-            var option = itemSelect.find('option:selected');
-            if (!option.val()) {
-                currentStockHelp.textContent = '';
-                return;
-            }
-            var stock = Number(option.data('current-stock') || 0);
-            var unit = option.data('unit') || '';
-            currentStockHelp.textContent =
-                'Current stock: ' +
-                stock.toLocaleString(undefined, {
-                    minimumFractionDigits: 3,
-                    maximumFractionDigits: 3
-                }) + ' ' + unit;
-        }
-
-        function generateReference(isInitial) {
-            if (!adjustmentDate.val() || !direction.val()) return;
-            if (reference.val() && !referenceAutoFilled && !isInitial) return;
-
-            var datePart = adjustmentDate.val().replace(/-/g, '');
-            var typePart = direction.val().toUpperCase();
-
-            reference.val('ADJ-' + datePart + '-' + typePart + '-' + referenceSequence);
-            referenceAutoFilled = true;
-        }
-
-        itemSelect.on('change select2:select', showCurrentStock);
-        adjustmentDate.on('change', function () { generateReference(false); });
-        direction.on('change select2:select', function () { generateReference(false); });
-
-        reference.on('input', function () {
-            referenceAutoFilled = false;
-        });
-
-        if (itemSelect.val()) showCurrentStock();
-        if (adjustmentDate.val() && direction.val() && !reference.val()) {
-            generateReference(true);
-        }
-    });
-</script>
+    </script>
 
 @endsection

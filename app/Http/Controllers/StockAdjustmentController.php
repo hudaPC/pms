@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Item;
+use App\Models\ProductModel;
 use App\Models\StockAdjustment;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
@@ -40,10 +41,38 @@ class StockAdjustmentController extends Controller
 
     public function create()
     {
-        $items = Item::with('unit')
-            ->where('status', true)
-            ->orderBy('item_code')
+        /*
+        |--------------------------------------------------------------------------
+        | Product Models
+        |--------------------------------------------------------------------------
+        |
+        | Stock Adjustment first selects a Product Model.
+        | Items will then be loaded dynamically from product_model_items.
+        |
+        */
+
+        $productModels = ProductModel::query()
+            ->whereHas('modelItems', function ($query) {
+
+                $query->whereHas('item', function ($itemQuery) {
+
+                    $itemQuery->where(
+                        'status',
+                        true
+                    );
+
+                });
+
+            })
+            ->orderBy('model_code')
             ->get();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Reference Sequence
+        |--------------------------------------------------------------------------
+        */
 
         $referenceSequence = str_pad(
             StockAdjustment::count() + 1,
@@ -52,16 +81,69 @@ class StockAdjustmentController extends Controller
             STR_PAD_LEFT
         );
 
+
         return view(
             'stock-adjustments.create',
             compact(
-                'items',
+                'productModels',
                 'referenceSequence'
             )
         );
     }
 
+    public function itemsByProductModel(
+        ProductModel $productModel
+    ) {
+        /*
+        |--------------------------------------------------------------------------
+        | Active BOM Items For Selected Product Model
+        |--------------------------------------------------------------------------
+        */
 
+        $items = Item::query()
+            ->where('status', true)
+            ->whereHas(
+                'productModelItems',
+                function ($query) use ($productModel) {
+
+                    $query->where(
+                        'product_model_id',
+                        $productModel->id
+                    );
+
+                }
+            )
+            ->with('unit')
+            ->orderBy('item_code')
+            ->get()
+            ->map(function ($item) use ($productModel) {
+
+                return [
+                    'id' => $item->id,
+
+                    'item_code' =>
+                        $item->item_code,
+
+                    'item_name' =>
+                        $item->item_name,
+
+                    'unit' =>
+                        $item->unit->name ?? '',
+
+                    'current_stock' =>
+                        (float) $item->current_stock,
+
+                    'product_model' =>
+                        $productModel->model_code,
+                ];
+
+            });
+
+
+        return response()->json([
+            'items' => $items,
+        ]);
+    }
     /*
     |--------------------------------------------------------------------------
     | Store Adjustment
@@ -70,7 +152,12 @@ class StockAdjustmentController extends Controller
 
     public function store(Request $request)
     {
+        //   dd($request->all());
         $validated = $request->validate([
+            'product_model_id' => [
+                'required',
+                'exists:product_models,id',
+            ],
 
             'item_id' => [
                 'required',
@@ -122,7 +209,32 @@ class StockAdjustmentController extends Controller
         $item = Item::findOrFail(
             $validated['item_id']
         );
+        /*
+        |--------------------------------------------------------------------------
+        | Verify Item Belongs To Selected Product Model BOM
+        |--------------------------------------------------------------------------
+        */
 
+        $itemBelongsToProductModel =
+            $item->productModelItems()
+                ->where(
+                    'product_model_id',
+                    $validated['product_model_id']
+                )
+                ->exists();
+
+
+        if (!$itemBelongsToProductModel) {
+
+            return back()
+                ->withInput()
+                ->withErrors([
+
+                    'item_id' =>
+                        'The selected item does not belong to the selected Product Model.',
+
+                ]);
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -140,7 +252,7 @@ class StockAdjustmentController extends Controller
                 ->withErrors([
 
                     'quantity' =>
-                    'Adjustment OUT quantity cannot exceed current stock of '
+                        'Adjustment OUT quantity cannot exceed current stock of '
                         . number_format(
                             (float) $item->current_stock,
                             0
@@ -159,10 +271,7 @@ class StockAdjustmentController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        DB::transaction(function () use (
-            $validated,
-            $item
-        ) {
+        DB::transaction(function () use ($validated, $item) {
 
             /*
             |--------------------------------------------------------------------------
@@ -173,25 +282,25 @@ class StockAdjustmentController extends Controller
             $adjustment = StockAdjustment::create([
 
                 'item_id' =>
-                $item->id,
+                    $item->id,
 
                 'adjustment_date' =>
-                $validated['adjustment_date'],
+                    $validated['adjustment_date'],
 
                 'direction' =>
-                $validated['direction'],
+                    $validated['direction'],
 
                 'quantity' =>
-                $validated['quantity'],
+                    $validated['quantity'],
 
                 'reference' =>
-                $validated['reference'] ?? null,
+                    $validated['reference'] ?? null,
 
                 'reason' =>
-                $validated['reason'] ?? null,
+                    $validated['reason'] ?? null,
 
                 'remarks' =>
-                $validated['remarks'] ?? null,
+                    $validated['remarks'] ?? null,
 
             ]);
 
@@ -205,38 +314,40 @@ class StockAdjustmentController extends Controller
             StockMovement::create([
 
                 'item_id' =>
-                $item->id,
+                    $item->id,
 
                 'movement_date' =>
-                $adjustment->adjustment_date,
+                    $adjustment->adjustment_date,
 
                 'movement_type' =>
-                'adjustment',
+                    $adjustment->direction === 'in'
+                    ? 'stock_adjustment_in'
+                    : 'stock_adjustment_out',
 
                 'direction' =>
-                $adjustment->direction,
+                    $adjustment->direction,
 
                 'quantity' =>
-                $adjustment->quantity,
+                    $adjustment->quantity,
 
                 'source_type' =>
-                'stock_adjustment',
+                    'stock_adjustment',
 
                 'source_id' =>
-                $adjustment->id,
+                    $adjustment->id,
 
                 'reference' =>
-                $adjustment->reference,
+                    $adjustment->reference,
 
                 'remarks' =>
-                trim(
-                    ($adjustment->reason ?? '')
+                    trim(
+                        ($adjustment->reason ?? '')
                         . (
                             $adjustment->remarks
                             ? ' - ' . $adjustment->remarks
                             : ''
                         )
-                ) ?: null,
+                    ) ?: null,
 
             ]);
         });
@@ -369,7 +480,7 @@ class StockAdjustmentController extends Controller
                 ->withErrors([
 
                     'quantity' =>
-                    'Adjustment OUT quantity cannot exceed available stock of '
+                        'Adjustment OUT quantity cannot exceed available stock of '
                         . number_format(
                             $currentStockWithoutAdjustment,
                             0
@@ -382,11 +493,7 @@ class StockAdjustmentController extends Controller
         }
 
 
-        DB::transaction(function () use (
-            $validated,
-            $stockAdjustment,
-            $item
-        ) {
+        DB::transaction(function () use ($validated, $stockAdjustment, $item) {
 
             /*
         |--------------------------------------------------------------------------
@@ -397,25 +504,25 @@ class StockAdjustmentController extends Controller
             $stockAdjustment->update([
 
                 'item_id' =>
-                $item->id,
+                    $item->id,
 
                 'adjustment_date' =>
-                $validated['adjustment_date'],
+                    $validated['adjustment_date'],
 
                 'direction' =>
-                $validated['direction'],
+                    $validated['direction'],
 
                 'quantity' =>
-                $validated['quantity'],
+                    $validated['quantity'],
 
                 'reference' =>
-                $validated['reference'] ?? null,
+                    $validated['reference'] ?? null,
 
                 'reason' =>
-                $validated['reason'] ?? null,
+                    $validated['reason'] ?? null,
 
                 'remarks' =>
-                $validated['remarks'] ?? null,
+                    $validated['remarks'] ?? null,
 
             ]);
 
@@ -429,39 +536,41 @@ class StockAdjustmentController extends Controller
             StockMovement::updateOrCreate(
                 [
                     'source_type' =>
-                    'stock_adjustment',
+                        'stock_adjustment',
 
                     'source_id' =>
-                    $stockAdjustment->id,
+                        $stockAdjustment->id,
                 ],
                 [
                     'item_id' =>
-                    $stockAdjustment->item_id,
+                        $stockAdjustment->item_id,
 
                     'movement_date' =>
-                    $stockAdjustment->adjustment_date,
+                        $stockAdjustment->adjustment_date,
 
                     'movement_type' =>
-                    'adjustment',
+                        $stockAdjustment->direction === 'in'
+                        ? 'stock_adjustment_in'
+                        : 'stock_adjustment_out',
 
                     'direction' =>
-                    $stockAdjustment->direction,
+                        $stockAdjustment->direction,
 
                     'quantity' =>
-                    $stockAdjustment->quantity,
+                        $stockAdjustment->quantity,
 
                     'reference' =>
-                    $stockAdjustment->reference,
+                        $stockAdjustment->reference,
 
                     'remarks' =>
-                    trim(
-                        ($stockAdjustment->reason ?? '')
+                        trim(
+                            ($stockAdjustment->reason ?? '')
                             . (
                                 $stockAdjustment->remarks
                                 ? ' - ' . $stockAdjustment->remarks
                                 : ''
                             )
-                    ) ?: null,
+                        ) ?: null,
                 ]
             );
         });

@@ -28,9 +28,9 @@ class PurchaseReturnController extends Controller
                 'goodsReceipt',
                 'items',
             ])
-            ->orderByDesc('return_date')
-            ->orderByDesc('id')
-            ->paginate(20);
+                ->orderByDesc('return_date')
+                ->orderByDesc('id')
+                ->paginate(20);
 
 
         return view(
@@ -113,79 +113,79 @@ class PurchaseReturnController extends Controller
 
         $returnableItems =
             $goodsReceipt->items
-            ->map(function ($receiptItem) {
+                ->map(function ($receiptItem) {
 
-                /*
-                    |--------------------------------------------------------------------------
-                    | Already Posted Return Quantity
-                    |--------------------------------------------------------------------------
-                    */
+                    /*
+                        |--------------------------------------------------------------------------
+                        | Already Posted Return Quantity
+                        |--------------------------------------------------------------------------
+                        */
 
-                $alreadyReturned =
-                    (float)
-                    PurchaseReturnItem::where(
-                        'goods_receipt_item_id',
-                        $receiptItem->id
-                    )
-                        ->whereHas(
-                            'purchaseReturn',
-                            function ($query) {
-
-                                $query->where(
-                                    'status',
-                                    'posted'
-                                );
-                            }
+                    $alreadyReturned =
+                        (float) 
+                        PurchaseReturnItem::where(
+                            'goods_receipt_item_id',
+                            $receiptItem->id
                         )
-                        ->sum(
-                            'return_quantity'
+                            ->whereHas(
+                                'purchaseReturn',
+                                function ($query) {
+
+                                    $query->where(
+                                        'status',
+                                        'posted'
+                                    );
+                                }
+                            )
+                            ->sum(
+                                'return_quantity'
+                            );
+
+
+                    /*
+                        |--------------------------------------------------------------------------
+                        | Returnable Quantity
+                        |--------------------------------------------------------------------------
+                        */
+
+                    $receivedQuantity =
+                        (float) 
+                        $receiptItem
+                            ->received_quantity;
+
+
+                    $returnableQuantity =
+                        max(
+                            0,
+                            $receivedQuantity
+                            -
+                            $alreadyReturned
                         );
 
 
-                /*
-                    |--------------------------------------------------------------------------
-                    | Returnable Quantity
-                    |--------------------------------------------------------------------------
-                    */
+                    return [
 
-                $receivedQuantity =
-                    (float)
-                    $receiptItem
-                        ->received_quantity;
+                        'receipt_item' =>
+                            $receiptItem,
 
+                        'received_quantity' =>
+                            $receivedQuantity,
 
-                $returnableQuantity =
-                    max(
-                        0,
-                        $receivedQuantity
-                            -
-                            $alreadyReturned
-                    );
+                        'already_returned' =>
+                            $alreadyReturned,
 
+                        'returnable_quantity' =>
+                            $returnableQuantity,
 
-                return [
+                    ];
+                })
+                ->filter(function ($row) {
 
-                    'receipt_item' =>
-                    $receiptItem,
-
-                    'received_quantity' =>
-                    $receivedQuantity,
-
-                    'already_returned' =>
-                    $alreadyReturned,
-
-                    'returnable_quantity' =>
-                    $returnableQuantity,
-
-                ];
-            })
-            ->filter(function ($row) {
-
-                return
-                    $row['returnable_quantity']
-                    > 0;
-            })
-            ->values();
+                    return
+                        $row['returnable_quantity']
+                        > 0;
+                })
+                ->values();
 
 
         /*
@@ -204,16 +204,16 @@ class PurchaseReturnController extends Controller
                 'like',
                 $datePrefix . '%'
             )
-            ->orderByDesc(
-                'return_number'
-            )
-            ->first();
+                ->orderByDesc(
+                    'return_number'
+                )
+                ->first();
 
 
         if ($lastReturn) {
 
             $lastSequence =
-                (int)
+                (int) 
                 substr(
                     $lastReturn->return_number,
                     -4
@@ -316,7 +316,7 @@ class PurchaseReturnController extends Controller
                 ],
 
                 'items.*.return_quantity' => [
-                    'required',
+                    'nullable',
                     'numeric',
                     'min:0.001',
                 ],
@@ -328,6 +328,35 @@ class PurchaseReturnController extends Controller
                 ],
 
             ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | At Least One Item Must Have Return Quantity
+        |--------------------------------------------------------------------------
+        */
+
+        $hasReturnQuantity =
+            collect($validated['items'])
+                ->contains(function ($row) {
+
+                    return isset($row['return_quantity'])
+                        && $row['return_quantity'] !== ''
+                        && (float) $row['return_quantity'] > 0;
+
+                });
+
+
+        if (!$hasReturnQuantity) {
+
+            return back()
+                ->withInput()
+                ->withErrors([
+
+                    'items' =>
+                        'Please enter a return quantity for at least one item.',
+
+                ]);
+        }
 
 
         /*
@@ -342,11 +371,11 @@ class PurchaseReturnController extends Controller
             \Carbon\Carbon::parse(
                 $validated['return_date']
             )->lt(
-                $goodsReceipt
-                    ->receipt_date
-                    ->copy()
-                    ->startOfDay()
-            )
+                    $goodsReceipt
+                        ->receipt_date
+                        ->copy()
+                        ->startOfDay()
+                )
         ) {
 
             return back()
@@ -354,10 +383,10 @@ class PurchaseReturnController extends Controller
                 ->withErrors([
 
                     'return_date' =>
-                    'Return date cannot be earlier than the Goods Receipt date of '
+                        'Return date cannot be earlier than the Goods Receipt date of '
                         . $goodsReceipt
-                        ->receipt_date
-                        ->format('d-M-Y')
+                            ->receipt_date
+                            ->format('d-M-Y')
                         . '.',
 
                 ]);
@@ -372,10 +401,7 @@ class PurchaseReturnController extends Controller
 
         $purchaseReturn =
             DB::transaction(
-                function () use (
-                    $validated,
-                    $goodsReceipt
-                ) {
+                function () use ($validated, $goodsReceipt) {
 
                     /*
                     |--------------------------------------------------------------------------
@@ -385,22 +411,22 @@ class PurchaseReturnController extends Controller
 
                     $lockedGoodsReceipt =
                         GoodsReceipt::query()
-                        ->whereKey(
-                            $goodsReceipt->id
-                        )
-                        ->lockForUpdate()
-                        ->firstOrFail();
+                            ->whereKey(
+                                $goodsReceipt->id
+                            )
+                            ->lockForUpdate()
+                            ->firstOrFail();
 
 
                     if (
                         $lockedGoodsReceipt
-                        ->status !== 'posted'
+                            ->status !== 'posted'
                     ) {
 
                         throw \Illuminate\Validation\ValidationException::withMessages([
 
                             'return_number' =>
-                            'This Goods Receipt is no longer available for return.',
+                                'This Goods Receipt is no longer available for return.',
 
                         ]);
                     }
@@ -416,32 +442,32 @@ class PurchaseReturnController extends Controller
                         PurchaseReturn::create([
 
                             'return_number' =>
-                            $validated['return_number'],
+                                $validated['return_number'],
 
                             'supplier_id' =>
-                            $lockedGoodsReceipt
-                                ->purchaseOrder
-                                ->supplier_id,
+                                $lockedGoodsReceipt
+                                    ->purchaseOrder
+                                    ->supplier_id,
 
                             'purchase_order_id' =>
-                            $lockedGoodsReceipt
-                                ->purchase_order_id,
+                                $lockedGoodsReceipt
+                                    ->purchase_order_id,
 
                             'goods_receipt_id' =>
-                            $lockedGoodsReceipt->id,
+                                $lockedGoodsReceipt->id,
 
                             'return_date' =>
-                            $validated['return_date'],
+                                $validated['return_date'],
 
                             'status' =>
-                            'draft',
+                                'draft',
 
                             'reason' =>
-                            $validated['reason']
+                                $validated['reason']
                                 ?? null,
 
                             'remarks' =>
-                            $validated['remarks']
+                                $validated['remarks']
                                 ?? null,
 
                         ]);
@@ -459,19 +485,32 @@ class PurchaseReturnController extends Controller
                     ) {
 
                         /*
-                        |--------------------------------------------------------------------------
-                        | Lock Receipt Item
-                        |--------------------------------------------------------------------------
-                        */
+                            |--------------------------------------------------------------------------
+                            | Skip Items Not Being Returned
+                            |--------------------------------------------------------------------------
+                            */
+
+                        if (
+                            !isset($row['return_quantity'])
+                            || $row['return_quantity'] === ''
+                            || (float) $row['return_quantity'] <= 0
+                        ) {
+                            continue;
+                        }
+                        /*
+                           |--------------------------------------------------------------------------
+                           | Lock Receipt Item
+                           |--------------------------------------------------------------------------
+                           */
 
                         $receiptItem =
                             $lockedGoodsReceipt
-                            ->items()
-                            ->whereKey(
-                                $row['goods_receipt_item_id']
-                            )
-                            ->lockForUpdate()
-                            ->firstOrFail();
+                                ->items()
+                                ->whereKey(
+                                    $row['goods_receipt_item_id']
+                                )
+                                ->lockForUpdate()
+                                ->firstOrFail();
 
 
                         /*
@@ -481,7 +520,7 @@ class PurchaseReturnController extends Controller
                         */
 
                         $alreadyReturned =
-                            (float)
+                            (float) 
                             PurchaseReturnItem::where(
                                 'goods_receipt_item_id',
                                 $receiptItem->id
@@ -508,7 +547,7 @@ class PurchaseReturnController extends Controller
                         */
 
                         $receivedQuantity =
-                            (float)
+                            (float) 
                             $receiptItem
                                 ->received_quantity;
 
@@ -517,13 +556,13 @@ class PurchaseReturnController extends Controller
                             max(
                                 0,
                                 $receivedQuantity
-                                    -
-                                    $alreadyReturned
+                                -
+                                $alreadyReturned
                             );
 
 
                         $returnQuantity =
-                            (float)
+                            (float) 
                             $row['return_quantity'];
 
 
@@ -542,11 +581,11 @@ class PurchaseReturnController extends Controller
                             throw \Illuminate\Validation\ValidationException::withMessages([
 
                                 'items' =>
-                                'Return quantity for '
+                                    'Return quantity for '
                                     . (
                                         $receiptItem
-                                        ->item
-                                        ->item_name
+                                            ->item
+                                            ->item_name
                                         ?? 'the selected item'
                                     )
                                     . ' cannot exceed the available return quantity of '
@@ -567,7 +606,7 @@ class PurchaseReturnController extends Controller
                         */
 
                         $unitPrice =
-                            (float)
+                            (float) 
                             $receiptItem
                                 ->purchaseOrderItem
                                 ->unit_price;
@@ -588,33 +627,33 @@ class PurchaseReturnController extends Controller
                         PurchaseReturnItem::create([
 
                             'purchase_return_id' =>
-                            $purchaseReturn->id,
+                                $purchaseReturn->id,
 
                             'goods_receipt_item_id' =>
-                            $receiptItem->id,
+                                $receiptItem->id,
 
                             'purchase_order_item_id' =>
-                            $receiptItem
-                                ->purchase_order_item_id,
+                                $receiptItem
+                                    ->purchase_order_item_id,
 
                             'item_id' =>
-                            $receiptItem->item_id,
+                                $receiptItem->item_id,
 
                             'return_quantity' =>
-                            $returnQuantity,
+                                $returnQuantity,
 
                             'unit_price' =>
-                            $unitPrice,
+                                $unitPrice,
 
                             'line_total' =>
-                            $lineTotal,
+                                $lineTotal,
 
                             'reason' =>
-                            $row['reason']
+                                $row['reason']
                                 ?? null,
 
                             'remarks' =>
-                            null,
+                                null,
 
                         ]);
                     }
@@ -671,9 +710,9 @@ class PurchaseReturnController extends Controller
 
             $lockedReturn =
                 PurchaseReturn::query()
-                ->whereKey($purchaseReturn->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+                    ->whereKey($purchaseReturn->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
 
             /*
@@ -687,7 +726,7 @@ class PurchaseReturnController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages([
 
                     'post' =>
-                    'Only draft Purchase Returns can be posted.',
+                        'Only draft Purchase Returns can be posted.',
 
                 ]);
             }
@@ -701,11 +740,11 @@ class PurchaseReturnController extends Controller
 
             $goodsReceipt =
                 GoodsReceipt::query()
-                ->whereKey(
-                    $lockedReturn->goods_receipt_id
-                )
-                ->lockForUpdate()
-                ->firstOrFail();
+                    ->whereKey(
+                        $lockedReturn->goods_receipt_id
+                    )
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
 
             /*
@@ -719,7 +758,7 @@ class PurchaseReturnController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages([
 
                     'post' =>
-                    'This Purchase Return cannot be posted because '
+                        'This Purchase Return cannot be posted because '
                         . 'the related Goods Receipt is no longer posted.',
 
                 ]);
@@ -734,8 +773,8 @@ class PurchaseReturnController extends Controller
 
             $returnItems =
                 $lockedReturn
-                ->items()
-                ->get();
+                    ->items()
+                    ->get();
 
 
             if ($returnItems->isEmpty()) {
@@ -743,7 +782,7 @@ class PurchaseReturnController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages([
 
                     'post' =>
-                    'This Purchase Return has no items to post.',
+                        'This Purchase Return has no items to post.',
 
                 ]);
             }
@@ -765,12 +804,12 @@ class PurchaseReturnController extends Controller
 
                 $receiptItem =
                     $goodsReceipt
-                    ->items()
-                    ->whereKey(
-                        $returnItem->goods_receipt_item_id
-                    )
-                    ->lockForUpdate()
-                    ->firstOrFail();
+                        ->items()
+                        ->whereKey(
+                            $returnItem->goods_receipt_item_id
+                        )
+                        ->lockForUpdate()
+                        ->firstOrFail();
 
 
                 /*
@@ -788,7 +827,7 @@ class PurchaseReturnController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages([
 
                         'post' =>
-                        'A Purchase Return item does not match its original Goods Receipt item.',
+                            'A Purchase Return item does not match its original Goods Receipt item.',
 
                     ]);
                 }
@@ -809,7 +848,7 @@ class PurchaseReturnController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages([
 
                         'post' =>
-                        'Purchase Return quantity must be greater than zero.',
+                            'Purchase Return quantity must be greater than zero.',
 
                     ]);
                 }
@@ -826,7 +865,7 @@ class PurchaseReturnController extends Controller
             */
 
                 $alreadyReturned =
-                    (float)
+                    (float) 
                     PurchaseReturnItem::where(
                         'goods_receipt_item_id',
                         $receiptItem->id
@@ -865,8 +904,8 @@ class PurchaseReturnController extends Controller
                     max(
                         0,
                         $receivedQuantity
-                            -
-                            $alreadyReturned
+                        -
+                        $alreadyReturned
                     );
 
 
@@ -885,7 +924,7 @@ class PurchaseReturnController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages([
 
                         'post' =>
-                        'Return quantity for item '
+                            'Return quantity for item '
                             . (
                                 $receiptItem->item->item_name
                                 ?? $receiptItem->item_id
@@ -913,7 +952,7 @@ class PurchaseReturnController extends Controller
             */
 
                 $totalIn =
-                    (float)
+                    (float) 
                     StockMovement::where(
                         'item_id',
                         $returnItem->item_id
@@ -928,7 +967,7 @@ class PurchaseReturnController extends Controller
 
 
                 $totalOut =
-                    (float)
+                    (float) 
                     StockMovement::where(
                         'item_id',
                         $returnItem->item_id
@@ -963,7 +1002,7 @@ class PurchaseReturnController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages([
 
                         'post' =>
-                        'Purchase Return cannot be posted because item '
+                            'Purchase Return cannot be posted because item '
                             . (
                                 $receiptItem->item->item_name
                                 ?? $receiptItem->item_id
@@ -995,15 +1034,15 @@ class PurchaseReturnController extends Controller
                         'source_type',
                         'purchase_return_item'
                     )
-                    ->where(
-                        'source_id',
-                        $returnItem->id
-                    )
-                    ->where(
-                        'direction',
-                        'out'
-                    )
-                    ->exists();
+                        ->where(
+                            'source_id',
+                            $returnItem->id
+                        )
+                        ->where(
+                            'direction',
+                            'out'
+                        )
+                        ->exists();
 
 
                 if ($movementExists) {
@@ -1011,7 +1050,7 @@ class PurchaseReturnController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages([
 
                         'post' =>
-                        'A Stock OUT movement already exists for one of the Purchase Return items.',
+                            'A Stock OUT movement already exists for one of the Purchase Return items.',
 
                     ]);
                 }
@@ -1032,31 +1071,31 @@ class PurchaseReturnController extends Controller
                 StockMovement::create([
 
                     'item_id' =>
-                    $returnItem->item_id,
+                        $returnItem->item_id,
 
                     'movement_date' =>
-                    $lockedReturn->return_date,
+                        $lockedReturn->return_date,
 
                     'movement_type' =>
-                    'purchase_receipt',
+                        'purchase_receipt',
 
                     'direction' =>
-                    'out',
+                        'out',
 
                     'quantity' =>
-                    $returnQuantity,
+                        $returnQuantity,
 
                     'source_type' =>
-                    'purchase_return_item',
+                        'purchase_return_item',
 
                     'source_id' =>
-                    $returnItem->id,
+                        $returnItem->id,
 
                     'reference' =>
-                    $lockedReturn->return_number,
+                        $lockedReturn->return_number,
 
                     'remarks' =>
-                    'Purchase Return to supplier. '
+                        'Purchase Return to supplier. '
                         . 'Reason: '
                         . (
                             $returnItem->reason
@@ -1077,10 +1116,10 @@ class PurchaseReturnController extends Controller
             $lockedReturn->update([
 
                 'status' =>
-                'posted',
+                    'posted',
 
                 'posted_at' =>
-                now(),
+                    now(),
 
             ]);
         });
@@ -1146,10 +1185,7 @@ class PurchaseReturnController extends Controller
     |--------------------------------------------------------------------------
     */
 
-        DB::transaction(function () use (
-            $purchaseReturn,
-            $validated
-        ) {
+        DB::transaction(function () use ($purchaseReturn, $validated) {
 
             /*
         |--------------------------------------------------------------------------
@@ -1159,11 +1195,11 @@ class PurchaseReturnController extends Controller
 
             $lockedReturn =
                 PurchaseReturn::query()
-                ->whereKey(
-                    $purchaseReturn->id
-                )
-                ->lockForUpdate()
-                ->firstOrFail();
+                    ->whereKey(
+                        $purchaseReturn->id
+                    )
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
 
             /*
@@ -1177,7 +1213,7 @@ class PurchaseReturnController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages([
 
                     'cancellation_reason' =>
-                    'This Purchase Return has already been cancelled.',
+                        'This Purchase Return has already been cancelled.',
 
                 ]);
             }
@@ -1194,7 +1230,7 @@ class PurchaseReturnController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages([
 
                     'cancellation_reason' =>
-                    'Only a posted Purchase Return can be cancelled and reversed.',
+                        'Only a posted Purchase Return can be cancelled and reversed.',
 
                 ]);
             }
@@ -1208,8 +1244,8 @@ class PurchaseReturnController extends Controller
 
             $returnItems =
                 $lockedReturn
-                ->items()
-                ->get();
+                    ->items()
+                    ->get();
 
 
             if ($returnItems->isEmpty()) {
@@ -1217,7 +1253,7 @@ class PurchaseReturnController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages([
 
                     'cancellation_reason' =>
-                    'This Purchase Return has no items to reverse.',
+                        'This Purchase Return has no items to reverse.',
 
                 ]);
             }
@@ -1232,7 +1268,7 @@ class PurchaseReturnController extends Controller
             foreach ($returnItems as $returnItem) {
 
                 $returnQuantity =
-                    (float)
+                    (float) 
                     $returnItem->return_quantity;
 
 
@@ -1253,15 +1289,15 @@ class PurchaseReturnController extends Controller
                         'source_type',
                         'purchase_return_item'
                     )
-                    ->where(
-                        'source_id',
-                        $returnItem->id
-                    )
-                    ->where(
-                        'direction',
-                        'out'
-                    )
-                    ->exists();
+                        ->where(
+                            'source_id',
+                            $returnItem->id
+                        )
+                        ->where(
+                            'direction',
+                            'out'
+                        )
+                        ->exists();
 
 
                 if (!$originalMovementExists) {
@@ -1269,7 +1305,7 @@ class PurchaseReturnController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages([
 
                         'cancellation_reason' =>
-                        'The original Stock OUT movement could not be found '
+                            'The original Stock OUT movement could not be found '
                             . 'for one of the Purchase Return items.',
 
                     ]);
@@ -1287,15 +1323,15 @@ class PurchaseReturnController extends Controller
                         'source_type',
                         'purchase_return_reversal'
                     )
-                    ->where(
-                        'source_id',
-                        $returnItem->id
-                    )
-                    ->where(
-                        'direction',
-                        'in'
-                    )
-                    ->exists();
+                        ->where(
+                            'source_id',
+                            $returnItem->id
+                        )
+                        ->where(
+                            'direction',
+                            'in'
+                        )
+                        ->exists();
 
 
                 if ($reversalExists) {
@@ -1303,7 +1339,7 @@ class PurchaseReturnController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages([
 
                         'cancellation_reason' =>
-                        'A stock reversal already exists for one of the '
+                            'A stock reversal already exists for one of the '
                             . 'Purchase Return items.',
 
                     ]);
@@ -1323,32 +1359,32 @@ class PurchaseReturnController extends Controller
                 StockMovement::create([
 
                     'item_id' =>
-                    $returnItem->item_id,
+                        $returnItem->item_id,
 
                     'movement_date' =>
-                    now()->toDateString(),
+                        now()->toDateString(),
 
                     'movement_type' =>
-                    'purchase_receipt',
+                        'purchase_receipt',
 
                     'direction' =>
-                    'in',
+                        'in',
 
                     'quantity' =>
-                    $returnQuantity,
+                        $returnQuantity,
 
                     'source_type' =>
-                    'purchase_return_reversal',
+                        'purchase_return_reversal',
 
                     'source_id' =>
-                    $returnItem->id,
+                        $returnItem->id,
 
                     'reference' =>
-                    'VOID-'
+                        'VOID-'
                         . $lockedReturn->return_number,
 
                     'remarks' =>
-                    'Purchase Return reversal. Reason: '
+                        'Purchase Return reversal. Reason: '
                         . $validated['cancellation_reason'],
 
                 ]);
@@ -1364,13 +1400,13 @@ class PurchaseReturnController extends Controller
             $lockedReturn->update([
 
                 'status' =>
-                'cancelled',
+                    'cancelled',
 
                 'cancelled_at' =>
-                now(),
+                    now(),
 
                 'cancellation_reason' =>
-                $validated['cancellation_reason'],
+                    $validated['cancellation_reason'],
 
             ]);
         });

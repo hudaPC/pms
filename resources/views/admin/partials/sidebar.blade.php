@@ -120,6 +120,26 @@
                     </a>
 
                 </li>
+                
+                {{-- ================================================= --}}
+                {{-- PRODUCT MODEL --}}
+                {{-- ================================================= --}}
+
+                <li class="nav-item">
+
+                    <a href="{{ url('/product-models') }}" class="nav-link
+                        {{ request()->is('product-models*') ? 'active' : '' }}">
+
+                        <i class="fas fa-cubes nav-icon"></i>
+
+                        <p>
+                            Product Model
+                        </p>
+
+                    </a>
+
+                </li>
+
                    {{-- ================================================= --}}
                 {{-- PRODUCTION PLANNING --}}
                 {{-- ================================================= --}}
@@ -140,24 +160,6 @@
                 </li>
 
 
-                {{-- ================================================= --}}
-                {{-- PRODUCT MODEL --}}
-                {{-- ================================================= --}}
-
-                <li class="nav-item">
-
-                    <a href="{{ url('/product-models') }}" class="nav-link
-                        {{ request()->is('product-models*') ? 'active' : '' }}">
-
-                        <i class="fas fa-cubes nav-icon"></i>
-
-                        <p>
-                            Product Model
-                        </p>
-
-                    </a>
-
-                </li>
 
 
              
@@ -505,7 +507,61 @@
 
                 </li>
 
+ {{-- ===================================================== --}}
+                {{-- INVOICING --}}
+                {{-- ===================================================== --}}
 
+                @php
+
+                    $invoicingActive = request()->is('supplier-invoices*');
+
+                @endphp
+
+
+                <li class="nav-item has-treeview
+                    {{ $invoicingActive ? 'menu-open' : '' }}">
+
+                    <a href="#" class="nav-link
+                        {{ $invoicingActive ? 'active' : '' }}">
+
+                        <i class="nav-icon fas fa-file-invoice"></i>
+
+                        <p>
+
+                            Invoicing
+
+                            <i class="right fas fa-angle-left"></i>
+
+                        </p>
+
+                    </a>
+
+
+                    <ul class="nav nav-treeview">
+
+
+                        {{-- ================================================= --}}
+                        {{-- Supplier Invoices --}}
+                        {{-- ================================================= --}}
+
+                        <li class="nav-item">
+
+                            <a href="{{ url('/supplier-invoices') }}" class="nav-link
+                                {{ request()->is('supplier-invoices*') ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon"></i>
+
+                                <p>
+                                    Supplier Invoices
+                                </p>
+
+                            </a>
+
+                        </li>
+
+                    </ul>
+
+                </li>
                 {{-- ===================================================== --}}
                 {{-- INVENTORY --}}
                 {{-- ===================================================== --}}
@@ -582,6 +638,9 @@
 
                 </li>
 
+               
+
+
                 {{-- ===================================================== --}}
                 {{-- ACCOUNTS PAYABLE --}}
                 {{-- ===================================================== --}}
@@ -589,7 +648,6 @@
                 @php
 
                     $accountsPayableActive =
-                        request()->is('supplier-invoices*') ||
                         request()->is('supplier-payments*') ||
                         request()->is('supplier-ledger*') ||
                         request()->is('accounts-payable*');
@@ -607,7 +665,7 @@
 
                         <p>
 
-                            Accounts Payable
+                            Accountings
 
                             <i class="right fas fa-angle-left"></i>
 
@@ -617,26 +675,6 @@
 
 
                     <ul class="nav nav-treeview">
-
-
-                        {{-- ================================================= --}}
-                        {{-- Supplier Invoices --}}
-                        {{-- ================================================= --}}
-
-                        <li class="nav-item">
-
-                            <a href="{{ url('/supplier-invoices') }}" class="nav-link
-                                {{ request()->is('supplier-invoices*') ? 'active' : '' }}">
-
-                                <i class="far fa-circle nav-icon"></i>
-
-                                <p>
-                                    Supplier Invoices
-                                </p>
-
-                            </a>
-
-                        </li>
 
 
                         {{-- ================================================= --}}

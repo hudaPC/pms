@@ -35,21 +35,6 @@
         </div>
 
 
-        {{-- Success Message --}}
-        @if(session('success'))
-
-            <div class="alert alert-success alert-dismissible fade show">
-
-                {{ session('success') }}
-
-                <button type="button" class="close" data-dismiss="alert">
-                    <span>&times;</span>
-                </button>
-
-            </div>
-
-        @endif
-
 
         {{-- Summary --}}
         <div class="row">
@@ -229,7 +214,8 @@
                                     Date From
                                 </label>
 
-                                <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
+                                <input type="date" name="date_from" class="form-control"
+                                    value="{{ request('date_from') }}">
 
                             </div>
 
@@ -343,185 +329,140 @@
 
                             @forelse($usageLogs as $usageLog)
 
-                                                    <tr>
+                                <tr>
 
-                                                        <td>
-                                                            {{ $usageLogs->firstItem() + $loop->index }}
-                                                        </td>
-
-
-                                                        <td>
-                                                            {{ $usageLog->usage_date?->format('d-M-Y') }}
-                                                        </td>
+                                    <td>
+                                        {{ $usageLogs->firstItem() + $loop->index }}
+                                    </td>
 
 
-                                                        <td>
-
-                                                            <strong>
-                                                                {{ $usageLog->item?->item_code }}
-                                                            </strong>
-
-                                                            <br>
-
-                                                            <small class="text-muted">
-                                                                {{ $usageLog->item?->item_name }}
-                                                            </small>
-
-                                                        </td>
+                                    <td>
+                                        {{ $usageLog->usage_date?->format('d-M-Y') }}
+                                    </td>
 
 
-                                                        <td class="text-right">
+                                    <td>
 
-                                                            {{ number_format(
-                                    (float) $usageLog->quantity,
-                                    3
-                                ) }}
+                                        <strong>
+                                            {{ $usageLog->item?->item_code }}
+                                        </strong>
 
-                                                            <small class="text-muted">
-                                                                {{ $usageLog->item?->unit?->name }}
-                                                            </small>
+                                        <br>
 
-                                                        </td>
+                                        <small class="text-muted">
+                                            {{ $usageLog->item?->item_name }}
+                                        </small>
 
-
-                                                        <td>
-                                                            {{ $usageLog->reference ?? '-' }}
-                                                        </td>
+                                    </td>
 
 
-                                                        <td>
+                                    <td class="text-right">
 
-                                                            @if($usageLog->source === 'production-plan')
+                                        {{ number_format((float) $usageLog->quantity, 3) }}
 
-                                                                <span class="badge badge-primary">
-                                                                    Production Plan
-                                                                </span>
+                                        <small class="text-muted">
+                                            {{ $usageLog->item?->unit?->name }}
+                                        </small>
 
-                                                            @else
-
-                                                                <span class="badge badge-info">
-                                                                    Manual
-                                                                </span>
-
-                                                            @endif
-
-                                                        </td>
+                                    </td>
 
 
-                                                        <td>
-
-                                                            @if($usageLog->productionPlan)
-
-                                                                <strong>
-                                                                    {{ $usageLog->productionPlan->reference }}
-                                                                </strong>
-
-                                                                @if($usageLog->productionPlan->productModel)
-
-                                                                    <br>
-
-                                                                    <small class="text-muted">
-                                                                        {{ $usageLog->productionPlan->productModel->model_code }}
-                                                                    </small>
-
-                                                                @endif
-
-                                                            @else
-
-                                                                <span class="text-muted">
-                                                                    -
-                                                                </span>
-
-                                                            @endif
-
-                                                        </td>
+                                    <td>
+                                        {{ $usageLog->reference ?? '-' }}
+                                    </td>
 
 
-                                                        <td>
+                                    <td>
 
-                                                            @if($usageLog->status === 'void')
+                                        @if ($usageLog->source === 'production-plan')
+                                            <span class="badge badge-primary">
+                                                Production Plan
+                                            </span>
+                                        @else
+                                            <span class="badge badge-info">
+                                                Manual
+                                            </span>
+                                        @endif
 
-                                                                <span class="badge badge-danger">
-                                                                    Voided
-                                                                </span>
-
-                                                            @else
-
-                                                                <span class="badge badge-success">
-                                                                    Active
-                                                                </span>
-
-                                                            @endif
-
-                                                        </td>
+                                    </td>
 
 
-                                                        <td>
+                                    <td>
 
-                                                            @if(
-                                                                                            $usageLog->source === 'manual'
-                                                                                            && $usageLog->status === 'active'
-                                                                                        )
+                                        @if ($usageLog->productionPlan)
+                                            <strong>
+                                                {{ $usageLog->productionPlan->reference }}
+                                            </strong>
 
-                                                                                        <a href="{{ route(
-                                                                    'items.usage-logs.edit',
-                                                                    [
-                                                                        $usageLog->item_id,
-                                                                        $usageLog->id
-                                                                    ]
-                                                                ) }}" class="btn btn-sm btn-warning"
-                                                                                            title="Edit Material Usage">
-                                                                                            <i class="fas fa-edit"></i>
-                                                                                        </a>
-                                                                                        <button type="button" class="btn btn-sm btn-danger btn-void-usage" data-toggle="modal"
-                                                                                            data-target="#voidUsageModal" data-action="{{ route(
-                                                                    'items.usage-logs.destroy',
-                                                                    [
-                                                                        $usageLog->item_id,
-                                                                        $usageLog->id
-                                                                    ]
-                                                                ) }}"
-                                                                                            data-item="{{ $usageLog->item?->item_code }} - {{ $usageLog->item?->item_name }}"
-                                                                                            data-quantity="{{ number_format(
-                                                                    (float) $usageLog->quantity,
-                                                                    3,
-                                                                    '.',
-                                                                    ''
-                                                                ) }}"
-                                                                                            data-unit="{{ $usageLog->item?->unit?->name ?? 'Units' }}"
-                                                                                            data-reference="{{ $usageLog->reference ?? '-' }}" title="Void Material Usage">
-                                                                                            <i class="fas fa-ban"></i>
-                                                                                        </button>
+                                            @if ($usageLog->productionPlan->productModel)
+                                                <br>
 
-                                                            @elseif(
-                                                                    $usageLog->source === 'production-plan'
-                                                                )
+                                                <small class="text-muted">
+                                                    {{ $usageLog->productionPlan->productModel->model_code }}
+                                                </small>
+                                            @endif
+                                        @else
+                                            <span class="text-muted">
+                                                -
+                                            </span>
+                                        @endif
 
-                                                                <span class="badge badge-dark"
-                                                                    title="Production Plan usage is managed from Production Planning">
-                                                                    <i class="fas fa-lock"></i>
-                                                                </span>
-
-                                                            @elseif(
-                                                                    $usageLog->status === 'void'
-                                                                )
-
-                                                                <span class="badge badge-secondary" title="Voided usage is locked">
-                                                                    <i class="fas fa-lock"></i>
-                                                                </span>
-
-                                                            @endif
+                                    </td>
 
 
-                                                            <a href="{{ route(
-                                    'items.usage-logs.index',
-                                    $usageLog->item_id
-                                ) }}" class="btn btn-sm btn-info" title="Item Usage History">
-                                                                <i class="fas fa-eye"></i>
-                                                            </a>
+                                    <td>
 
-                                                        </td>
-                                                    </tr>
+                                        @if ($usageLog->status === 'void')
+                                            <span class="badge badge-danger">
+                                                Voided
+                                            </span>
+                                        @else
+                                            <span class="badge badge-success">
+                                                Active
+                                            </span>
+                                        @endif
+
+                                    </td>
+
+
+                                    <td>
+
+                                        @if ($usageLog->source === 'manual' && $usageLog->status === 'active')
+                                            <a href="{{ route('items.usage-logs.edit', [$usageLog->item_id, $usageLog->id, 'redirect_to' => 'material-usage']) }}"
+                                                class="btn btn-sm btn-warning" title="Edit Material Usage">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+
+
+                                            <button type="button" class="btn btn-sm btn-danger btn-void-usage"
+                                                data-toggle="modal" data-target="#voidUsageModal"
+                                                data-action="{{ route('items.usage-logs.destroy', [$usageLog->item_id, $usageLog->id]) }}"
+                                                data-item="{{ $usageLog->item?->item_code }} - {{ $usageLog->item?->item_name }}"
+                                                data-quantity="{{ number_format((float) $usageLog->quantity, 3, '.', '') }}"
+                                                data-unit="{{ $usageLog->item?->unit?->name ?? 'Units' }}"
+                                                data-reference="{{ $usageLog->reference ?? '-' }}"
+                                                title="Void Material Usage">
+                                                <i class="fas fa-ban"></i>
+                                            </button>
+                                        @elseif($usageLog->source === 'production-plan')
+                                            <span class="badge badge-dark"
+                                                title="Production Plan usage is managed from Production Planning">
+                                                <i class="fas fa-lock"></i>
+                                            </span>
+                                        @elseif($usageLog->status === 'void')
+                                            <span class="badge badge-secondary" title="Voided usage is locked">
+                                                <i class="fas fa-lock"></i>
+                                            </span>
+                                        @endif
+
+
+                                        <a href="{{ route('items.usage-logs.index', $usageLog->item_id) }}"
+                                            class="btn btn-sm btn-info" title="Item Usage History">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+
+                                    </td>
+                                </tr>
 
                             @empty
 
@@ -550,14 +491,12 @@
             </div>
 
 
-            @if($usageLogs->hasPages())
-
+            @if ($usageLogs->hasPages())
                 <div class="card-footer clearfix">
 
                     {{ $usageLogs->links('pagination::bootstrap-5') }}
 
                 </div>
-
             @endif
 
         </div>
@@ -706,8 +645,8 @@
                                 <span class="text-danger">*</span>
                             </label>
 
-                            <textarea name="void_reason_other" id="void_reason_other" class="form-control" rows="3"
-                                maxlength="500" placeholder="Please enter the reason..."></textarea>
+                            <textarea name="void_reason_other" id="void_reason_other" class="form-control" rows="3" maxlength="500"
+                                placeholder="Please enter the reason..."></textarea>
 
                         </div>
 
@@ -735,9 +674,8 @@
 
     </div>
     @push('scripts')
-
         <script>
-            $(document).ready(function () {
+            $(document).ready(function() {
 
                 /*
                 |--------------------------------------------------------------------------
@@ -747,7 +685,7 @@
 
                 $('.btn-void-usage').on(
                     'click',
-                    function () {
+                    function() {
 
                         var action =
                             $(this).data('action');
@@ -830,7 +768,7 @@
 
                 $('#void_reason_type').on(
                     'change',
-                    function () {
+                    function() {
 
                         var reason =
                             $(this).val();
@@ -871,16 +809,16 @@
 
                 $('#voidUsageForm').on(
                     'submit',
-                    function (event) {
+                    function(event) {
 
                         var reason =
                             $('#void_reason_type')
-                                .val();
+                            .val();
 
                         var otherReason =
                             $('#void_reason_other')
-                                .val()
-                                .trim();
+                            .val()
+                            .trim();
 
 
                         if (!reason) {
@@ -911,7 +849,6 @@
 
             });
         </script>
-
     @endpush
 
 @endsection

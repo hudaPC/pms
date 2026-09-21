@@ -25,13 +25,17 @@
 
             </div>
 
-            <a href="{{ route('items.usage-logs.index', $item) }}" class="btn btn-secondary">
-
-                <i class="fas fa-arrow-left mr-1"></i>
-
-                Back to Usage Logs
-
-            </a>
+            @if (request('redirect_to') === 'material-usage')
+                <a href="{{ route('material-usage.index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left mr-1"></i>
+                    Back to Material Usage
+                </a>
+            @else
+                <a href="{{ route('items.usage-logs.index', $item) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left mr-1"></i>
+                    Back to Usage Logs
+                </a>
+            @endif
 
         </div>
 
@@ -46,9 +50,7 @@
                 <ul class="mb-0 mt-2">
 
                     @foreach ($errors->all() as $error)
-
                         <li>{{ $error }}</li>
-
                     @endforeach
 
                 </ul>
@@ -210,6 +212,9 @@
 
                     @csrf
                     @method('PUT')
+                    @if (request('redirect_to') === 'material-usage')
+                        <input type="hidden" name="redirect_to" value="material-usage">
+                    @endif
 
 
                     {{-- Usage Date --}}
@@ -228,11 +233,9 @@
                             class="form-control @error('usage_date') is-invalid @enderror" required>
 
                         @error('usage_date')
-
                             <div class="invalid-feedback">
                                 {{ $message }}
                             </div>
-
                         @enderror
 
                     </div>
@@ -254,8 +257,7 @@
                             <input type="number" name="quantity" id="quantity"
                                 value="{{ old('quantity', $usageLog->quantity) }}"
                                 class="form-control @error('quantity') is-invalid @enderror" min="0.001" step="0.001"
-                                max="{{ $currentAvailableStock }}"
-                                placeholder="Example: 100" required>
+                                max="{{ $currentAvailableStock }}" placeholder="Example: 100" required>
 
                             <span class="input-group-text">
                                 {{ $item->unit->name ?? '' }}
@@ -281,16 +283,15 @@
                             <i class="fas fa-exclamation-triangle mr-1"></i>
 
                             This exceeds the available stock of
-                            <strong>{{ number_format($currentAvailableStock, 3) }} {{ $item->unit->name ?? 'units' }}</strong>.
+                            <strong>{{ number_format($currentAvailableStock, 3) }}
+                                {{ $item->unit->name ?? 'units' }}</strong>.
 
                         </small>
 
                         @error('quantity')
-
                             <div class="invalid-feedback d-block">
                                 {{ $message }}
                             </div>
-
                         @enderror
 
                     </div>
@@ -311,11 +312,9 @@
                             placeholder="Example: ISSUE-0001">
 
                         @error('reference')
-
                             <div class="invalid-feedback">
                                 {{ $message }}
                             </div>
-
                         @enderror
 
                     </div>
@@ -330,16 +329,13 @@
 
                         </label>
 
-                        <textarea name="remarks" id="remarks" rows="4"
-                            class="form-control @error('remarks') is-invalid @enderror"
+                        <textarea name="remarks" id="remarks" rows="4" class="form-control @error('remarks') is-invalid @enderror"
                             placeholder="Optional remarks">{{ old('remarks', $usageLog->remarks) }}</textarea>
 
                         @error('remarks')
-
                             <div class="invalid-feedback">
                                 {{ $message }}
                             </div>
-
                         @enderror
 
                     </div>
@@ -373,193 +369,202 @@
     </div>
 
     @push('scripts')
-    <script>
-    $(document).ready(function () {
+        <script>
+            $(document).ready(function() {
 
-        const quantityInput = document.getElementById('quantity');
-        const stockAfterUsageHeading = document.getElementById('stockAfterUsageHeading');
-        const usageDateInput = document.getElementById('usage_date');
-        const referenceInput = document.getElementById('reference');
-        const quantityClientError = document.getElementById('quantityClientError');
-        const form = quantityInput.closest('form');
-const saveButton = form.querySelector('button[type="submit"]');
+                const quantityInput = document.getElementById('quantity');
+                const stockAfterUsageHeading = document.getElementById('stockAfterUsageHeading');
+                const usageDateInput = document.getElementById('usage_date');
+                const referenceInput = document.getElementById('reference');
+                const quantityClientError = document.getElementById('quantityClientError');
+                const form = quantityInput.closest('form');
+                const saveButton = form.querySelector('button[type="submit"]');
 
-        // Stock available BEFORE this usage (old quantity already added back
-        // in the controller), so "after usage" always reflects the NEW quantity.
-        const currentStock = {{ $currentAvailableStock }};
-        const unitName = '{{ $item->unit->name ?? '' }}';
+                // Stock available BEFORE this usage (old quantity already added back
+                // in the controller), so "after usage" always reflects the NEW quantity.
+                const currentStock = {{ $currentAvailableStock }};
+                const unitName = '{{ $item->unit->name ?? '' }}';
 
-        const nextReferenceUrl = '{{ route('items.usage-logs.next-reference', $item) }}';
-        const usageLogId = {{ $usageLog->id }};
+                const nextReferenceUrl = '{{ route('items.usage-logs.next-reference', $item) }}';
+                const usageLogId = {{ $usageLog->id }};
 
-        // Reference already has a saved value — don't overwrite it on page
-        // load, only when the user actually changes the usage date.
-        let referenceAutoFilled = true;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Singular/Plural Helper
-        |--------------------------------------------------------------------------
-        |
-        | Naive helper — only handles the common "...s" plural case
-        | (Pieces -> Piece). Irregular units won't singularize correctly;
-        | swap for a real singular_name column on the unit model if needed.
-        |
-        */
-
-        function formatUnit(qty, name) {
-            if (qty === 1 && name.toLowerCase().endsWith('s')) {
-                return name.slice(0, -1);
-            }
-            return name;
-        }
+                // Reference already has a saved value — don't overwrite it on page
+                // load, only when the user actually changes the usage date.
+                let referenceAutoFilled = true;
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Update "Stock After This Usage" Card
-        |--------------------------------------------------------------------------
-        */
+                /*
+                |--------------------------------------------------------------------------
+                | Singular/Plural Helper
+                |--------------------------------------------------------------------------
+                |
+                | Naive helper — only handles the common "...s" plural case
+                | (Pieces -> Piece). Irregular units won't singularize correctly;
+                | swap for a real singular_name column on the unit model if needed.
+                |
+                */
 
-        function updateStock() {
-
-            const usageQuantity = parseFloat(quantityInput.value) || 0;
-            const remainingStock = currentStock - usageQuantity;
-
-            if (remainingStock < 0) {
-
-                const shortfall = Math.abs(remainingStock);
-
-                stockAfterUsageHeading.classList.remove('text-info');
-                stockAfterUsageHeading.classList.add('text-danger');
-
-                stockAfterUsageHeading.innerHTML =
-                    'Insufficient Stock: '
-                    + shortfall.toLocaleString(undefined, { maximumFractionDigits: 0 })
-                    + ' ' + formatUnit(shortfall, unitName) + ' Short';
-
-            } else {
-
-                stockAfterUsageHeading.classList.remove('text-danger');
-                stockAfterUsageHeading.classList.add('text-info');
-
-                stockAfterUsageHeading.innerHTML =
-                    '<span id="stockAfterUsage">'
-                    + remainingStock.toLocaleString(undefined, { maximumFractionDigits: 0 })
-                    + '</span> <small class="text-muted" id="stockAfterUsageUnit">'
-                    + unitName + '</small>';
-            }
-        }
+                function formatUnit(qty, name) {
+                    if (qty === 1 && name.toLowerCase().endsWith('s')) {
+                        return name.slice(0, -1);
+                    }
+                    return name;
+                }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Validate Quantity Against Available Stock
-        |--------------------------------------------------------------------------
-        */
+                /*
+                |--------------------------------------------------------------------------
+                | Update "Stock After This Usage" Card
+                |--------------------------------------------------------------------------
+                */
 
-        function validateQuantity() {
+                function updateStock() {
 
-            const usageQuantity = parseFloat(quantityInput.value) || 0;
-            const exceedsStock = usageQuantity > currentStock;
+                    const usageQuantity = parseFloat(quantityInput.value) || 0;
+                    const remainingStock = currentStock - usageQuantity;
 
-            quantityInput.classList.toggle('is-invalid', exceedsStock);
+                    if (remainingStock < 0) {
 
-            if (quantityClientError) {
-                quantityClientError.classList.toggle('d-none', !exceedsStock);
-            }
+                        const shortfall = Math.abs(remainingStock);
 
-            quantityInput.setCustomValidity(
-                exceedsStock ? 'Usage quantity cannot exceed available stock.' : ''
-            );
+                        stockAfterUsageHeading.classList.remove('text-info');
+                        stockAfterUsageHeading.classList.add('text-danger');
 
-            if (saveButton) {
-                saveButton.disabled = exceedsStock;
-            }
+                        stockAfterUsageHeading.innerHTML =
+                            'Insufficient Stock: ' +
+                            shortfall.toLocaleString(undefined, {
+                                maximumFractionDigits: 0
+                            }) +
+                            ' ' + formatUnit(shortfall, unitName) + ' Short';
 
-            return !exceedsStock;
-        }
+                    } else {
+
+                        stockAfterUsageHeading.classList.remove('text-danger');
+                        stockAfterUsageHeading.classList.add('text-info');
+
+                        stockAfterUsageHeading.innerHTML =
+                            '<span id="stockAfterUsage">' +
+                            remainingStock.toLocaleString(undefined, {
+                                maximumFractionDigits: 0
+                            }) +
+                            '</span> <small class="text-muted" id="stockAfterUsageUnit">' +
+                            unitName + '</small>';
+                    }
+                }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Combined Handler For Quantity Input
-        |--------------------------------------------------------------------------
-        */
+                /*
+                |--------------------------------------------------------------------------
+                | Validate Quantity Against Available Stock
+                |--------------------------------------------------------------------------
+                */
 
-        function handleQuantityInput() {
-            updateStock();
-            validateQuantity();
-        }
+                function validateQuantity() {
+
+                    const usageQuantity = parseFloat(quantityInput.value) || 0;
+                    const exceedsStock = usageQuantity > currentStock;
+
+                    quantityInput.classList.toggle('is-invalid', exceedsStock);
+
+                    if (quantityClientError) {
+                        quantityClientError.classList.toggle('d-none', !exceedsStock);
+                    }
+
+                    quantityInput.setCustomValidity(
+                        exceedsStock ? 'Usage quantity cannot exceed available stock.' : ''
+                    );
+
+                    if (saveButton) {
+                        saveButton.disabled = exceedsStock;
+                    }
+
+                    return !exceedsStock;
+                }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Refresh Reference Based On Usage Date (excludes this record's own count)
-        |--------------------------------------------------------------------------
-        */
+                /*
+                |--------------------------------------------------------------------------
+                | Combined Handler For Quantity Input
+                |--------------------------------------------------------------------------
+                */
 
-        function refreshReference() {
+                function handleQuantityInput() {
+                    updateStock();
+                    validateQuantity();
+                }
 
-            if (!referenceAutoFilled) return;
-            if (!usageDateInput.value) return;
 
-            fetch(
-                nextReferenceUrl
-                + '?usage_date=' + usageDateInput.value
-                + '&exclude=' + usageLogId,
-                { headers: { 'X-Requested-With': 'XMLHttpRequest' } }
-            )
-                .then(function (response) { return response.json(); })
-                .then(function (data) {
-                    referenceInput.value = data.reference;
-                })
-                .catch(function () {
-                    // silently ignore — user can still type reference manually
+                /*
+                |--------------------------------------------------------------------------
+                | Refresh Reference Based On Usage Date (excludes this record's own count)
+                |--------------------------------------------------------------------------
+                */
+
+                function refreshReference() {
+
+                    if (!referenceAutoFilled) return;
+                    if (!usageDateInput.value) return;
+
+                    fetch(
+                            nextReferenceUrl +
+                            '?usage_date=' + usageDateInput.value +
+                            '&exclude=' + usageLogId, {
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            }
+                        )
+                        .then(function(response) {
+                            return response.json();
+                        })
+                        .then(function(data) {
+                            referenceInput.value = data.reference;
+                        })
+                        .catch(function() {
+                            // silently ignore — user can still type reference manually
+                        });
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Event Bindings
+                |--------------------------------------------------------------------------
+                */
+
+                quantityInput.addEventListener('input', handleQuantityInput);
+                usageDateInput.addEventListener('change', refreshReference);
+
+                // If user edits reference manually, stop auto-overwriting it
+                referenceInput.addEventListener('input', function() {
+                    referenceAutoFilled = false;
                 });
-        }
+
+                // Final guard: block submission even if the field was somehow left invalid
+                form.addEventListener('submit', function(e) {
+                    if (!validateQuantity()) {
+                        e.preventDefault();
+                        quantityInput.focus();
+                    }
+                });
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Event Bindings
-        |--------------------------------------------------------------------------
-        */
+                /*
+                |--------------------------------------------------------------------------
+                | Initial Run
+                |--------------------------------------------------------------------------
+                |
+                | Covers the case where old('quantity') is repopulated after a
+                | validation error and already exceeds available stock, and also
+                | correctly renders the initial "Stock After Usage" value using the
+                | same formatting logic as manual edits.
+                |
+                */
 
-        quantityInput.addEventListener('input', handleQuantityInput);
-        usageDateInput.addEventListener('change', refreshReference);
+                handleQuantityInput();
 
-        // If user edits reference manually, stop auto-overwriting it
-        referenceInput.addEventListener('input', function () {
-            referenceAutoFilled = false;
-        });
-
-        // Final guard: block submission even if the field was somehow left invalid
-        form.addEventListener('submit', function (e) {
-            if (!validateQuantity()) {
-                e.preventDefault();
-                quantityInput.focus();
-            }
-        });
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Initial Run
-        |--------------------------------------------------------------------------
-        |
-        | Covers the case where old('quantity') is repopulated after a
-        | validation error and already exceeds available stock, and also
-        | correctly renders the initial "Stock After Usage" value using the
-        | same formatting logic as manual edits.
-        |
-        */
-
-        handleQuantityInput();
-
-    });
-    </script>
+            });
+        </script>
     @endpush
 
 @endsection

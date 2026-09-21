@@ -9,6 +9,7 @@ use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+
 class StockAdjustmentController extends Controller
 {
     /*
@@ -365,18 +366,61 @@ class StockAdjustmentController extends Controller
                 'Stock adjustment saved successfully.'
             );
     }
-    public function edit(StockAdjustment $stockAdjustment)
-    {
-        $items = Item::with('unit')
-            ->where('status', true)
-            ->orderBy('item_code')
+    public function edit(
+        StockAdjustment $stockAdjustment
+    ) {
+        /*
+        |--------------------------------------------------------------------------
+        | Product Models Having Active BOM Items
+        |--------------------------------------------------------------------------
+        */
+
+        $productModels = ProductModel::query()
+            ->whereHas('modelItems', function ($query) {
+
+                $query->whereHas(
+                    'item',
+                    function ($itemQuery) {
+
+                        $itemQuery->where(
+                            'status',
+                            true
+                        );
+
+                    }
+                );
+
+            })
+            ->orderBy('model_code')
             ->get();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Determine Existing Item's Product Model From BOM
+        |--------------------------------------------------------------------------
+        */
+
+        $selectedProductModelId =
+            $stockAdjustment
+                ->item
+                ->productModelItems()
+                ->orderBy('product_model_id')
+                ->value('product_model_id');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | View
+        |--------------------------------------------------------------------------
+        */
 
         return view(
             'stock-adjustments.edit',
             compact(
                 'stockAdjustment',
-                'items'
+                'productModels',
+                'selectedProductModelId'
             )
         );
     }
@@ -385,6 +429,10 @@ class StockAdjustmentController extends Controller
         StockAdjustment $stockAdjustment
     ) {
         $validated = $request->validate([
+            'product_model_id' => [
+                'required',
+                'exists:product_models,id',
+            ],
 
             'item_id' => [
                 'required',
@@ -430,7 +478,23 @@ class StockAdjustmentController extends Controller
             $validated['item_id']
         );
 
+        $itemBelongsToProductModel =
+            $item->productModelItems()
+                ->where(
+                    'product_model_id',
+                    $validated['product_model_id']
+                )
+                ->exists();
 
+        if (!$itemBelongsToProductModel) {
+
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'item_id' =>
+                        'The selected item does not belong to the selected Product Model.',
+                ]);
+        }
         /*
     |--------------------------------------------------------------------------
     | Current Stock Without This Adjustment

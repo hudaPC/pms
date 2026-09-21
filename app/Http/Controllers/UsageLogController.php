@@ -1450,6 +1450,26 @@ class UsageLogController extends Controller
     |--------------------------------------------------------------------------
     */
 
+        /*
+|--------------------------------------------------------------------------
+| Redirect
+|--------------------------------------------------------------------------
+*/
+
+        if (
+            $request->input('redirect_to')
+            === 'material-usage'
+        ) {
+
+            return redirect()
+                ->route('material-usage.index')
+                ->with(
+                    'success',
+                    'Usage record voided successfully. Stock has been restored.'
+                );
+        }
+
+
         return redirect()
             ->route(
                 'items.usage-logs.index',

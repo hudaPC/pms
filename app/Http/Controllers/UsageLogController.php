@@ -4,12 +4,295 @@ namespace App\Http\Controllers;
 
 use App\Models\StockMovement;
 use App\Models\Item;
+use App\Models\ProductModel;
 use App\Models\UsageLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class UsageLogController extends Controller
 {
+
+    /**
+     * Display all material usage records.
+     */
+    public function allUsage(Request $request)
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | Material Usage Query
+        |--------------------------------------------------------------------------
+        */
+
+        $query = UsageLog::query()
+            ->with([
+                'item.unit',
+                'productionPlan.productModel',
+            ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Search
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('search')) {
+
+            $search = trim(
+                $request->input('search')
+            );
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where(
+                    'reference',
+                    'like',
+                    '%' . $search . '%'
+                )
+                    ->orWhereHas(
+                        'item',
+                        function ($itemQuery) use ($search) {
+
+                            $itemQuery
+                                ->where(
+                                    'item_code',
+                                    'like',
+                                    '%' . $search . '%'
+                                )
+                                ->orWhere(
+                                    'item_name',
+                                    'like',
+                                    '%' . $search . '%'
+                                );
+                        }
+                    );
+            });
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Source Filter
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('source')) {
+
+            $query->where(
+                'source',
+                $request->input('source')
+            );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Status Filter
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('status')) {
+
+            $query->where(
+                'status',
+                $request->input('status')
+            );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Date From
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('date_from')) {
+
+            $query->whereDate(
+                'usage_date',
+                '>=',
+                $request->input('date_from')
+            );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Date To
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('date_to')) {
+
+            $query->whereDate(
+                'usage_date',
+                '<=',
+                $request->input('date_to')
+            );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Usage Logs
+        |--------------------------------------------------------------------------
+        */
+
+        $usageLogs = $query
+            ->orderByDesc('usage_date')
+            ->orderByDesc('id')
+            ->paginate(20)
+            ->withQueryString();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Summary
+        |--------------------------------------------------------------------------
+        */
+
+        $totalUsageRecords =
+            UsageLog::count();
+
+        $activeUsageRecords =
+            UsageLog::where(
+                'status',
+                'active'
+            )->count();
+
+        $voidedUsageRecords =
+            UsageLog::where(
+                'status',
+                'void'
+            )->count();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | View
+        |--------------------------------------------------------------------------
+        */
+
+        return view(
+            'material-usage.index',
+            compact(
+                'usageLogs',
+                'totalUsageRecords',
+                'activeUsageRecords',
+                'voidedUsageRecords'
+            )
+        );
+    }
+    /**
+     * Show the global Material Usage creation form.
+     */
+    public function createMaterialUsage()
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | Product Models Having Active BOM Items
+        |--------------------------------------------------------------------------
+        */
+
+        $productModels = ProductModel::query()
+            ->whereHas('modelItems', function ($query) {
+
+                $query->whereHas(
+                    'item',
+                    function ($itemQuery) {
+
+                        $itemQuery->where(
+                            'status',
+                            true
+                        );
+
+                    }
+                );
+
+            })
+            ->orderBy('model_code')
+            ->get();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | View
+        |--------------------------------------------------------------------------
+        */
+
+        return view(
+            'material-usage.create',
+            compact(
+                'productModels'
+            )
+        );
+    }
+    /**
+     * AJAX: Load active BOM items for the selected Product Model.
+     */
+    public function materialUsageItems(
+        ProductModel $productModel
+    ) {
+        /*
+        |--------------------------------------------------------------------------
+        | Active BOM Items
+        |--------------------------------------------------------------------------
+        */
+
+        $items = Item::query()
+            ->where('status', true)
+            ->whereHas(
+                'productModelItems',
+                function ($query) use ($productModel) {
+
+                    $query->where(
+                        'product_model_id',
+                        $productModel->id
+                    );
+
+                }
+            )
+            ->with('unit')
+            ->orderBy('item_code')
+            ->get()
+            ->map(function ($item) use ($productModel) {
+
+                return [
+
+                    'id' =>
+                        $item->id,
+
+                    'item_code' =>
+                        $item->item_code,
+
+                    'item_name' =>
+                        $item->item_name,
+
+                    'unit' =>
+                        $item->unit->name ?? '',
+
+                    'current_stock' =>
+                        (float) $item->current_stock,
+
+                    'product_model' =>
+                        $productModel->model_code,
+
+                ];
+
+            });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | JSON Response
+        |--------------------------------------------------------------------------
+        */
+
+        return response()->json([
+            'items' => $items,
+        ]);
+    }
+
     /**
      * Display usage logs for an item.
      */
@@ -227,7 +510,7 @@ class UsageLogController extends Controller
                 ->withErrors([
 
                     'quantity' =>
-                    'Usage quantity cannot exceed current available stock of '
+                        'Usage quantity cannot exceed current available stock of '
                         . number_format(
                             $currentAvailableStock,
                             3
@@ -253,7 +536,7 @@ class UsageLogController extends Controller
                 ->withErrors([
 
                     'quantity' =>
-                    'Usage quantity cannot exceed current available stock of '
+                        'Usage quantity cannot exceed current available stock of '
                         . number_format(
                             $currentAvailableStock,
                             3
@@ -272,10 +555,7 @@ class UsageLogController extends Controller
     |--------------------------------------------------------------------------
     */
 
-        DB::transaction(function () use (
-            $validated,
-            $item
-        ) {
+        DB::transaction(function () use ($validated, $item) {
 
             /*
         |--------------------------------------------------------------------------
@@ -286,25 +566,25 @@ class UsageLogController extends Controller
             $usageLog = UsageLog::create([
 
                 'item_id' =>
-                $item->id,
+                    $item->id,
 
                 'source' =>
-                'manual',
+                    'manual',
 
                 'production_plan_id' =>
-                null,
+                    null,
 
                 'usage_date' =>
-                $validated['usage_date'],
+                    $validated['usage_date'],
 
                 'quantity' =>
-                $validated['quantity'],
+                    $validated['quantity'],
 
                 'reference' =>
-                $validated['reference'] ?? null,
+                    $validated['reference'] ?? null,
 
                 'remarks' =>
-                $validated['remarks'] ?? null,
+                    $validated['remarks'] ?? null,
 
             ]);
 
@@ -321,31 +601,31 @@ class UsageLogController extends Controller
             StockMovement::create([
 
                 'item_id' =>
-                $item->id,
+                    $item->id,
 
                 'movement_date' =>
-                $usageLog->usage_date,
+                    $usageLog->usage_date,
 
                 'movement_type' =>
-                'usage',
+                    'usage',
 
                 'direction' =>
-                'out',
+                    'out',
 
                 'quantity' =>
-                $usageLog->quantity,
+                    $usageLog->quantity,
 
                 'source_type' =>
-                'usage_log',
+                    'usage_log',
 
                 'source_id' =>
-                $usageLog->id,
+                    $usageLog->id,
 
                 'reference' =>
-                $usageLog->reference,
+                    $usageLog->reference,
 
                 'remarks' =>
-                $usageLog->remarks,
+                    $usageLog->remarks,
 
             ]);
         });
@@ -588,7 +868,7 @@ class UsageLogController extends Controller
                 ->withErrors([
 
                     'quantity' =>
-                    'Usage quantity cannot exceed available stock of '
+                        'Usage quantity cannot exceed available stock of '
                         . number_format(
                             $availableBeforeUsage,
                             3
@@ -607,11 +887,7 @@ class UsageLogController extends Controller
     |--------------------------------------------------------------------------
     */
 
-        DB::transaction(function () use (
-            $validated,
-            $item,
-            $usageLog
-        ) {
+        DB::transaction(function () use ($validated, $item, $usageLog) {
 
             /*
         |--------------------------------------------------------------------------
@@ -633,32 +909,32 @@ class UsageLogController extends Controller
             StockMovement::updateOrCreate(
                 [
                     'source_type' =>
-                    'usage_log',
+                        'usage_log',
 
                     'source_id' =>
-                    $usageLog->id,
+                        $usageLog->id,
                 ],
                 [
                     'item_id' =>
-                    $item->id,
+                        $item->id,
 
                     'movement_date' =>
-                    $usageLog->usage_date,
+                        $usageLog->usage_date,
 
                     'movement_type' =>
-                    'usage',
+                        'usage',
 
                     'direction' =>
-                    'out',
+                        'out',
 
                     'quantity' =>
-                    $usageLog->quantity,
+                        $usageLog->quantity,
 
                     'reference' =>
-                    $usageLog->reference,
+                        $usageLog->reference,
 
                     'remarks' =>
-                    $usageLog->remarks,
+                        $usageLog->remarks,
                 ]
             );
         });
@@ -778,25 +1054,25 @@ class UsageLogController extends Controller
         $reasonLabels = [
 
             'wrong_quantity' =>
-            'Wrong quantity entered',
+                'Wrong quantity entered',
 
             'wrong_item' =>
-            'Wrong item selected',
+                'Wrong item selected',
 
             'duplicate_entry' =>
-            'Duplicate usage entry',
+                'Duplicate usage entry',
 
             'entered_by_mistake' =>
-            'Usage entered by mistake',
+                'Usage entered by mistake',
 
             'production_cancelled' =>
-            'Production/issue cancelled',
+                'Production/issue cancelled',
 
             'incorrect_date' =>
-            'Incorrect usage date',
+                'Incorrect usage date',
 
             'other' =>
-            'Other',
+                'Other',
 
         ];
 
@@ -811,15 +1087,15 @@ class UsageLogController extends Controller
             $validated['void_reason_type'] === 'other'
             &&
             empty(trim(
-                    $validated['void_reason_other'] ?? ''
-                ))
+                $validated['void_reason_other'] ?? ''
+            ))
         ) {
 
             return back()
                 ->withErrors([
 
                     'void_reason_other' =>
-                    'Please enter the void reason when Other is selected.',
+                        'Please enter the void reason when Other is selected.',
 
                 ]);
         }
@@ -853,11 +1129,7 @@ class UsageLogController extends Controller
     |--------------------------------------------------------------------------
     */
 
-        DB::transaction(function () use (
-            $item,
-            $usageLog,
-            $finalVoidReason
-        ) {
+        DB::transaction(function () use ($item, $usageLog, $finalVoidReason) {
 
             /*
         |--------------------------------------------------------------------------
@@ -868,13 +1140,13 @@ class UsageLogController extends Controller
             $usageLog->update([
 
                 'status' =>
-                'void',
+                    'void',
 
                 'voided_at' =>
-                now(),
+                    now(),
 
                 'void_reason' =>
-                $finalVoidReason,
+                    $finalVoidReason,
 
             ]);
 
@@ -888,36 +1160,36 @@ class UsageLogController extends Controller
             StockMovement::updateOrCreate(
                 [
                     'source_type' =>
-                    'usage_log_reversal',
+                        'usage_log_reversal',
 
                     'source_id' =>
-                    $usageLog->id,
+                        $usageLog->id,
                 ],
                 [
                     'item_id' =>
-                    $item->id,
+                        $item->id,
 
                     'movement_date' =>
-                    now()->toDateString(),
+                        now()->toDateString(),
 
                     'movement_type' =>
-                    'usage_reversal',
+                        'usage_reversal',
 
                     'direction' =>
-                    'in',
+                        'in',
 
                     'quantity' =>
-                    $usageLog->quantity,
+                        $usageLog->quantity,
 
                     'reference' =>
-                    'VOID-'
+                        'VOID-'
                         . (
                             $usageLog->reference
                             ?? 'USAGE-' . $usageLog->id
                         ),
 
                     'remarks' =>
-                    'Void reason: '
+                        'Void reason: '
                         . $finalVoidReason
                         . '. Reversal of usage: '
                         . (

@@ -177,6 +177,25 @@ Route::middleware(['auth'])->group(function () {
         [UsageLogController::class, 'nextReference']
     )->name('items.usage-logs.next-reference');
 
+    Route::get(
+        '/material-usage',
+        [UsageLogController::class, 'allUsage']
+    )->name('material-usage.index');
+
+
+    Route::get(
+        '/material-usage/create',
+        [UsageLogController::class, 'createMaterialUsage']
+    )->name('material-usage.create');
+    Route::get(
+        '/material-usage/product-models/{productModel}/items',
+        [UsageLogController::class, 'materialUsageItems']
+    )->name('material-usage.product-model-items');
+
+
+
+
+
 
 
     // Calendar View
@@ -306,8 +325,8 @@ Route::middleware(['auth'])->group(function () {
         '/purchase-orders/{purchaseOrder}/items',
         [PurchaseOrderItemController::class, 'store']
     )->name('purchase-orders.items.store');
-   
-   
+
+
     Route::get(
         '/purchase-orders/{purchaseOrder}/items/{purchaseOrderItem}/edit',
         [PurchaseOrderItemController::class, 'edit']
@@ -370,11 +389,11 @@ Route::middleware(['auth'])->group(function () {
 
     //STOCK ADJUSTMENT ROUTES
     Route::get(
-    '/stock-adjustments/product-models/{productModel}/items',
-    [StockAdjustmentController::class, 'itemsByProductModel']
-)->name(
-    'stock-adjustments.product-model-items'
-);
+        '/stock-adjustments/product-models/{productModel}/items',
+        [StockAdjustmentController::class, 'itemsByProductModel']
+    )->name(
+            'stock-adjustments.product-model-items'
+        );
 
     Route::get(
         '/stock-adjustments',
@@ -468,11 +487,11 @@ Route::middleware(['auth'])->group(function () {
     )->name(
             'supplier-invoices.product-model-items'
         );
-// Manual Purchase Order Product model Items
-Route::get(
-    '/purchase-orders/{purchaseOrder}/product-models/{productModel}/items',
-    [PurchaseOrderItemController::class, 'itemsByProductModel']
-)->name('purchase-orders.product-model-items');
+    // Manual Purchase Order Product model Items
+    Route::get(
+        '/purchase-orders/{purchaseOrder}/product-models/{productModel}/items',
+        [PurchaseOrderItemController::class, 'itemsByProductModel']
+    )->name('purchase-orders.product-model-items');
 
     Route::post(
         '/supplier-invoices/{supplierInvoice}/items',

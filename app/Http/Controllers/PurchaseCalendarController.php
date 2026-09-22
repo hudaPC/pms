@@ -587,14 +587,53 @@ class PurchaseCalendarController extends Controller
 
 
             /*
-        |--------------------------------------------------------------------------
-        | Next Order Date
-        |--------------------------------------------------------------------------
-        */
+|--------------------------------------------------------------------------
+| Exact Planned Order Date
+|--------------------------------------------------------------------------
+|
+| Match the recommended projection month to the Order Calendar.
+|
+*/
 
-            $nextOrderDate =
-                $nextOrderMonth['date']
-                ?? null;
+$nextOrderDate = null;
+
+if ($nextOrderMonth) {
+
+    $projectionMonthStart = $nextOrderMonth['date']
+        ->copy()
+        ->startOfMonth();
+
+    $projectionMonthEnd = $nextOrderMonth['date']
+        ->copy()
+        ->endOfMonth();
+
+    foreach ($orders as $order) {
+
+        if (
+            !isset($order['order_date'])
+            ||
+            !isset($order['quantity'])
+        ) {
+            continue;
+        }
+
+        $exactOrderDate = Carbon::parse(
+            $order['order_date']
+        );
+
+        if (
+            $exactOrderDate->between(
+                $projectionMonthStart,
+                $projectionMonthEnd
+            )
+        ) {
+
+            $nextOrderDate = $exactOrderDate->copy();
+
+            break;
+        }
+    }
+}
 
 
             /*

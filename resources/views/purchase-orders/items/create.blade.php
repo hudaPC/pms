@@ -89,7 +89,7 @@
             </div>
 
         </div>
-        @if (request('source') === 'purchase-planning' && request('item_id') && request('recommended_qty'))
+        @if ($planningSource === 'purchase-planning' && $planningItemId && $recommendedQty !== null)
             <div class="alert alert-info mb-3">
 
                 <div class="row">
@@ -145,7 +145,7 @@
 
                         <div class="mt-1">
 
-                            {{ number_format((float) request('recommended_qty'), 3) }}
+                            {{ number_format((float) $recommendedQty, 3) }}
 
                         </div>
 
@@ -163,31 +163,20 @@
             |--------------------------------------------------------------------------
             */
 
-            $isPurchasePlanningPrefill =
-                ($planningSource ?? null) === 'purchase-planning'
-                &&
-                !empty($planningItemId);
+            $isPurchasePlanningPrefill = ($planningSource ?? null) === 'purchase-planning' && !empty($planningItemId);
 
             $prefillItem = null;
             $prefillProductModelId = null;
 
             if ($isPurchasePlanningPrefill) {
-
-                $prefillItem =
-                    $items->firstWhere(
-                        'id',
-                        (int) $planningItemId
-                    );
+                $prefillItem = $items->firstWhere('id', (int) $planningItemId);
 
                 if ($prefillItem) {
-
                     /*
                      * Prefer the item's owning Product Model.
                      * We will use this to preselect the Product Model dropdown.
                      */
-                    $prefillProductModelId =
-                        $prefillItem->product_model_id
-                        ?? null;
+                    $prefillProductModelId = $prefillItem->product_model_id ?? null;
                 }
             }
         @endphp
@@ -234,18 +223,9 @@
                                     </option>
 
                                     @foreach ($productModels as $productModel)
-
-                                        <option value="{{ $productModel->id }}" @selected(
-                                            old(
-                                                'product_model_id',
-                                                $isPurchasePlanningPrefill
-                                                ? $prefillProductModelId
-                                                : null
-                                            ) == $productModel->id
-                                        )>
+                                        <option value="{{ $productModel->id }}" @selected(old('product_model_id', $isPurchasePlanningPrefill ? $prefillProductModelId : null) == $productModel->id)>
                                             {{ $productModel->model_code }}
                                         </option>
-
                                     @endforeach
 
                                 </select>
@@ -265,10 +245,12 @@
                                 </label>
 
                                 <select name="item_id" id="item_id"
-                                    class="form-control no-clear @error('item_id') is-invalid @enderror" data-url="{{ route('purchase-orders.product-model-items', [
-        'purchaseOrder' => $purchaseOrder->id,
-        'productModel' => '__MODEL_ID__'
-    ]) }}" required>
+                                    class="form-control no-clear @error('item_id') is-invalid @enderror"
+                                    data-url="{{ route('purchase-orders.product-model-items', [
+                                        'purchaseOrder' => $purchaseOrder->id,
+                                        'productModel' => '__MODEL_ID__',
+                                    ]) }}"
+                                    required>
 
                                     <option value="">
                                         Select Item
@@ -352,13 +334,10 @@
                                     <span class="text-danger">*</span>
                                 </label>
 
-                                <input type="number" step="0.001" min="0.001" name="ordered_quantity" id="ordered_quantity"
-                                    value="{{ old(
-        'ordered_quantity',
-        $isPurchasePlanningPrefill
-        ? $recommendedQty
-        : ''
-    ) }}" class="form-control @error('ordered_quantity') is-invalid @enderror" required>
+                                <input type="number" step="0.001" min="0.001" name="ordered_quantity"
+                                    id="ordered_quantity"
+                                    value="{{ old('ordered_quantity', $isPurchasePlanningPrefill ? $recommendedQty : '') }}"
+                                    class="form-control @error('ordered_quantity') is-invalid @enderror" required>
 
                                 @error('ordered_quantity')
                                     <div class="invalid-feedback">
@@ -503,8 +482,7 @@
 
                             <label>Remarks</label>
 
-                            <textarea name="remarks" rows="2"
-                                class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
+                            <textarea name="remarks" rows="2" class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
 
                             @error('remarks')
                                 <div class="invalid-feedback">
@@ -571,7 +549,7 @@
 
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
 
             /*
             |--------------------------------------------------------------------------
@@ -626,22 +604,22 @@
                 @json(old('unit_price'));
 
             let initialItemId =
-                oldItemId
-                    ? String(oldItemId)
-                    : (
-                        purchasePlanningPrefill
-                            ? String(planningPrefillItemId || '')
-                            : ''
-                    );
+                oldItemId ?
+                String(oldItemId) :
+                (
+                    purchasePlanningPrefill ?
+                    String(planningPrefillItemId || '') :
+                    ''
+                );
 
             let initialQuantity =
-                oldQuantity !== null
-                    ? oldQuantity
-                    : (
-                        purchasePlanningPrefill
-                            ? planningPrefillQuantity
-                            : null
-                    );
+                oldQuantity !== null ?
+                oldQuantity :
+                (
+                    purchasePlanningPrefill ?
+                    planningPrefillQuantity :
+                    null
+                );
 
             let initialUnitPrice =
                 oldUnitPrice;
@@ -706,8 +684,7 @@
             function formatQty(value) {
 
                 return Number(value || 0).toLocaleString(
-                    undefined,
-                    {
+                    undefined, {
                         minimumFractionDigits: 3,
                         maximumFractionDigits: 3
                     }
@@ -853,7 +830,7 @@
 
                     dataType: 'json',
 
-                    success: function (response) {
+                    success: function(response) {
 
                         itemSelect.innerHTML =
                             '<option value="">Select Item</option>';
@@ -870,7 +847,7 @@
                             response.items.length > 0
                         ) {
 
-                            response.items.forEach(function (item) {
+                            response.items.forEach(function(item) {
 
                                 const option =
                                     document.createElement('option');
@@ -991,7 +968,7 @@
                         const matchingOption =
                             Array.from(itemSelect.options).find(
                                 option =>
-                                    option.value === initialItemId
+                                option.value === initialItemId
                             );
 
                         if (
@@ -1064,7 +1041,7 @@
                     |--------------------------------------------------------------------------
                     */
 
-                    error: function (xhr) {
+                    error: function(xhr) {
 
                         console.error(xhr.responseText);
 
@@ -1094,7 +1071,7 @@
 
             $(productModelSelect).on(
                 'change select2:select select2:clear',
-                function () {
+                function() {
 
                     loadItemsByProductModel();
 
@@ -1112,7 +1089,7 @@
 
                 const option =
                     itemSelect.options[
-                    itemSelect.selectedIndex
+                        itemSelect.selectedIndex
                     ];
 
 
@@ -1262,9 +1239,9 @@
                 planningOrderType.className =
                     'badge ' +
                     (
-                        orderType === 'Recovery'
-                            ? 'badge-danger'
-                            : 'badge-secondary'
+                        orderType === 'Recovery' ?
+                        'badge-danger' :
+                        'badge-secondary'
                     );
 
 

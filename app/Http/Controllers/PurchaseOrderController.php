@@ -182,12 +182,12 @@ class PurchaseOrderController extends Controller
                         ->with(
                             'warning',
                             'This Purchase Order is scheduled for '
-                            . $plannedDate->format('d-M-Y')
-                            . '. It cannot be created yet. '
-                            . $daysUntilOrder
-                            . ' day'
-                            . ($daysUntilOrder === 1 ? '' : 's')
-                            . ' remaining.'
+                                . $plannedDate->format('d-M-Y')
+                                . '. It cannot be created yet. '
+                                . $daysUntilOrder
+                                . ' day'
+                                . ($daysUntilOrder === 1 ? '' : 's')
+                                . ' remaining.'
                         );
                 }
             }
@@ -214,17 +214,17 @@ class PurchaseOrderController extends Controller
 
                 $planningSuppliers =
                     $planningItem->suppliers()
-                        ->where(
-                            'item_suppliers.status',
-                            true
-                        )
-                        ->orderByDesc(
-                            'item_suppliers.is_preferred'
-                        )
-                        ->orderBy(
-                            'suppliers.name'
-                        )
-                        ->get();
+                    ->where(
+                        'item_suppliers.status',
+                        true
+                    )
+                    ->orderByDesc(
+                        'item_suppliers.is_preferred'
+                    )
+                    ->orderBy(
+                        'suppliers.name'
+                    )
+                    ->get();
             }
 
 
@@ -236,15 +236,15 @@ class PurchaseOrderController extends Controller
 
             $preferredSupplier =
                 $planningSuppliers
-                    ->first(
-                        function ($supplier) {
+                ->first(
+                    function ($supplier) {
 
-                            return (bool) 
-                                $supplier
-                                    ->pivot
-                                    ->is_preferred;
-                        }
-                    );
+                        return (bool)
+                        $supplier
+                            ->pivot
+                            ->is_preferred;
+                    }
+                );
 
 
             /*
@@ -280,8 +280,8 @@ class PurchaseOrderController extends Controller
 
                 if (
                     $preferredSupplier
-                        ->pivot
-                        ->lead_time_days !== null
+                    ->pivot
+                    ->lead_time_days !== null
                 ) {
 
                     $planningSupplierLeadTimeDays =
@@ -290,11 +290,11 @@ class PurchaseOrderController extends Controller
                             ->lead_time_days;
                 } elseif (
                     $planningItem
-                        ->purchaseSettings
+                    ->purchaseSettings
                     &&
                     $planningItem
-                        ->purchaseSettings
-                        ->lead_time_days !== null
+                    ->purchaseSettings
+                    ->lead_time_days !== null
                 ) {
 
                     $planningSupplierLeadTimeDays =
@@ -316,8 +316,8 @@ class PurchaseOrderController extends Controller
 
                 $planningSupplierUnitPrice =
                     $preferredSupplier
-                        ->pivot
-                        ->unit_price !== null
+                    ->pivot
+                    ->unit_price !== null
                     ? (float) $preferredSupplier
                         ->pivot
                         ->unit_price
@@ -332,8 +332,8 @@ class PurchaseOrderController extends Controller
 
                 $planningSupplierMinimumOrderQty =
                     $preferredSupplier
-                        ->pivot
-                        ->minimum_order_qty !== null
+                    ->pivot
+                    ->minimum_order_qty !== null
                     ? (float) $preferredSupplier
                         ->pivot
                         ->minimum_order_qty
@@ -361,10 +361,10 @@ class PurchaseOrderController extends Controller
                         Carbon::parse(
                             $plannedOrderDate
                         )
-                            ->addDays(
-                                $planningSupplierLeadTimeDays
-                            )
-                            ->format('Y-m-d');
+                        ->addDays(
+                            $planningSupplierLeadTimeDays
+                        )
+                        ->format('Y-m-d');
                 }
             }
         }
@@ -546,7 +546,44 @@ class PurchaseOrderController extends Controller
         $plannedOrderDate =
             $validated['planned_order_date']
             ?? null;
+        /*
+|--------------------------------------------------------------------------
+| Purchase Planning Date Protection
+|--------------------------------------------------------------------------
+|
+| A future planned order must not create a PO header.
+| Manual Purchase Orders are unaffected.
+|
+*/
 
+        if ($isPurchasePlanning) {
+
+            if (!$plannedOrderDate) {
+
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'planned_order_date' =>
+                        'The planned order date is required for Purchase Planning.',
+                    ]);
+            }
+
+            $plannedDate = Carbon::parse(
+                $plannedOrderDate
+            )->startOfDay();
+
+            if ($plannedDate->gt(now()->startOfDay())) {
+
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'planned_order_date' =>
+                        'This Purchase Order is scheduled for '
+                            . $plannedDate->format('d-M-Y')
+                            . ' and cannot be created yet.',
+                    ]);
+            }
+        }
 
         unset(
             $validated['planning_item_id'],
@@ -759,16 +796,16 @@ class PurchaseOrderController extends Controller
         $purchaseOrder->update([
 
             'supplier_id' =>
-                $validated['supplier_id'],
+            $validated['supplier_id'],
 
             'order_date' =>
-                $validated['order_date'],
+            $validated['order_date'],
 
             'expected_delivery_date' =>
-                $validated['expected_delivery_date'] ?? null,
+            $validated['expected_delivery_date'] ?? null,
 
             'remarks' =>
-                $validated['remarks'] ?? null,
+            $validated['remarks'] ?? null,
 
         ]);
 
@@ -823,7 +860,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'confirm' =>
-                    'The purchase order cannot be confirmed because it has no items.',
+                'The purchase order cannot be confirmed because it has no items.',
             ]);
         }
 
@@ -838,7 +875,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'confirm' =>
-                    'Expected Delivery Date is required before confirming the purchase order.',
+                'Expected Delivery Date is required before confirming the purchase order.',
             ]);
         }
 
@@ -851,12 +888,12 @@ class PurchaseOrderController extends Controller
 
         if (
             $purchaseOrder->expected_delivery_date
-                ->lt($purchaseOrder->order_date)
+            ->lt($purchaseOrder->order_date)
         ) {
 
             return back()->withErrors([
                 'confirm' =>
-                    'Expected Delivery Date cannot be earlier than the Order Date.',
+                'Expected Delivery Date cannot be earlier than the Order Date.',
             ]);
         }
 
@@ -873,7 +910,7 @@ class PurchaseOrderController extends Controller
 
                 return back()->withErrors([
                     'confirm' =>
-                        'All purchase order items must have a valid ordered quantity.',
+                    'All purchase order items must have a valid ordered quantity.',
                 ]);
             }
         }
@@ -931,7 +968,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'cancel' =>
-                    'This Purchase Order has already been cancelled.',
+                'This Purchase Order has already been cancelled.',
             ]);
         }
 
@@ -955,7 +992,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'cancel' =>
-                    'This Purchase Order cannot be cancelled because goods have already been received against it.',
+                'This Purchase Order cannot be cancelled because goods have already been received against it.',
             ]);
         }
 
@@ -979,7 +1016,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'cancel' =>
-                    'This Purchase Order cannot be cancelled in its current status.',
+                'This Purchase Order cannot be cancelled in its current status.',
             ]);
         }
 
@@ -1006,8 +1043,8 @@ class PurchaseOrderController extends Controller
                         'purchase_order_id',
                         $purchaseOrder->id
                     )
-                        ->lockForUpdate()
-                        ->first();
+                    ->lockForUpdate()
+                    ->first();
             }
             /*
                |--------------------------------------------------------------------------
@@ -1045,7 +1082,6 @@ class PurchaseOrderController extends Controller
             $purchaseOrder->update([
                 'status' => 'cancelled',
             ]);
-
         });
 
 

@@ -581,8 +581,7 @@
                                 ================================================== --}}
                                     <td class="text-right">
 
-                                        <strong
-                                            class="{{ $row['is_urgent'] ? 'text-danger' : 'text-dark' }}">
+                                        <strong class="{{ $row['is_urgent'] ? 'text-danger' : 'text-dark' }}">
 
                                             {{ number_format($row['current_stock'], 3) }}
 
@@ -754,7 +753,7 @@
                                                     <small class="text-danger">
 
                                                         Was due:
-                                                        {{ $row['next_order_label'] }}
+                                                        {{ $row['next_order_date']->format('d-M-Y') }}
 
                                                     </small>
 
@@ -775,7 +774,7 @@
 
                                                     <small class="text-muted">
 
-                                                        {{ $row['next_order_label'] }}
+                                                       {{ $row['next_order_date']->format('d-M-Y') }}
 
                                                     </small>
 
@@ -855,52 +854,23 @@
 
 
                                     {{-- =================================================
-                                     ACTIONS
+                                    ACTIONS
                                 ================================================== --}}
-                                    <td class="text-center">
+                                <td class="text-center">
 
-                                        <div class="btn-group">
+                                    <a
+                                        href="{{ route(
+                                            'items.purchase-planning.index',
+                                            $row['item']
+                                        ) }}"
+                                        class="btn btn-sm btn-outline-primary"
+                                        title="Open Purchase Planning"
+                                    >
+                                        <i class="fas fa-chart-line mr-1"></i>
+                                        Planning
+                                    </a>
 
-
-                                            {{-- Purchase Planning --}}
-                                            <a href="{{ route('items.purchase-planning.index', $row['item']) }}"
-                                                class="btn btn-sm btn-outline-secondary" title="Open Purchase Planning">
-
-                                                <i class="fas fa-chart-line mr-1"></i>
-
-                                                Planning
-
-                                            </a>
-
-
-                                            {{-- Create Purchase Order --}}
-                                            @if (
-                                                $row['next_order_quantity'] > 0 &&
-                                                    $row['next_order_date'] &&
-                                                    $row['next_order_date']->copy()->startOfDay()->lte(now()->startOfDay()))
-                                                <a href="{{ route('purchase-orders.create', [
-                                                    'item_id' => $row['item']->id,
-                                                
-                                                    'recommended_qty' => $row['next_order_quantity'],
-                                                
-                                                    'planned_order_date' => $row['next_order_date']->format('Y-m-d'),
-                                                
-                                                    'source' => 'purchase-planning',
-                                                ]) }}"
-                                                    class="btn btn-sm
-                                                    {{ $row['is_urgent'] || $row['is_due_now'] ? 'btn-danger' : 'btn-outline-primary' }}"
-                                                    title="Create Purchase Order">
-
-                                                    <i class="fas fa-cart-plus mr-1"></i>
-
-                                                    Create PO
-
-                                                </a>
-                                            @endif
-
-                                        </div>
-
-                                    </td>
+                                </td>
 
                                 </tr>
 

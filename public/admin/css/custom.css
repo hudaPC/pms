@@ -43,8 +43,8 @@
 
 /* Smaller table headers */
 .table-head-small th {
-    font-size: 1.0rem;   /* adjust as needed */
-    font-weight: 900;     /* keep headers bold */
+    font-size: 0.75rem;   /* adjust as needed */
+    font-weight: 700;     /* keep headers bold */
 }
 
 /* Smaller table body text */

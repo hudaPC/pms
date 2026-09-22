@@ -90,7 +90,7 @@ class PurchasePlanningController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-            /*
+        /*
 |--------------------------------------------------------------------------
 | Common Planning Position
 |--------------------------------------------------------------------------
@@ -99,20 +99,358 @@ class PurchasePlanningController extends Controller
 | No planning formula is duplicated here.
 |
 */
+        $items->getCollection()->transform(
+            function ($item) use ($itemPurchasePlanningService) {
 
-$items->getCollection()->transform(
-    function ($item) use ($itemPurchasePlanningService) {
+                /*
+                |--------------------------------------------------------------------------
+                | Common Purchase Planning
+                |--------------------------------------------------------------------------
+                */
 
-        $planning =
-            $itemPurchasePlanningService
-                ->calculate($item);
+                $planning =
+                    $itemPurchasePlanningService
+                        ->calculate($item);
 
-        $item->planning_summary =
-            $planning;
 
-        return $item;
-    }
-);
+                /*
+                |--------------------------------------------------------------------------
+                | Default Production Information
+                |--------------------------------------------------------------------------
+                |
+                | Always define these first so every item has a safe value.
+                |
+                */
+
+                $productionDemand = [
+                    'has_plan' => false,
+                    'monthly_usage' => null,
+                    'safety_stock' => null,
+                    'planning_start_date' => null,
+                    'requirement_date' => null,
+                ];
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Item Without Purchase Settings
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    !($planning['has_settings'] ?? false)
+                ) {
+
+                    $planning['production_demand'] = 0;
+
+                    $planning['production_required_by'] = null;
+
+                    $planning['has_production_plan'] = false;
+
+                    $item->planning_summary =
+                        $planning;
+
+                    return $item;
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Effective Lead Time
+                |--------------------------------------------------------------------------
+                */
+
+                $leadTimeDays =
+                    (int) (
+                        $planning['lead_time_days']
+                        ?? 0
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Production-Driven Demand
+                |--------------------------------------------------------------------------
+                */
+
+                $productionDemand =
+                    $itemPurchasePlanningService
+                        ->getProductionDemand(
+                            $item,
+                            $leadTimeDays
+                        );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Recalculate With Production Values
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    $productionDemand['has_plan']
+                    ?? false
+                ) {
+
+                    $monthlyUsage =
+                        (float) (
+                            $productionDemand['monthly_usage']
+                            ?? 0
+                        );
+
+                    $safetyStock =
+                        (float) (
+                            $productionDemand['safety_stock']
+                            ?? 0
+                        );
+
+                    $planning =
+                        $itemPurchasePlanningService
+                            ->calculate(
+                                $item,
+                                $monthlyUsage,
+                                $safetyStock
+                            );
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Attach Production Information
+                |--------------------------------------------------------------------------
+                */
+
+                $planning['production_demand'] =
+                    ($productionDemand['has_plan'] ?? false)
+                    ? (float) (
+                        $productionDemand['monthly_usage']
+                        ?? 0
+                    )
+                    : 0;
+
+                $planning['production_required_by'] =
+                    ($productionDemand['has_plan'] ?? false)
+                    ? (
+                        $productionDemand['requirement_date']
+                        ?? null
+                    )
+                    : null;
+
+                $planning['has_production_plan'] =
+                    (bool) (
+                        $productionDemand['has_plan']
+                        ?? false
+                    );
+
+                /*
+                | Same rule used by ProductionPlanController requirements():
+                |
+                | Production Shortage =
+                | Production Demand - Inventory Position
+                */
+
+                $productionDemandQuantity =
+                    (float) (
+                        $planning['production_demand']
+                        ?? 0
+                    );
+
+                $inventoryPosition =
+                    (float) (
+                        $planning['inventory_position']
+                        ?? 0
+                    );
+
+                $planning['production_shortage'] =
+                    ($planning['has_production_plan'] ?? false)
+                    ? max(
+                        0,
+                        $productionDemandQuantity
+                        - $inventoryPosition
+                    )
+                    : 0;
+
+                /*
+                |--------------------------------------------------------------------------
+                | Production Latest Order Date
+                |--------------------------------------------------------------------------
+                |
+                | Same rule used by ProductionPlanController requirements():
+                |
+                | Latest Order Date =
+                | Production Requirement Date - Effective Lead Time
+                |
+                */
+
+                $planning['production_order_date'] = null;
+
+                $planning['effective_production_order_date'] = null;
+
+                $planning['is_production_order_overdue'] = false;
+
+                $planning['is_production_order_due_today'] = false;
+
+
+                if (
+                    ($planning['has_production_plan'] ?? false)
+                    &&
+                    !empty($planning['production_required_by'])
+                ) {
+
+                    $requirementDate =
+                        \Carbon\Carbon::parse(
+                            $planning['production_required_by']
+                        )->startOfDay();
+
+                    $effectiveLeadTimeDays =
+                        (int) (
+                            $planning['lead_time_days']
+                            ?? 0
+                        );
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Latest Order Date
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $productionOrderDate =
+                        $requirementDate
+                            ->copy()
+                            ->subDays(
+                                $effectiveLeadTimeDays
+                            );
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Due / Overdue Status
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $today =
+                        now()->startOfDay();
+
+                    $isOverdue =
+                        $productionOrderDate->lt($today);
+
+                    $isDueToday =
+                        $productionOrderDate->equalTo($today);
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Effective Action Date
+                    |--------------------------------------------------------------------------
+                    |
+                    | If already overdue, purchasing action becomes today.
+                    |
+                    */
+
+                    $effectiveProductionOrderDate =
+                        $isOverdue
+                        ? $today->copy()
+                        : $productionOrderDate->copy();
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Store In Planning Summary
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $planning['production_order_date'] =
+                        $productionOrderDate;
+
+                    $planning['effective_production_order_date'] =
+                        $effectiveProductionOrderDate;
+
+                    $planning['is_production_order_overdue'] =
+                        $isOverdue;
+
+                    $planning['is_production_order_due_today'] =
+                        $isDueToday;
+                }
+
+                /*
+                    |--------------------------------------------------------------------------
+                    | Preferred / Planning Supplier
+                    |--------------------------------------------------------------------------
+                    */
+
+                $planning['preferred_supplier'] =
+                    $planning['planning_supplier']
+                    ?? null;
+
+                $planning['preferred_supplier_name'] =
+                    !empty($planning['planning_supplier'])
+                    ? $planning['planning_supplier']->name
+                    : null;
+
+                /*
+|--------------------------------------------------------------------------
+| Stock Recovery Planned Order Date
+|--------------------------------------------------------------------------
+|
+| This is only for general stock recovery.
+| Production purchasing continues to use production_order_date.
+|
+*/
+
+                $planning['stock_recovery_order_date'] = null;
+
+                $planningRecovery =
+                    (float) (
+                        $planning['recovery_order_quantity']
+                        ?? 0
+                    );
+
+                $productionPurchaseRequirement =
+                    (float) (
+                        $planning['production_shortage']
+                        ?? 0
+                    );
+
+                if (
+                    $planningRecovery > 0
+                    &&
+                    $productionPurchaseRequirement <= 0
+                ) {
+                    $planningStartDate =
+                        $item->purchaseSettings?->planning_start_date;
+
+                    if ($planningStartDate) {
+                        $plannedRecoveryDate =
+                            \Carbon\Carbon::parse(
+                                $planningStartDate
+                            )->startOfDay();
+
+                        $today = now()->startOfDay();
+
+                        /*
+                         * Never expose an old recovery action date.
+                         * If planning has already started, the actionable
+                         * recovery date becomes today.
+                         */
+                        $planning['stock_recovery_order_date'] =
+                            $plannedRecoveryDate->lt($today)
+                            ? $today->copy()
+                            : $plannedRecoveryDate;
+                    }
+                }
+                /*
+                |--------------------------------------------------------------------------
+                | Planning Summary
+                |--------------------------------------------------------------------------
+                */
+
+                $item->planning_summary =
+                    $planning;
+
+                return $item;
+            }
+        );
 
 
         /*
@@ -181,7 +519,7 @@ $items->getCollection()->transform(
 
         $commonPlanning =
             $itemPurchasePlanningService
-            ->calculate($item);
+                ->calculate($item);
 
 
         /*
@@ -254,10 +592,10 @@ $items->getCollection()->transform(
 
         $productionDemand =
             $itemPurchasePlanningService
-            ->getProductionDemand(
-                $item,
-                $leadTimeDays
-            );
+                ->getProductionDemand(
+                    $item,
+                    $leadTimeDays
+                );
 
 
         if ($productionDemand['has_plan']) {
@@ -317,7 +655,7 @@ $items->getCollection()->transform(
 
             $settings->planning_start_date =
                 $planningStartDate
-                ->format('Y-m-d');
+                    ->format('Y-m-d');
 
             $item->setRelation(
                 'purchaseSettings',
@@ -331,11 +669,11 @@ $items->getCollection()->transform(
 
             $commonPlanning =
                 $itemPurchasePlanningService
-                ->calculate(
-                    $item,
-                    $monthlyUsage,
-                    $safetyStock
-                );
+                    ->calculate(
+                        $item,
+                        $monthlyUsage,
+                        $safetyStock
+                    );
         }
 
         /*
@@ -381,24 +719,24 @@ $items->getCollection()->transform(
             PurchaseOrderItem::with(
                 'purchaseOrder'
             )
-            ->where(
-                'item_id',
-                $item->id
-            )
-            ->whereNotNull(
-                'planned_order_date'
-            )
-            ->whereHas(
-                'purchaseOrder',
-                function ($query) {
+                ->where(
+                    'item_id',
+                    $item->id
+                )
+                ->whereNotNull(
+                    'planned_order_date'
+                )
+                ->whereHas(
+                    'purchaseOrder',
+                    function ($query) {
 
-                    $query->where(
-                        'status',
-                        'draft'
-                    );
-                }
-            )
-            ->get();
+                        $query->where(
+                            'status',
+                            'draft'
+                        );
+                    }
+                )
+                ->get();
 
 
         $draftPoByPlannedDate = [];
@@ -416,25 +754,25 @@ $items->getCollection()->transform(
 
             $plannedDate =
                 $draftItem
-                ->planned_order_date
-                ->format('Y-m-d');
+                    ->planned_order_date
+                    ->format('Y-m-d');
 
 
             $draftPoByPlannedDate[$plannedDate] = [
 
                 'purchase_order' =>
-                $draftItem->purchaseOrder,
+                    $draftItem->purchaseOrder,
 
                 'purchase_order_item' =>
-                $draftItem,
+                    $draftItem,
 
                 'quantity' =>
-                max(
-                    0,
-                    (float) $draftItem->ordered_quantity
+                    max(
+                        0,
+                        (float) $draftItem->ordered_quantity
                         -
                         (float) $draftItem->received_quantity
-                ),
+                    ),
 
             ];
         }
@@ -552,21 +890,21 @@ $items->getCollection()->transform(
                 'item_id',
                 $item->id
             )
-            ->whereHas(
-                'purchaseOrder',
-                function ($query) {
+                ->whereHas(
+                    'purchaseOrder',
+                    function ($query) {
 
-                    $query->whereIn(
-                        'status',
-                        [
-                            'confirmed',
-                            'partially_received',
-                            'received',
-                        ]
-                    );
-                }
-            )
-            ->exists();
+                        $query->whereIn(
+                            'status',
+                            [
+                                'confirmed',
+                                'partially_received',
+                                'received',
+                            ]
+                        );
+                    }
+                )
+                ->exists();
 
 
         /*
@@ -583,18 +921,18 @@ $items->getCollection()->transform(
 
             $firstOrderDate =
                 now()
-                ->startOfDay()
-                ->addDays(
-                    $daysToTarget
-                );
+                    ->startOfDay()
+                    ->addDays(
+                        $daysToTarget
+                    );
         } else {
 
             $firstOrderDate =
                 $planningStartDate
-                ->copy()
-                ->addDays(
-                    $daysToTarget
-                );
+                    ->copy()
+                    ->addDays(
+                        $daysToTarget
+                    );
         }
 
 
@@ -609,9 +947,9 @@ $items->getCollection()->transform(
 
         $isFirstOrderOverdue =
             $firstOrderDate
-            ->copy()
-            ->startOfDay()
-            ->lt($today);
+                ->copy()
+                ->startOfDay()
+                ->lt($today);
 
 
         /*
@@ -638,10 +976,10 @@ $items->getCollection()->transform(
 
         $firstDeliveryDate =
             $effectiveFirstOrderDate
-            ->copy()
-            ->addDays(
-                $leadTimeDays
-            );
+                ->copy()
+                ->addDays(
+                    $leadTimeDays
+                );
 
 
 
@@ -691,7 +1029,7 @@ $items->getCollection()->transform(
 
         $orderDate =
             $effectiveFirstOrderDate
-            ->copy();
+                ->copy();
 
 
         for (
@@ -708,10 +1046,10 @@ $items->getCollection()->transform(
 
             $deliveryDate =
                 $orderDate
-                ->copy()
-                ->addDays(
-                    $leadTimeDays
-                );
+                    ->copy()
+                    ->addDays(
+                        $leadTimeDays
+                    );
 
 
             /*
@@ -740,22 +1078,22 @@ $items->getCollection()->transform(
             $orders[] = [
 
                 'number' =>
-                $orderNumber,
+                    $orderNumber,
 
                 'order_date' =>
-                $orderDate->copy(),
+                    $orderDate->copy(),
 
                 'quantity' =>
-                $plannedOrderQuantity,
+                    $plannedOrderQuantity,
 
                 'delivery_date' =>
-                $deliveryDate->copy(),
+                    $deliveryDate->copy(),
 
                 'days_to_delivery' =>
-                $leadTimeDays,
+                    $leadTimeDays,
 
                 'order_type' =>
-                $orderNumber === 1
+                    $orderNumber === 1
                     &&
                     $criticalShortage
                     ? 'recovery'
@@ -775,10 +1113,10 @@ $items->getCollection()->transform(
 
             $orderDate =
                 $orderDate
-                ->copy()
-                ->addDays(
-                    $effectiveOrderCycleDays
-                );
+                    ->copy()
+                    ->addDays(
+                        $effectiveOrderCycleDays
+                    );
         }
 
 
@@ -857,14 +1195,14 @@ $items->getCollection()->transform(
 
             $projectionMonthStart =
                 $row['date']
-                ->copy()
-                ->startOfMonth();
+                    ->copy()
+                    ->startOfMonth();
 
 
             $projectionMonthEnd =
                 $row['date']
-                ->copy()
-                ->endOfMonth();
+                    ->copy()
+                    ->endOfMonth();
 
 
             /*
@@ -880,12 +1218,12 @@ $items->getCollection()->transform(
 
                 if (
                     !isset(
-                        $order['order_date']
-                    )
+                    $order['order_date']
+                )
                     ||
                     !isset(
-                        $order['quantity']
-                    )
+                    $order['quantity']
+                )
                 ) {
                     continue;
                 }
@@ -943,7 +1281,7 @@ $items->getCollection()->transform(
 
             $plannedDateKey =
                 $exactPlannedOrderDate
-                ->format('Y-m-d');
+                    ->format('Y-m-d');
 
 
             $draftInfo =
@@ -962,19 +1300,19 @@ $items->getCollection()->transform(
                 $nextPurchaseAction = [
 
                     'type' =>
-                    'continue_draft',
+                        'continue_draft',
 
                     'date' =>
-                    $exactPlannedOrderDate,
+                        $exactPlannedOrderDate,
 
                     'quantity' =>
-                    $recommendedQty,
+                        $recommendedQty,
 
                     'purchase_order' =>
-                    $draftInfo['purchase_order'],
+                        $draftInfo['purchase_order'],
 
                     'draft_quantity' =>
-                    $draftInfo['quantity'],
+                        $draftInfo['quantity'],
 
                 ];
             } else {
@@ -988,19 +1326,19 @@ $items->getCollection()->transform(
                 $nextPurchaseAction = [
 
                     'type' =>
-                    'create_po',
+                        'create_po',
 
                     'date' =>
-                    $exactPlannedOrderDate,
+                        $exactPlannedOrderDate,
 
                     'quantity' =>
-                    $recommendedQty,
+                        $recommendedQty,
 
                     'purchase_order' =>
-                    null,
+                        null,
 
                     'draft_quantity' =>
-                    0,
+                        0,
 
                 ];
             }
@@ -1050,7 +1388,7 @@ $items->getCollection()->transform(
                 Carbon::parse(
                     $nextPurchaseAction['date']
                 )
-                ->startOfDay();
+                    ->startOfDay();
 
 
             $today =
@@ -1065,9 +1403,9 @@ $items->getCollection()->transform(
 
             $nextPurchaseCanCreate =
                 $actionOrderDate
-                ->lte(
-                    $today
-                );
+                    ->lte(
+                        $today
+                    );
 
 
             /*
@@ -1078,9 +1416,9 @@ $items->getCollection()->transform(
 
             if (
                 $actionOrderDate
-                ->gt(
-                    $today
-                )
+                    ->gt(
+                        $today
+                    )
             ) {
 
                 $nextPurchaseDaysUntil =

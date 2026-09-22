@@ -34,7 +34,7 @@ class PurchaseOrderController extends Controller
         );
     }
 
-   
+
     /*
     |--------------------------------------------------------------------------
     | Create Purchase Order
@@ -369,61 +369,16 @@ class PurchaseOrderController extends Controller
             }
         }
 
-
         /*
-    |--------------------------------------------------------------------------
-    | Generate Next PO Number
-    |--------------------------------------------------------------------------
-    |
-    | Format:
-    |
-    | PO-YYYYMMDD-0001
-    |
-    */
+        |--------------------------------------------------------------------------
+        | PO Number
+        |--------------------------------------------------------------------------
+        |
+        | PO Number is entered manually by the user.
+        |
+        */
 
-        $datePrefix =
-            'PO-'
-            . now()->format('Ymd')
-            . '-';
-
-
-        $lastPurchaseOrder =
-            PurchaseOrder::where(
-                'po_number',
-                'like',
-                $datePrefix . '%'
-            )
-                ->orderByDesc(
-                    'po_number'
-                )
-                ->first();
-
-
-        if ($lastPurchaseOrder) {
-
-            $lastSequence =
-                (int) substr(
-                    $lastPurchaseOrder
-                        ->po_number,
-                    -4
-                );
-
-            $nextSequence =
-                $lastSequence + 1;
-        } else {
-
-            $nextSequence = 1;
-        }
-
-
-        $poNumber =
-            $datePrefix
-            . str_pad(
-                $nextSequence,
-                4,
-                '0',
-                STR_PAD_LEFT
-            );
+        $poNumber = null;
 
 
         /*
@@ -485,87 +440,174 @@ class PurchaseOrderController extends Controller
         );
     }
 
-  public function store(Request $request)
-{
-    /*
-    |--------------------------------------------------------------------------
-    | Validate Manual Purchase Order
-    |--------------------------------------------------------------------------
-    */
+    public function store(Request $request)
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | Validate Manual Purchase Order
+        |--------------------------------------------------------------------------
+        */
 
-    $validated = $request->validate([
+        $validated = $request->validate([
 
-        'po_number' => [
-            'required',
-            'string',
-            'max:50',
-            'unique:purchase_orders,po_number',
-        ],
+            'po_number' => [
+                'required',
+                'string',
+                'max:50',
+                'unique:purchase_orders,po_number',
+            ],
 
-        'supplier_id' => [
-            'required',
-            'exists:suppliers,id',
-        ],
+            'supplier_id' => [
+                'required',
+                'exists:suppliers,id',
+            ],
 
-        'order_date' => [
-            'required',
-            'date',
-        ],
+            'order_date' => [
+                'required',
+                'date',
+            ],
 
-        'expected_delivery_date' => [
-            'nullable',
-            'date',
-            'after_or_equal:order_date',
-        ],
+            'expected_delivery_date' => [
+                'nullable',
+                'date',
+                'after_or_equal:order_date',
+            ],
 
-        'remarks' => [
-            'nullable',
-            'string',
-        ],
+            'remarks' => [
+                'nullable',
+                'string',
+            ],
+            'source' => [
+                'nullable',
+                'string',
+            ],
 
-    ]);
+            'planning_item_id' => [
+                'nullable',
+                'integer',
+                'exists:items,id',
+            ],
 
+            'recommended_qty' => [
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Manual Purchase Order Source
-    |--------------------------------------------------------------------------
-    */
+            'planned_order_date' => [
+                'nullable',
+                'date',
+            ],
 
-    $validated['source'] = 'manual';
-
-    $validated['production_plan_id'] = null;
-
-    $validated['status'] = 'draft';
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Create Purchase Order
-    |--------------------------------------------------------------------------
-    */
-
-    $purchaseOrder = PurchaseOrder::create(
-        $validated
-    );
+        ]);
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Redirect To Purchase Order
-    |--------------------------------------------------------------------------
-    */
+        /*
+|--------------------------------------------------------------------------
+| Purchase Order Source
+|--------------------------------------------------------------------------
+*/
 
-    return redirect()
-        ->route(
-            'purchase-orders.show',
-            $purchaseOrder
-        )
-        ->with(
-            'success',
-            'Purchase order created successfully. You can now add items.'
+        $isPurchasePlanning =
+            $request->input('source') === 'purchase-planning'
+            &&
+            $request->filled('planning_item_id')
+            &&
+            $request->filled('recommended_qty');
+
+
+        $validated['source'] =
+            $isPurchasePlanning
+            ? 'purchase-planning'
+            : 'manual';
+
+        $validated['production_plan_id'] = null;
+
+        $validated['status'] = 'draft';
+
+        /*
+|--------------------------------------------------------------------------
+| Planning Context
+|--------------------------------------------------------------------------
+|
+| Keep these values for the redirect only.
+| They are not columns in purchase_orders.
+|
+*/
+
+        $planningItemId =
+            $validated['planning_item_id']
+            ?? null;
+
+        $recommendedQty =
+            $validated['recommended_qty']
+            ?? null;
+
+        $plannedOrderDate =
+            $validated['planned_order_date']
+            ?? null;
+
+
+        unset(
+            $validated['planning_item_id'],
+            $validated['recommended_qty'],
+            $validated['planned_order_date']
         );
-}
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create Purchase Order
+        |--------------------------------------------------------------------------
+        */
+
+        $purchaseOrder = PurchaseOrder::create(
+            $validated
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Redirect
+        |--------------------------------------------------------------------------
+        |
+        | Purchase Planning:
+        | Go directly to Add Item and preserve the recommended item/quantity.
+        |
+        | Normal Manual PO:
+        | Keep the existing PO Show workflow.
+        |
+        */
+
+        if ($isPurchasePlanning) {
+
+            return redirect()
+                ->route(
+                    'purchase-orders.items.create',
+                    [
+                        'purchaseOrder' => $purchaseOrder,
+                        'planning_item_id' => $planningItemId,
+                        'recommended_qty' => $recommendedQty,
+                        'planned_order_date' => $plannedOrderDate,
+                        'source' => 'purchase-planning',
+                    ]
+                )
+                ->with(
+                    'success',
+                    'Purchase Order header created. Review and add the recommended item.'
+                );
+        }
+
+
+        return redirect()
+            ->route(
+                'purchase-orders.show',
+                $purchaseOrder
+            )
+            ->with(
+                'success',
+                'Purchase order created successfully. You can now add items.'
+            );
+    }
 
 
     public function show(PurchaseOrder $purchaseOrder)
@@ -955,50 +997,50 @@ class PurchaseOrderController extends Controller
 |--------------------------------------------------------------------------
 */
 
-$linkedSupplierInvoice = null;
+            $linkedSupplierInvoice = null;
 
-if ($purchaseOrder->source === 'supplier-invoice') {
+            if ($purchaseOrder->source === 'supplier-invoice') {
 
-    $linkedSupplierInvoice =
-        SupplierInvoice::where(
-            'purchase_order_id',
-            $purchaseOrder->id
-        )
-        ->lockForUpdate()
-        ->first();
-}
- /*
-    |--------------------------------------------------------------------------
-    | Unlink Supplier Invoice Items
-    |--------------------------------------------------------------------------
-    */
+                $linkedSupplierInvoice =
+                    SupplierInvoice::where(
+                        'purchase_order_id',
+                        $purchaseOrder->id
+                    )
+                        ->lockForUpdate()
+                        ->first();
+            }
+            /*
+               |--------------------------------------------------------------------------
+               | Unlink Supplier Invoice Items
+               |--------------------------------------------------------------------------
+               */
 
-    if ($linkedSupplierInvoice) {
+            if ($linkedSupplierInvoice) {
 
-        $linkedSupplierInvoice
-            ->items()
-            ->update([
-                'purchase_order_item_id' => null,
-            ]);
-    }
-    /*
-|--------------------------------------------------------------------------
-| Unlink Supplier Invoice From Cancelled Purchase Order
-|--------------------------------------------------------------------------
-*/
+                $linkedSupplierInvoice
+                    ->items()
+                    ->update([
+                        'purchase_order_item_id' => null,
+                    ]);
+            }
+            /*
+        |--------------------------------------------------------------------------
+        | Unlink Supplier Invoice From Cancelled Purchase Order
+        |--------------------------------------------------------------------------
+        */
 
-if ($linkedSupplierInvoice) {
+            if ($linkedSupplierInvoice) {
 
-    $linkedSupplierInvoice->update([
-        'purchase_order_id' => null,
-    ]);
-}
+                $linkedSupplierInvoice->update([
+                    'purchase_order_id' => null,
+                ]);
+            }
 
-  /*
-    |--------------------------------------------------------------------------
-    | Cancel Purchase Order
-    |--------------------------------------------------------------------------
-    */
+            /*
+              |--------------------------------------------------------------------------
+              | Cancel Purchase Order
+              |--------------------------------------------------------------------------
+              */
 
             $purchaseOrder->update([
                 'status' => 'cancelled',

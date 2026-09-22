@@ -450,6 +450,7 @@ class PurchaseOrderItemController extends Controller
         */
 
     public function create(
+        Request $request,
         PurchaseOrder $purchaseOrder,
         ItemPurchasePlanningService $itemPurchasePlanningService
     ) {
@@ -602,7 +603,31 @@ class PurchaseOrderItemController extends Controller
             ->pluck('item_id')
             ->toArray();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Purchase Planning Prefill
+        |--------------------------------------------------------------------------
+        */
 
+        $planningItemId = null;
+        $recommendedQty = null;
+        $planningSource = null;
+
+        if (
+            $request->query('source') === 'purchase-planning'
+            &&
+            $request->filled('planning_item_id')
+        ) {
+            $planningItemId =
+                (int) $request->query('planning_item_id');
+
+            $recommendedQty =
+                $request->filled('recommended_qty')
+                ? (float) $request->query('recommended_qty')
+                : null;
+
+            $planningSource = 'purchase-planning';
+        }
         return view(
             'purchase-orders.items.create',
             compact(
@@ -612,7 +637,12 @@ class PurchaseOrderItemController extends Controller
                 'existingItemIds',
                 'existingItems',
                 'confirmedProductionPlans',
-                'planningInformation'
+                'planningInformation',
+
+                // Purchase Planning prefill
+                'planningItemId',
+                'recommendedQty',
+                'planningSource'
             )
         );
     }

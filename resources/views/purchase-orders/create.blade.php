@@ -370,6 +370,34 @@
         <form action="{{ route('purchase-orders.store') }}" method="POST">
 
             @csrf
+            {{-- Preserve Purchase Planning context --}}
+@if(($currentSource ?? null) === 'purchase-planning')
+
+    <input
+        type="hidden"
+        name="source"
+        value="purchase-planning"
+    >
+
+    <input
+        type="hidden"
+        name="planning_item_id"
+        value="{{ $planningItem->id ?? '' }}"
+    >
+
+    <input
+        type="hidden"
+        name="recommended_qty"
+        value="{{ $recommendedQty ?? '' }}"
+    >
+
+    <input
+        type="hidden"
+        name="planned_order_date"
+        value="{{ $plannedOrderDate ?? '' }}"
+    >
+
+@endif
 
 
             <div class="card shadow-sm">
@@ -395,40 +423,41 @@
 
                         <div class="col-md-4">
 
-                            <div class="form-group">
+    <div class="form-group">
 
-                                <label>
-                                    PO Number
-                                </label>
+        <label>
+            PO Number
+            <span class="text-danger">*</span>
+        </label>
 
-                                <input type="text" name="po_number"
-                                    class="form-control
-                    @error('po_number')
-                        is-invalid
-                    @enderror"
-                                    value="{{ old('po_number', $poNumber ?? '') }}"
-                                    @readonly($currentSource === 'purchase-planning')>
+        <input
+            type="text"
+            name="po_number"
+            id="po_number"
+            class="form-control
+            @error('po_number')
+                is-invalid
+            @enderror"
+            value="{{ old('po_number') }}"
+            placeholder="Enter PO Number"
+            required
+        >
 
-                                @error('po_number')
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-                                @enderror
+        @error('po_number')
+            <div class="invalid-feedback">
+                {{ $message }}
+            </div>
+        @enderror
 
+        <small class="form-text text-muted">
+            Enter the PO Number manually.
+        </small>
 
-                                @if ($currentSource === 'purchase-planning')
-                                    <small class="form-text text-muted">
-                                        PO Number is generated automatically.
-                                    </small>
-                                @else
-                                    <small class="form-text text-muted">
-                                        Enter the PO Number manually.
-                                    </small>
-                                @endif
+    </div>
 
-                            </div>
+</div>
 
-                        </div>
+                       
 
                         {{-- SUPPLIER --}}
 

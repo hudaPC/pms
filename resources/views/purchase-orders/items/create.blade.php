@@ -156,6 +156,42 @@
             </div>
         @endif
 
+        @php
+            /*
+            |--------------------------------------------------------------------------
+            | Purchase Planning Prefill
+            |--------------------------------------------------------------------------
+            */
+
+            $isPurchasePlanningPrefill =
+                ($planningSource ?? null) === 'purchase-planning'
+                &&
+                !empty($planningItemId);
+
+            $prefillItem = null;
+            $prefillProductModelId = null;
+
+            if ($isPurchasePlanningPrefill) {
+
+                $prefillItem =
+                    $items->firstWhere(
+                        'id',
+                        (int) $planningItemId
+                    );
+
+                if ($prefillItem) {
+
+                    /*
+                     * Prefer the item's owning Product Model.
+                     * We will use this to preselect the Product Model dropdown.
+                     */
+                    $prefillProductModelId =
+                        $prefillItem->product_model_id
+                        ?? null;
+                }
+            }
+        @endphp
+
         {{-- Add Item --}}
         <form action="{{ route('purchase-orders.items.store', $purchaseOrder) }}" method="POST">
 
@@ -198,10 +234,18 @@
                                     </option>
 
                                     @foreach ($productModels as $productModel)
-                                        <option value="{{ $productModel->id }}"
-                                            @selected(old('product_model_id') == $productModel->id)>
+
+                                        <option value="{{ $productModel->id }}" @selected(
+                                            old(
+                                                'product_model_id',
+                                                $isPurchasePlanningPrefill
+                                                ? $prefillProductModelId
+                                                : null
+                                            ) == $productModel->id
+                                        )>
                                             {{ $productModel->model_code }}
                                         </option>
+
                                     @endforeach
 
                                 </select>
@@ -309,8 +353,12 @@
                                 </label>
 
                                 <input type="number" step="0.001" min="0.001" name="ordered_quantity" id="ordered_quantity"
-                                    value="{{ old('ordered_quantity') }}"
-                                    class="form-control @error('ordered_quantity') is-invalid @enderror" required>
+                                    value="{{ old(
+        'ordered_quantity',
+        $isPurchasePlanningPrefill
+        ? $recommendedQty
+        : ''
+    ) }}" class="form-control @error('ordered_quantity') is-invalid @enderror" required>
 
                                 @error('ordered_quantity')
                                     <div class="invalid-feedback">
@@ -521,8 +569,15 @@
     </div>
 
 
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Form Elements
+            |--------------------------------------------------------------------------
+            */
 
             const productModelSelect =
                 document.getElementById('product_model_id');
@@ -544,6 +599,55 @@
 
             const submitBtn =
                 document.querySelector('button[type="submit"]');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Purchase Planning Prefill
+            |--------------------------------------------------------------------------
+            */
+
+            const purchasePlanningPrefill =
+                @json($isPurchasePlanningPrefill ?? false);
+
+            const planningPrefillItemId =
+                @json(!empty($planningItemId) ? (string) $planningItemId : null);
+
+            const planningPrefillQuantity =
+                @json($recommendedQty !== null ? (float) $recommendedQty : null);
+
+            const oldItemId =
+                @json(old('item_id'));
+
+            const oldQuantity =
+                @json(old('ordered_quantity'));
+
+            const oldUnitPrice =
+                @json(old('unit_price'));
+
+            let initialItemId =
+                oldItemId
+                    ? String(oldItemId)
+                    : (
+                        purchasePlanningPrefill
+                            ? String(planningPrefillItemId || '')
+                            : ''
+                    );
+
+            let initialQuantity =
+                oldQuantity !== null
+                    ? oldQuantity
+                    : (
+                        purchasePlanningPrefill
+                            ? planningPrefillQuantity
+                            : null
+                    );
+
+            let initialUnitPrice =
+                oldUnitPrice;
+
+            let initialPrefillPending =
+                true;
 
 
             /*
@@ -601,7 +705,7 @@
 
             function formatQty(value) {
 
-                return Number(value).toLocaleString(
+                return Number(value || 0).toLocaleString(
                     undefined,
                     {
                         minimumFractionDigits: 3,
@@ -658,14 +762,11 @@
 
                 quantityInput.value = '';
 
-                duplicateWarning.style.display =
-                    'none';
+                duplicateWarning.style.display = 'none';
 
-                submitBtn.disabled =
-                    false;
+                submitBtn.disabled = false;
 
-                planningBox.style.display =
-                    'none';
+                planningBox.style.display = 'none';
 
                 resetProductionReference();
             }
@@ -677,13 +778,7 @@
             |--------------------------------------------------------------------------
             |
             | Items are NOT filtered by supplier.
-            |
-            | Laravel gets the items from:
-            |
-            |     product_model_items
-            |
-            | Supplier relationship is used only for supplier-specific
-            | price / MOQ when available.
+            | Supplier relationship is used for price and MOQ only.
             |
             */
 
@@ -693,9 +788,7 @@
                     productModelSelect.value;
 
                 /*
-                |--------------------------------------------------------------------------
-                | Clear Current Items
-                |--------------------------------------------------------------------------
+                | Clear current item selection.
                 */
 
                 itemSelect.innerHTML =
@@ -709,20 +802,19 @@
 
 
                 /*
-                |--------------------------------------------------------------------------
-                | No Product Model Selected
-                |--------------------------------------------------------------------------
+                | No Product Model selected.
                 */
 
                 if (!productModelId) {
+
+                    itemSelect.disabled = false;
+
                     return;
                 }
 
 
                 /*
-                |--------------------------------------------------------------------------
-                | Build AJAX URL
-                |--------------------------------------------------------------------------
+                | Build AJAX URL.
                 */
 
                 const urlTemplate =
@@ -736,9 +828,7 @@
 
 
                 /*
-                |--------------------------------------------------------------------------
-                | Loading State
-                |--------------------------------------------------------------------------
+                | Loading state.
                 */
 
                 itemSelect.disabled = true;
@@ -746,8 +836,7 @@
                 itemSelect.innerHTML =
                     '<option value="">Loading items...</option>';
 
-                $(itemSelect)
-                    .trigger('change');
+                $(itemSelect).trigger('change');
 
 
                 /*
@@ -765,12 +854,6 @@
                     dataType: 'json',
 
                     success: function (response) {
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Reset Dropdown
-                        |--------------------------------------------------------------------------
-                        */
 
                         itemSelect.innerHTML =
                             '<option value="">Select Item</option>';
@@ -796,18 +879,18 @@
                                     item.id;
 
                                 option.textContent =
-                                    '[' + productModelSelect.options[
+                                    '[' +
+                                    productModelSelect.options[
                                         productModelSelect.selectedIndex
-                                    ].text.trim() + '] ' +
+                                    ].text.trim() +
+                                    '] ' +
                                     item.item_code +
                                     ' - ' +
                                     item.item_name;
 
 
                                 /*
-                                |--------------------------------------------------------------------------
                                 | Supplier Information
-                                |--------------------------------------------------------------------------
                                 */
 
                                 option.dataset.price =
@@ -818,13 +901,7 @@
 
 
                                 /*
-                                |--------------------------------------------------------------------------
                                 | Duplicate Information
-                                |--------------------------------------------------------------------------
-                                |
-                                | The controller can return this later.
-                                | Default is not existing.
-                                |
                                 */
 
                                 option.dataset.existing =
@@ -832,13 +909,7 @@
 
 
                                 /*
-                                |--------------------------------------------------------------------------
                                 | Purchase Planning Information
-                                |--------------------------------------------------------------------------
-                                |
-                                | These values are optional in the first AJAX response.
-                                | Defaults prevent the existing UI from breaking.
-                                |
                                 */
 
                                 option.dataset.currentStock =
@@ -858,9 +929,7 @@
 
 
                                 /*
-                                |--------------------------------------------------------------------------
                                 | Production Requirement Reference
-                                |--------------------------------------------------------------------------
                                 */
 
                                 option.dataset.hasProductionRequirement =
@@ -882,13 +951,8 @@
                                     item.production_shortage ?? '0';
 
 
-                                /*
-                                |--------------------------------------------------------------------------
-                                | Add Option
-                                |--------------------------------------------------------------------------
-                                */
-
                                 itemSelect.appendChild(option);
+
                             });
 
                         } else {
@@ -911,26 +975,103 @@
                         |--------------------------------------------------------------------------
                         */
 
-                        itemSelect.disabled =
-                            false;
+                        itemSelect.disabled = false;
 
-                        $(itemSelect)
-                            .val('')
-                            .trigger('change');
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Initial Purchase Planning / Validation Prefill
+                        |--------------------------------------------------------------------------
+                        |
+                        | Select the recommended item only after AJAX has loaded
+                        | the available options.
+                        |
+                        */
+
+                        const matchingOption =
+                            Array.from(itemSelect.options).find(
+                                option =>
+                                    option.value === initialItemId
+                            );
+
+                        if (
+                            initialPrefillPending &&
+                            initialItemId &&
+                            matchingOption
+                        ) {
+
+                            /*
+                            | Select KP03 or the previously submitted item.
+                            */
+
+                            $(itemSelect)
+                                .val(initialItemId)
+                                .trigger('change');
+
+
+                            /*
+                            | Preserve Purchase Planning quantity.
+                            |
+                            | This is applied AFTER loadSupplierInformation()
+                            | because that function also sets a recommended qty.
+                            */
+
+                            if (
+                                initialQuantity !== null &&
+                                initialQuantity !== '' &&
+                                Number(initialQuantity) > 0
+                            ) {
+
+                                quantityInput.value =
+                                    Number(initialQuantity).toFixed(3);
+                            }
+
+
+                            /*
+                            | Preserve manually entered price after validation.
+                            */
+
+                            if (
+                                initialUnitPrice !== null &&
+                                initialUnitPrice !== ''
+                            ) {
+
+                                priceInput.value =
+                                    initialUnitPrice;
+                            }
+
+                        } else {
+
+                            $(itemSelect)
+                                .val('')
+                                .trigger('change');
+                        }
+
+
+                        /*
+                        | Initial prefill runs only once.
+                        | Later Product Model changes behave normally.
+                        */
+
+                        initialPrefillPending = false;
+
                     },
 
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | AJAX Error
+                    |--------------------------------------------------------------------------
+                    */
+
                     error: function (xhr) {
 
-                        console.error(
-                            xhr.responseText
-                        );
+                        console.error(xhr.responseText);
 
                         itemSelect.innerHTML =
                             '<option value="">Unable to load items</option>';
 
-                        itemSelect.disabled =
-                            false;
+                        itemSelect.disabled = false;
 
                         $(itemSelect)
                             .val('')
@@ -954,7 +1095,9 @@
             $(productModelSelect).on(
                 'change select2:select select2:clear',
                 function () {
+
                     loadItemsByProductModel();
+
                 }
             );
 
@@ -974,9 +1117,7 @@
 
 
                 /*
-                |--------------------------------------------------------------------------
                 | No Item Selected
-                |--------------------------------------------------------------------------
                 */
 
                 if (!option || !option.value) {
@@ -1004,9 +1145,7 @@
 
 
                 /*
-                |--------------------------------------------------------------------------
                 | Unit Price
-                |--------------------------------------------------------------------------
                 */
 
                 if (
@@ -1021,12 +1160,8 @@
                 } else {
 
                     /*
-                    |--------------------------------------------------------------------------
-                    | No Supplier Price
-                    |--------------------------------------------------------------------------
-                    |
-                    | Leave empty so user can manually enter Unit Price.
-                    |
+                    | No supplier price.
+                    | Allow manual price entry.
                     */
 
                     priceInput.value = '';
@@ -1039,9 +1174,7 @@
                 |--------------------------------------------------------------------------
                 */
 
-                quantityInput.min =
-                    '0.001';
-
+                quantityInput.min = '0.001';
 
                 if (
                     moq !== undefined &&
@@ -1055,13 +1188,7 @@
 
                     moqHelp.textContent =
                         'Supplier MOQ: ' +
-                        minimum.toLocaleString(
-                            undefined,
-                            {
-                                minimumFractionDigits: 3,
-                                maximumFractionDigits: 3
-                            }
-                        ) +
+                        formatQty(minimum) +
                         ' (reference only)';
 
                 } else {
@@ -1142,9 +1269,7 @@
 
 
                 /*
-                |--------------------------------------------------------------------------
-                | Show Planning Box Only When We Have Planning Data
-                |--------------------------------------------------------------------------
+                | Show planning box only when planning data exists.
                 */
 
                 if (
@@ -1167,6 +1292,10 @@
                 |--------------------------------------------------------------------------
                 | Auto Fill Recommended Purchase Quantity
                 |--------------------------------------------------------------------------
+                |
+                | Normal item selection uses the existing recommendation.
+                | Initial Purchase Planning prefill is restored after this runs.
+                |
                 */
 
                 if (recommendedQty > 0) {
@@ -1262,6 +1391,21 @@
             */
 
             resetItemInformation();
+
+
+            /*
+            | If Product Model is already selected by Blade,
+            | automatically load its items through AJAX.
+            */
+
+            if (productModelSelect.value) {
+
+                loadItemsByProductModel();
+
+            } else {
+
+                itemSelect.disabled = false;
+            }
 
         });
     </script>

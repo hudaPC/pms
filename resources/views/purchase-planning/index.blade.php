@@ -130,7 +130,7 @@
                                 <th>Supplier MOQ</th>
                                 <th>Preferred Supplier</th>
                                 <th>Lead Time</th>
-                               <th>Latest Order Date</th>
+                               <th>Planned Order Date</th>
                                 <th>Planning Source</th>
                                 <th>Planning Status</th>
                                 <th>Action</th>
@@ -489,36 +489,58 @@
                                                         $item->planning_summary['production_shortage']
                                                         ?? 0
                                                     );
+
+                                                $planningRecovery =
+                                                    (float) (
+                                                        $item->planning_summary['recovery_order_quantity']
+                                                        ?? 0
+                                                    );
+
+                                                $productionOrderDate =
+                                                    $item->planning_summary['production_order_date']
+                                                    ?? null;
+
+                                                $stockRecoveryOrderDate =
+                                                    $item->planning_summary['stock_recovery_order_date']
+                                                    ?? null;
                                             @endphp
 
-                                            {{-- No production purchase is required --}}
-                                            @if($productionShortage <= 0)
 
-                                                <span class="text-muted">—</span>
-
-                                            {{-- Production purchase is required --}}
-                                            @elseif(!empty($item->planning_summary['production_order_date']))
+                                            {{-- Production-driven purchase --}}
+                                            @if($productionShortage > 0 && $productionOrderDate)
 
                                                 <div>
                                                     {{ \Carbon\Carbon::parse(
-                                                        $item->planning_summary['production_order_date']
+                                                        $productionOrderDate
                                                     )->format('d-M-Y') }}
                                                 </div>
 
                                                 @if($item->planning_summary['is_production_order_overdue'] ?? false)
-
                                                     <span class="badge badge-danger">
                                                         Overdue
                                                     </span>
-
                                                 @elseif($item->planning_summary['is_production_order_due_today'] ?? false)
-
                                                     <span class="badge badge-warning">
                                                         Due Today
                                                     </span>
-
                                                 @endif
 
+
+                                            {{-- General stock recovery --}}
+                                            @elseif($planningRecovery > 0 && $stockRecoveryOrderDate)
+
+                                                <div>
+                                                    {{ \Carbon\Carbon::parse(
+                                                        $stockRecoveryOrderDate
+                                                    )->format('d-M-Y') }}
+                                                </div>
+
+                                                <span class="badge badge-info">
+                                                    Recovery
+                                                </span>
+
+
+                                            {{-- No purchasing action --}}
                                             @else
 
                                                 <span class="text-muted">—</span>

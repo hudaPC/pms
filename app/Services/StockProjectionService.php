@@ -12,12 +12,14 @@ class StockProjectionService
     /**
      * Generate monthly stock projection.
      */
-    public function generate(
-        Item $item,
-        int $months = 12,
-        array $orders = [],
-        ?int $effectiveLeadTimeDays = null
-    ): Collection {
+   public function generate(
+    Item $item,
+    int $months = 12,
+    array $orders = [],
+    ?int $effectiveLeadTimeDays = null,
+    ?float $monthlyUsageOverride = null,
+    ?float $safetyStockOverride = null
+): Collection {
 
         /*
         |--------------------------------------------------------------------------
@@ -42,8 +44,9 @@ class StockProjectionService
             $settings->planning_start_date
         )->startOfMonth();
 
-        $monthlyUsage =
-            (float) $settings->monthly_usage;
+       $monthlyUsage = $monthlyUsageOverride !== null
+    ? $monthlyUsageOverride
+    : (float) $settings->monthly_usage;
 
         /*
         |--------------------------------------------------------------------------
@@ -73,8 +76,9 @@ class StockProjectionService
         $orderCycleDays =
             (int) $settings->order_cycle_days;
 
-        $safetyStock =
-            (float) $settings->safety_stock;
+        $safetyStock = $safetyStockOverride !== null
+    ? $safetyStockOverride
+    : (float) $settings->safety_stock;
 
         $orderQuantity =
             (float) $settings->order_quantity;

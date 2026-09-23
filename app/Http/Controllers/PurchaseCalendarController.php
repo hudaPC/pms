@@ -153,13 +153,43 @@ class PurchaseCalendarController extends Controller
 
                 continue;
             }
-            /*
+           /*
 |--------------------------------------------------------------------------
-| Existing Purchase Planning Calculation
+| Production-Driven Purchase Planning
 |--------------------------------------------------------------------------
 */
 
-            $planning = $itemPurchasePlanningService->calculate($item);
+$basePlanning = $itemPurchasePlanningService->calculate($item);
+
+$leadTimeDays = (int) (
+    $basePlanning['lead_time_days'] ?? 60
+);
+
+$productionDemand = $itemPurchasePlanningService
+    ->getProductionDemand(
+        $item,
+        $leadTimeDays
+    );
+
+if ($productionDemand['has_plan'] ?? false) {
+
+    $monthlyUsage = (float) (
+        $productionDemand['monthly_usage'] ?? 0
+    );
+
+   $safetyStock =
+    (float) ($planning['safety_stock'] ?? 0);
+
+    $planning = $itemPurchasePlanningService->calculate(
+        $item,
+        $monthlyUsage,
+        $safetyStock
+    );
+
+} else {
+
+    $planning = $basePlanning;
+}
 
 
 
@@ -337,7 +367,7 @@ class PurchaseCalendarController extends Controller
         */
 
             $safetyStock =
-                (float) $settings->safety_stock;
+    (float) ($planning['safety_stock'] ?? 0);
 
             $minimumStock =
                 $settings->minimum_stock !== null
@@ -567,11 +597,13 @@ class PurchaseCalendarController extends Controller
         */
 
             $projection = $service->generate(
-                $item,
-                $monthsAhead,
-                $orders,
-                $leadTimeDays
-            );
+    $item,
+    $monthsAhead,
+    $orders,
+    $leadTimeDays,
+    (float) ($planning['monthly_usage'] ?? 0),
+    (float) ($planning['safety_stock'] ?? 0)
+);
 
 
             /*

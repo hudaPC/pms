@@ -14,6 +14,9 @@ class DashboardController extends Controller
 {
     public function index(StockProjectionService $service)
     {
+        if (auth()->user()->role !== 'admin') {
+        return view('user.dashboard');
+    }
         $counts = [
 
             'categories' => Category::count(),

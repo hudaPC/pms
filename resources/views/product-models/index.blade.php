@@ -198,7 +198,7 @@
         </div>
 
 
-        @if($productModels->hasPages())
+        <!-- @if($productModels->hasPages())
 
             <div class="card-footer">
 
@@ -206,7 +206,28 @@
 
             </div>
 
-        @endif
+        @endif -->
+
+{{-- Pagination --}}
+            @if($productModels->hasPages())
+
+                <div class="card-footer clearfix">
+
+                    <div class="float-right">
+
+                        {{ $productModels->links('pagination::bootstrap-4') }}
+
+                    </div>
+
+                </div>
+
+            @endif
+
+
+
+
+
+
 
     </div>
 

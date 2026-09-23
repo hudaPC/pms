@@ -911,19 +911,18 @@
                                                     @foreach ($group['requirements'] as $requirement)
                                                         <tr>
 
-                                                            <td>
-
+                                                            <td title="{{ $requirement['item']->item_name }}">
                                                                 <strong>
                                                                     {{ $requirement['item']->item_code }}
                                                                 </strong>
-
                                                                 <br>
-
                                                                 <small class="text-muted">
-                                                                    {{ $requirement['item']->item_name }}
+                                                                    {{ $requirement['item']->item_name 
+                                                                        ? \Illuminate\Support\Str::words($requirement['item']->item_name, 3, '...') 
+                                                                        : '-' }}
                                                                 </small>
-
                                                             </td>
+
 
 
                                                             <td class="text-right">

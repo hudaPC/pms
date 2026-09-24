@@ -35,9 +35,9 @@ use App\Http\Controllers\PurchaseReturnController;
 */
 
 // Home
-// Route::get('/', function () {
-//     return redirect()->route('login');
-// });
+ Route::get('/', function () {
+    return redirect()->route('login');
+ });
 
 
 /*
@@ -67,14 +67,9 @@ Route::post('/logout', [AuthController::class, 'logout'])
     ->name('logout');
 
 
-
-
-
-
-
 /*
 |--------------------------------------------------------------------------
-| Protected Application Routes
+| Protected Application Routes (any logged-in user: admin or user)
 |--------------------------------------------------------------------------
 */
 
@@ -88,6 +83,16 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Admin-Only Application Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth', 'admin'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
@@ -213,11 +218,6 @@ Route::get(
     )->name('material-usage.product-model-items');
 
 
-
-
-
-
-
     // Calendar View
     Route::get(
         'purchase-calendar',
@@ -235,8 +235,6 @@ Route::get(
     )->name('purchase-calendar.search-product-models');
 
 
-
-    // PRoduct Models
     // Product Models
     Route::resource(
         'product-models',
@@ -283,7 +281,6 @@ Route::get(
         '/product-models/{productModel}/items/{productModelItem}',
         [ProductModelItemController::class, 'destroy']
     )->name('product-models.items.destroy');
-
 
 
     /*
@@ -573,7 +570,6 @@ Route::get(
     )->name('supplier-ledger.index');
 
 
-
     // Purchase Return Rote
     Route::get(
         '/purchase-returns',
@@ -615,4 +611,5 @@ Route::get(
             'cancel'
         ]
     )->name('purchase-returns.cancel');
+
 });

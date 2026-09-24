@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends(auth()->user()->role === 'admin' ? 'layouts.admin' : 'layouts.user')
 
 @section('title', 'Categories')
 
@@ -24,7 +24,10 @@
 
             <div class="col-md-6 text-md-right mt-2 mt-md-0">
 
-                <a href="{{ route('categories.create') }}" class="btn btn-primary">
+                <a href="{{ auth()->user()->role === 'admin' ? route('categories.create') : '#' }}"
+                    class="btn btn-primary {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                    @if(auth()->user()->role !== 'admin') tabindex="-1" aria-disabled="true"
+                    style="pointer-events: none; opacity: 0.5;" @endif>
 
                     <i class="fas fa-plus mr-1"></i>
 
@@ -201,8 +204,15 @@
                                     {{-- Actions --}}
                                     <td>
 
-                                        <a href="{{ route('categories.edit', $category) }}" class="btn btn-sm btn-warning"
-                                            title="Edit Category">
+                                        <a href="{{ auth()->user()->role === 'admin' ? route('categories.edit', $category) : '#' }}"
+                                            class="btn btn-sm btn-warning {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                                            title="Edit Category"
+                                            @if(auth()->user()->role !== 'admin')
+                                                tabindex="-1"
+                                                aria-disabled="true"
+                                                style="pointer-events: none; opacity: 0.5;"
+                                            @endif
+                                        >
 
                                             <i class="fas fa-edit"></i>
 
@@ -217,7 +227,8 @@
 
                                             @method('DELETE')
 
-                                            <button type="submit" class="btn btn-sm btn-danger" title="Delete Category">
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Delete Category"
+                                                {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}>
 
                                                 <i class="fas fa-trash"></i>
 
@@ -243,6 +254,7 @@
 
                                         <br>
 
+                                        @if(auth()->user()->role === 'admin')
                                         <a href="{{ route('categories.create') }}" class="btn btn-sm btn-primary mt-2">
 
                                             <i class="fas fa-plus mr-1"></i>
@@ -250,6 +262,7 @@
                                             Add First Category
 
                                         </a>
+                                    @endif
 
                                     </td>
 

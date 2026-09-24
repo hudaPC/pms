@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends(auth()->user()->role === 'admin' ? 'layouts.admin' : 'layouts.user')
 
 @section('title', 'Suppliers')
 
@@ -21,13 +21,20 @@
 
             </div>
 
-            <a href="{{ route('suppliers.create') }}" class="btn btn-primary">
+            <a href="{{ auth()->user()->role === 'admin' ? route('suppliers.create') : '#' }}"
+                class="btn btn-primary {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                @if(auth()->user()->role !== 'admin')
+                    tabindex="-1"
+                    aria-disabled="true"
+                    style="pointer-events: none; opacity: 0.5;"
+                @endif
+                >
 
-                <i class="fas fa-plus mr-1"></i>
+                    <i class="fas fa-plus mr-1"></i>
 
-                Add Supplier
+                    Add Supplier
 
-            </a>
+                </a>
 
         </div>
 
@@ -163,7 +170,16 @@
 
                                     <td>
 
-                                        <a href="{{ route('suppliers.edit', $supplier) }}" class="btn btn-sm btn-warning">
+                                        <!-- Actions -->
+
+                                        <a href="{{ auth()->user()->role === 'admin' ? route('suppliers.edit', $supplier) : '#' }}"
+                                        class="btn btn-sm btn-warning {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                                        @if(auth()->user()->role !== 'admin')
+                                            tabindex="-1"
+                                            aria-disabled="true"
+                                            style="pointer-events: none; opacity: 0.5;"
+                                        @endif
+                                        >
 
                                             <i class="fas fa-edit mr-1"></i>
 
@@ -178,7 +194,8 @@
 
                                             @method('DELETE')
 
-                                            <button type="submit" class="btn btn-sm btn-danger">
+                                            <button type="submit" class="btn btn-sm btn-danger"
+                                                {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}>
                                                 <i class="fas fa-trash mr-1"></i>                                          
 
                                             </button>

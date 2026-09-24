@@ -136,6 +136,44 @@ Route::middleware(['auth'])->group(function () {
     // Items - view only (everyone can see the list)
     Route::get('/items', [ItemController::class, 'index'])
         ->name('items.index');
+         /*
+    |--------------------------------------------------------------------------
+    | Categories (available to admin AND user - view only)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/categories', [CategoryController::class, 'index'])
+        ->name('categories.index');
+            /*
+    |--------------------------------------------------------------------------
+    | Units (available to admin AND user - view only)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/units', [UnitController::class, 'index'])
+        ->name('units.index');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Suppliers (available to admin AND user - view only)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/suppliers', [SupplierController::class, 'index'])
+        ->name('suppliers.index');
+            /*
+    |--------------------------------------------------------------------------
+    | Product Model (available to admin AND user - view only)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/product-models', [ProductModelController::class, 'index'])
+        ->name('product-models.index');
+
+    Route::get(
+        '/product-models/{productModel}/items',
+        [ProductModelItemController::class, 'index']
+    )->name('product-models.items.index');
 
 });
 
@@ -154,24 +192,56 @@ Route::middleware(['auth', 'admin'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    // Categories
-    Route::resource('categories', CategoryController::class)
-        ->except(['show']);
 
-    // Units
-    Route::resource('units', UnitController::class)
-        ->except(['show']);
+     // Categories - create/edit/delete (admin only)
+    Route::get('/categories/create', [CategoryController::class, 'create'])
+        ->name('categories.create');
+
+    Route::post('/categories', [CategoryController::class, 'store'])
+        ->name('categories.store');
+
+    Route::get('/categories/{category}/edit', [CategoryController::class, 'edit'])
+        ->name('categories.edit');
+
+    Route::put('/categories/{category}', [CategoryController::class, 'update'])
+        ->name('categories.update');
+
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
+        ->name('categories.destroy');
+
+       // Units - create/edit/delete (admin only)
+    Route::get('/units/create', [UnitController::class, 'create'])
+        ->name('units.create');
+
+    Route::post('/units', [UnitController::class, 'store'])
+        ->name('units.store');
+
+    Route::get('/units/{unit}/edit', [UnitController::class, 'edit'])
+        ->name('units.edit');
+
+    Route::put('/units/{unit}', [UnitController::class, 'update'])
+        ->name('units.update');
+
+    Route::delete('/units/{unit}', [UnitController::class, 'destroy'])
+        ->name('units.destroy');
 
 
 
-    // Suppliers
-    Route::resource('suppliers', SupplierController::class)
-        ->except(['show']);
+       // Suppliers - create/edit/delete (admin only)
+    Route::get('/suppliers/create', [SupplierController::class, 'create'])
+        ->name('suppliers.create');
 
+    Route::post('/suppliers', [SupplierController::class, 'store'])
+        ->name('suppliers.store');
 
-    // Suppliers
-    Route::resource('suppliers', SupplierController::class)
-        ->except(['show']);
+    Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])
+        ->name('suppliers.edit');
+
+    Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])
+        ->name('suppliers.update');
+
+    Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])
+        ->name('suppliers.destroy');
 
     // Items - create/edit/delete (admin only)
     Route::get('/items/create', [ItemController::class, 'create'])
@@ -188,9 +258,6 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     Route::delete('/items/{item}', [ItemController::class, 'destroy'])
         ->name('items.destroy');
-
-    // Item Suppliers
-
 
     // Item Suppliers
     Route::get(
@@ -271,11 +338,21 @@ Route::get(
     )->name('purchase-calendar.search-product-models');
 
 
-    // Product Models
-    Route::resource(
-        'product-models',
-        ProductModelController::class
-    )->except(['show']);
+        // Product Models - create/edit/delete (admin only)
+    Route::get('/product-models/create', [ProductModelController::class, 'create'])
+        ->name('product-models.create');
+
+    Route::post('/product-models', [ProductModelController::class, 'store'])
+        ->name('product-models.store');
+
+    Route::get('/product-models/{productModel}/edit', [ProductModelController::class, 'edit'])
+        ->name('product-models.edit');
+
+    Route::put('/product-models/{productModel}', [ProductModelController::class, 'update'])
+        ->name('product-models.update');
+
+    Route::delete('/product-models/{productModel}', [ProductModelController::class, 'destroy'])
+        ->name('product-models.destroy');
 
     /*
     |--------------------------------------------------------------------------

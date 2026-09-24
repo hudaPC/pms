@@ -344,10 +344,42 @@
                 @json(old('item_id'));
 
 
+            /*
+    |--------------------------------------------------------------------------
+    | Item Select2
+    |--------------------------------------------------------------------------
+    */
+
             itemSelect.select2({
                 width: '100%',
                 placeholder: '-- Select Item --',
-                allowClear: true
+                allowClear: true,
+
+                templateResult: function (option) {
+
+                    if (!option.id) {
+                        return option.text; // placeholder / loading rows
+                    }
+
+                    var $option = $(option.element);
+
+                    var stock = Number($option.data('current-stock') || 0);
+                    var unit = $option.data('unit') || '';
+
+                    var formattedStock = stock.toLocaleString(undefined, {
+                        minimumFractionDigits: 3,
+                        maximumFractionDigits: 3
+                    });
+
+                    return $(
+                        '<div class="d-flex justify-content-between align-items-center">' +
+                        '<span>' + option.text + '</span>' +
+                        '<span class="badge badge-light border ml-2">' +
+                        formattedStock + ' ' + unit +
+                        '</span>' +
+                        '</div>'
+                    );
+                }
             });
 
 

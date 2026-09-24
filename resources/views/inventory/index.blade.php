@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends(auth()->user()->role === 'admin' ? 'layouts.admin' : 'layouts.user')
 
 @section('title', 'Inventory')
 
@@ -31,6 +31,54 @@
                 <form action="{{ route('inventory.index') }}" method="GET">
 
                     <div class="row align-items-end">
+
+                        {{-- Product Model --}}
+                        <div class="col-md-3">
+
+                            <div class="form-group mb-md-0">
+
+                                <label>
+                                    Product Model
+                                </label>
+
+                                <select name="product_model_id" id="filter_product_model_id" class="form-control no-select2">
+
+                                    @if ($productModelId)
+                                        <option value="{{ $productModelId }}" selected>
+                                            {{ request('product_model_text', 'Selected Product Model') }}
+                                        </option>
+                                    @endif
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+
+                        {{-- Item Code --}}
+                        <div class="col-md-3">
+
+                            <div class="form-group mb-md-0">
+
+                                <label>
+                                    Item Code
+                                </label>
+
+                                <select name="item_id" id="filter_item_id" class="form-control no-select2">
+
+                                    @if ($itemId)
+                                        <option value="{{ $itemId }}" selected>
+                                            {{ request('item_text', 'Selected Item') }}
+                                        </option>
+                                    @endif
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
 
                         {{-- Search --}}
                         <div class="col-md-6">
@@ -380,6 +428,90 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Product Model Select2 AJAX
+            |--------------------------------------------------------------------------
+            */
+
+            $('#filter_product_model_id').select2({
+                width: '100%',
+                placeholder: 'Search Product Model...',
+                allowClear: true,
+                minimumInputLength: 0,
+
+                ajax: {
+                    url: "{{ route('items.search.product-models') }}",
+                    dataType: 'json',
+                    delay: 250,
+
+                    data: function (params) {
+                        return {
+                            q: params.term || ''
+                        };
+                    },
+
+                    processResults: function (data) {
+                        return {
+                            results: data.results
+                        };
+                    },
+
+                    cache: true
+                }
+            });
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Item Code Select2 AJAX
+            |--------------------------------------------------------------------------
+            */
+
+            $('#filter_item_id').select2({
+                width: '100%',
+                placeholder: 'Search Item Code...',
+                allowClear: true,
+                minimumInputLength: 0,
+
+                ajax: {
+                    url: "{{ route('items.search.item-codes') }}",
+                    dataType: 'json',
+                    delay: 250,
+
+                    data: function (params) {
+                        return {
+                            q: params.term || '',
+                            product_model_id: $('#filter_product_model_id').val()
+                        };
+                    },
+
+                    processResults: function (data) {
+                        return {
+                            results: data.results
+                        };
+                    },
+
+                    cache: true
+                }
+            });
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | When Product Model Changes, Clear Item Code
+            |--------------------------------------------------------------------------
+            */
+
+            $('#filter_product_model_id').on('change', function () {
+
+                $('#filter_item_id')
+                    .val(null)
+                    .trigger('change');
+
+            });
+
 
             $('#itemSearchSelect').select2({
                 theme: 'default',

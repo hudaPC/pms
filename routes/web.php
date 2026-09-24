@@ -35,9 +35,9 @@ use App\Http\Controllers\PurchaseReturnController;
 */
 
 // Home
-// Route::get('/', function () {
-//     return redirect()->route('login');
-// });
+ Route::get('/', function () {
+    return redirect()->route('login');
+ });
 
 
 /*
@@ -174,6 +174,154 @@ Route::middleware(['auth'])->group(function () {
         '/product-models/{productModel}/items',
         [ProductModelItemController::class, 'index']
     )->name('product-models.items.index');
+
+
+
+    //INVOICES START
+    // Supplier Invoices
+    Route::post(
+        '/supplier-invoices/generate-number',
+        [SupplierInvoiceController::class, 'generateNumber']
+    )->name('supplier-invoices.generate-number');
+
+    // create purchase order
+    Route::post(
+        '/supplier-invoices/{supplierInvoice}/create-purchase-order',
+        [
+            SupplierInvoiceController::class,
+            'createPurchaseOrder'
+        ]
+    )->name(
+            'supplier-invoices.create-purchase-order'
+        );
+
+    Route::resource(
+        'supplier-invoices',
+        SupplierInvoiceController::class
+    );
+
+    Route::post(
+        '/supplier-invoices/{supplierInvoice}/confirm',
+        [SupplierInvoiceController::class, 'confirm']
+    )->name('supplier-invoices.confirm');
+
+
+    Route::post(
+        '/supplier-invoices/{supplierInvoice}/cancel',
+        [SupplierInvoiceController::class, 'cancel']
+    )->name('supplier-invoices.cancel');
+
+
+
+    Route::patch(
+        '/supplier-invoices/{supplierInvoice}/due-date',
+        [
+            SupplierInvoiceController::class,
+            'updateDueDate'
+        ]
+    )->name('supplier-invoices.due-date.update');
+
+
+
+    // Supplier Invoice Items
+    Route::get(
+        '/supplier-invoices/{supplierInvoice}/items/create',
+        [SupplierInvoiceItemController::class, 'create']
+    )->name('supplier-invoices.items.create');
+
+    Route::get(
+        '/supplier-invoices/{supplierInvoice}/product-models/{productModel}/items',
+        [SupplierInvoiceItemController::class, 'itemsByProductModel']
+    )->name(
+            'supplier-invoices.product-model-items'
+        );
+    Route::post(
+        '/supplier-invoices/{supplierInvoice}/items',
+        [SupplierInvoiceItemController::class, 'store']
+    )->name('supplier-invoices.items.store');
+
+
+    Route::get(
+        '/supplier-invoices/{supplierInvoice}/items/{supplierInvoiceItem}/edit',
+        [SupplierInvoiceItemController::class, 'edit']
+    )->name('supplier-invoices.items.edit');
+
+
+    Route::put(
+        '/supplier-invoices/{supplierInvoice}/items/{supplierInvoiceItem}',
+        [SupplierInvoiceItemController::class, 'update']
+    )->name('supplier-invoices.items.update');
+
+
+    Route::delete(
+        '/supplier-invoices/{supplierInvoice}/items/{supplierInvoiceItem}',
+        [SupplierInvoiceItemController::class, 'destroy']
+    )->name('supplier-invoices.items.destroy');
+
+
+    
+    //INVENTORY ROUTES
+    Route::get(
+        '/inventory',
+        [InventoryController::class, 'index']
+    )->name('inventory.index');
+
+
+    Route::get(
+        '/inventory/{item}/ledger',
+        [InventoryController::class, 'ledger']
+    )->name('inventory.ledger');
+
+    //STOCK ADJUSTMENT ROUTES
+    Route::get(
+        '/stock-adjustments/product-models/{productModel}/items',
+        [StockAdjustmentController::class, 'itemsByProductModel']
+    )->name(
+            'stock-adjustments.product-model-items'
+        );
+
+    Route::get(
+        '/stock-adjustments',
+        [StockAdjustmentController::class, 'index']
+    )->name('stock-adjustments.index');
+
+
+    Route::get(
+        '/stock-adjustments/create',
+        [StockAdjustmentController::class, 'create']
+    )->name('stock-adjustments.create');
+
+
+    Route::post(
+        '/stock-adjustments',
+        [StockAdjustmentController::class, 'store']
+    )->name('stock-adjustments.store');
+    Route::get(
+        '/stock-adjustments/{stockAdjustment}/edit',
+        [StockAdjustmentController::class, 'edit']
+    )->name('stock-adjustments.edit');
+
+
+    Route::put(
+        '/stock-adjustments/{stockAdjustment}',
+        [StockAdjustmentController::class, 'update']
+    )->name('stock-adjustments.update');
+
+
+    Route::delete(
+        '/stock-adjustments/{stockAdjustment}',
+        [StockAdjustmentController::class, 'destroy']
+    )->name('stock-adjustments.destroy');
+
+
+
+    // Search filter
+    Route::get(
+        '/inventory/item-search',
+        [InventoryController::class, 'itemSearch']
+    )->name('inventory.item-search');
+
+
 
 });
 
@@ -500,148 +648,40 @@ Route::middleware(['auth', 'admin'])->group(function () {
         [GoodsReceiptController::class, 'void']
     )->name('goods-receipts.void');
 
-    //INVENTORY ROUTES
-    Route::get(
-        '/inventory',
-        [InventoryController::class, 'index']
-    )->name('inventory.index');
-
-
-    Route::get(
-        '/inventory/{item}/ledger',
-        [InventoryController::class, 'ledger']
-    )->name('inventory.ledger');
-
-    //STOCK ADJUSTMENT ROUTES
-    Route::get(
-        '/stock-adjustments/product-models/{productModel}/items',
-        [StockAdjustmentController::class, 'itemsByProductModel']
-    )->name(
-            'stock-adjustments.product-model-items'
-        );
-
-    Route::get(
-        '/stock-adjustments',
-        [StockAdjustmentController::class, 'index']
-    )->name('stock-adjustments.index');
-
-
-    Route::get(
-        '/stock-adjustments/create',
-        [StockAdjustmentController::class, 'create']
-    )->name('stock-adjustments.create');
-
-
-    Route::post(
-        '/stock-adjustments',
-        [StockAdjustmentController::class, 'store']
-    )->name('stock-adjustments.store');
-    Route::get(
-        '/stock-adjustments/{stockAdjustment}/edit',
-        [StockAdjustmentController::class, 'edit']
-    )->name('stock-adjustments.edit');
-
-
-    Route::put(
-        '/stock-adjustments/{stockAdjustment}',
-        [StockAdjustmentController::class, 'update']
-    )->name('stock-adjustments.update');
-
-
-    Route::delete(
-        '/stock-adjustments/{stockAdjustment}',
-        [StockAdjustmentController::class, 'destroy']
-    )->name('stock-adjustments.destroy');
 
 
 
-    // Search filter
-    Route::get(
-        '/inventory/item-search',
-        [InventoryController::class, 'itemSearch']
-    )->name('inventory.item-search');
-
-    // Supplier Invoices
-    Route::post(
-        '/supplier-invoices/generate-number',
-        [SupplierInvoiceController::class, 'generateNumber']
-    )->name('supplier-invoices.generate-number');
-
-    // create purchase order
-    Route::post(
-        '/supplier-invoices/{supplierInvoice}/create-purchase-order',
-        [
-            SupplierInvoiceController::class,
-            'createPurchaseOrder'
-        ]
-    )->name(
-            'supplier-invoices.create-purchase-order'
-        );
-
-    Route::resource(
-        'supplier-invoices',
-        SupplierInvoiceController::class
-    );
-    Route::post(
-        '/supplier-invoices/{supplierInvoice}/confirm',
-        [SupplierInvoiceController::class, 'confirm']
-    )->name('supplier-invoices.confirm');
 
 
-    Route::post(
-        '/supplier-invoices/{supplierInvoice}/cancel',
-        [SupplierInvoiceController::class, 'cancel']
-    )->name('supplier-invoices.cancel');
-
-    Route::patch(
-        '/supplier-invoices/{supplierInvoice}/due-date',
-        [
-            SupplierInvoiceController::class,
-            'updateDueDate'
-        ]
-    )->name('supplier-invoices.due-date.update');
 
 
-    // Supplier Invoice Items
-    Route::get(
-        '/supplier-invoices/{supplierInvoice}/items/create',
-        [SupplierInvoiceItemController::class, 'create']
-    )->name('supplier-invoices.items.create');
 
-    Route::get(
-        '/supplier-invoices/{supplierInvoice}/product-models/{productModel}/items',
-        [SupplierInvoiceItemController::class, 'itemsByProductModel']
-    )->name(
-            'supplier-invoices.product-model-items'
-        );
+
+
+
+
+
+
+
+
+
+
+
+
     // Manual Purchase Order Product model Items
     Route::get(
         '/purchase-orders/{purchaseOrder}/product-models/{productModel}/items',
         [PurchaseOrderItemController::class, 'itemsByProductModel']
     )->name('purchase-orders.product-model-items');
 
-    Route::post(
-        '/supplier-invoices/{supplierInvoice}/items',
-        [SupplierInvoiceItemController::class, 'store']
-    )->name('supplier-invoices.items.store');
 
 
-    Route::get(
-        '/supplier-invoices/{supplierInvoice}/items/{supplierInvoiceItem}/edit',
-        [SupplierInvoiceItemController::class, 'edit']
-    )->name('supplier-invoices.items.edit');
 
 
-    Route::put(
-        '/supplier-invoices/{supplierInvoice}/items/{supplierInvoiceItem}',
-        [SupplierInvoiceItemController::class, 'update']
-    )->name('supplier-invoices.items.update');
 
 
-    Route::delete(
-        '/supplier-invoices/{supplierInvoice}/items/{supplierInvoiceItem}',
-        [SupplierInvoiceItemController::class, 'destroy']
-    )->name('supplier-invoices.items.destroy');
+
+
 
 
     //Supplier paynent controller

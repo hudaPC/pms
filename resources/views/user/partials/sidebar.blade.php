@@ -195,24 +195,158 @@
                 <li class="nav-item">
 
 
-                   <a href="{{ url('/product-models') }}"
-                    class="nav-link
-                    {{ request()->is('product-models*') ? 'active' : '' }}"
-                    >
+                    <a href="{{ url('/product-models') }}" class="nav-link
+                    {{ request()->is('product-models*') ? 'active' : '' }}">
 
-                    <i class="fas fa-cubes nav-icon"></i>
+                        <i class="fas fa-cubes nav-icon"></i>
 
-                    <p>
-                        Product Model
-                    </p>
+                        <p>
+                            Product Model
+                        </p>
 
                     </a>
 
                 </li>
 
+                {{-- ===================================================== --}}
+                {{-- INVOICING --}}
+                {{-- ===================================================== --}}
+
+                @php
+
+                    $invoicingActive =
+                        request()->is('supplier-invoices*');
+
+                @endphp
+
+
+                <li class="nav-item has-treeview
+        {{ $invoicingActive ? 'menu-open' : '' }}">
+
+
+                    <a href="#" class="nav-link
+            {{ $invoicingActive ? 'active' : '' }}">
+
+                        <i class="nav-icon fas fa-file-invoice"></i>
+
+                        <p>
+
+                            Invoicing
+
+                            <i class="right fas fa-angle-left"></i>
+
+                        </p>
+
+                    </a>
+
+
+                    <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+
+
+                            <a href="{{ url('/supplier-invoices') }}" class="nav-link
+                    {{ request()->is('supplier-invoices*') ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon"></i>
+
+                                <p>
+                                    Supplier Invoices
+                                </p>
+
+                            </a>
+
+                        </li>
+
+                    </ul>
+
+                </li>
+
+
+                {{-- ===================================================== --}}
+                {{-- INVENTORY --}}
+                {{-- ===================================================== --}}
+
+                @php
+
+                    $inventoryActive =
+                        request()->is('inventory*') ||
+                        request()->is('stock-adjustments*');
+
+                @endphp
+
+
+                <li class="nav-item has-treeview
+        {{ $inventoryActive ? 'menu-open' : '' }}">
+
+
+                   <a  href="#"
+                    class="nav-link
+                    {{ $inventoryActive ? 'active' : '' }}"
+                    >
+
+                    <i class="nav-icon fas fa-boxes"></i>
+
+                    <p>
+
+                        Inventory
+
+                        <i class="right fas fa-angle-left"></i>
+
+                    </p>
+
+                    </a>
+
+
+                    <ul class="nav nav-treeview">
+
+                        {{-- Current Stock --}}
+
+                        <li class="nav-item">
+
+
+                           <a href="{{ route('inventory.index') }}"
+                            class="nav-link
+                            {{ request()->is('inventory*') ? 'active' : '' }}"
+                            >
+
+                            <i class="far fa-circle nav-icon"></i>
+
+                            <p>
+                                Stock Summary
+                            </p>
+
+                            </a>
+
+                        </li>
+
+
+                        {{-- Stock Adjustments --}}
+
+                        <li class="nav-item">
+
+
+                            <a href="{{ route('stock-adjustments.index') }}"
+                            class="nav-link
+                            {{ request()->is('stock-adjustments*') ? 'active' : '' }}"
+                            >
+
+                            <i class="far fa-circle nav-icon"></i>
+
+                            <p>
+                                Stock Adjustments
+                            </p>
+
+                            </a>
+
+                        </li>
+
+                    </ul>
+
+                </li>
+
 
                 {{-- Add more user-only links here later, e.g. Profile, My Requests, etc. --}}
-
 
 
                 {{-- ===================================================== --}}

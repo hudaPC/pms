@@ -15,92 +15,117 @@ class InventoryController extends Controller
     */
 
     public function index(Request $request)
-{
-    /*
-    |--------------------------------------------------------------------------
-    | Filters
-    |--------------------------------------------------------------------------
-    */
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | Filters
+        |--------------------------------------------------------------------------
+        */
 
-    $search = trim(
-        (string) $request->input('search', '')
-    );
-
-    $stockStatus = $request->input(
-        'stock_status',
-        'all'
-    );
-
-    $planningStatus = $request->input(
-        'planning_status',
-        'all'
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Inventory Query
-    |--------------------------------------------------------------------------
-    */
-
-    $query = Item::with([
-        'unit',
-        'purchaseSettings',
-    ])
-        ->where('status', true)
-
-        ->withSum([
-            'stockMovements as total_stock_in' => function ($query) {
-                $query->where('direction', 'in');
-            }
-        ], 'quantity')
-
-        ->withSum([
-            'stockMovements as total_stock_out' => function ($query) {
-                $query->where('direction', 'out');
-            }
-        ], 'quantity')
-
-        ->withMax(
-            'stockMovements as last_movement_date',
-            'movement_date'
+        $search = trim(
+            (string) $request->input('search', '')
         );
 
+        $stockStatus = $request->input(
+            'stock_status',
+            'all'
+        );
 
-    /*
-    |--------------------------------------------------------------------------
-    | Search
-    |--------------------------------------------------------------------------
-    */
+        $planningStatus = $request->input(
+            'planning_status',
+            'all'
+        );
 
-    if ($search !== '') {
+        $productModelId = $request->input('product_model_id');
 
-        $query->where(function ($query) use ($search) {
-
-            $query
-                ->where(
-                    'item_code',
-                    'like',
-                    '%' . $search . '%'
-                )
-                ->orWhere(
-                    'item_name',
-                    'like',
-                    '%' . $search . '%'
-                );
-        });
-    }
+        $itemId = $request->input('item_id');
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Basic Stock Status Filter
-    |--------------------------------------------------------------------------
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | Inventory Query
+        |--------------------------------------------------------------------------
+        */
 
-    if ($stockStatus === 'in_stock') {
+        $query = Item::with([
+            'unit',
+            'purchaseSettings',
+        ])
+            ->where('status', true)
 
-        $query->whereRaw("
+            ->withSum([
+                'stockMovements as total_stock_in' => function ($query) {
+                    $query->where('direction', 'in');
+                }
+            ], 'quantity')
+
+            ->withSum([
+                'stockMovements as total_stock_out' => function ($query) {
+                    $query->where('direction', 'out');
+                }
+            ], 'quantity')
+
+            ->withMax(
+                'stockMovements as last_movement_date',
+                'movement_date'
+            );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Search
+        |--------------------------------------------------------------------------
+        */
+
+        if ($search !== '') {
+
+            $query->where(function ($query) use ($search) {
+
+                $query
+                    ->where(
+                        'item_code',
+                        'like',
+                        '%' . $search . '%'
+                    )
+                    ->orWhere(
+                        'item_name',
+                        'like',
+                        '%' . $search . '%'
+                    );
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Product Model Filter
+        |--------------------------------------------------------------------------
+        */
+
+        if (!empty($productModelId)) {
+
+            $query->where('product_model_id', $productModelId);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Specific Item Filter
+        |--------------------------------------------------------------------------
+        */
+
+        if (!empty($itemId)) {
+
+            $query->where('id', $itemId);
+        }
+        /*
+        |--------------------------------------------------------------------------
+        | Basic Stock Status Filter
+        |--------------------------------------------------------------------------
+        */
+
+        if ($stockStatus === 'in_stock') {
+
+            $query->whereRaw("
             (
                 COALESCE(
                     (
@@ -124,9 +149,9 @@ class InventoryController extends Controller
             ) > 0
         ");
 
-    } elseif ($stockStatus === 'zero_stock') {
+        } elseif ($stockStatus === 'zero_stock') {
 
-        $query->whereRaw("
+            $query->whereRaw("
             (
                 COALESCE(
                     (
@@ -150,9 +175,9 @@ class InventoryController extends Controller
             ) = 0
         ");
 
-    } elseif ($stockStatus === 'negative_stock') {
+        } elseif ($stockStatus === 'negative_stock') {
 
-        $query->whereRaw("
+            $query->whereRaw("
             (
                 COALESCE(
                     (
@@ -175,127 +200,129 @@ class InventoryController extends Controller
                 )
             ) < 0
         ");
-    }
+        }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Results
-    |--------------------------------------------------------------------------
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | Results
+        |--------------------------------------------------------------------------
+        */
 
-    $items = $query
-        ->orderBy('item_code')
-        ->paginate(20)
-        ->withQueryString();
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Add Planning Status
-    |--------------------------------------------------------------------------
-    */
-
-    $items->getCollection()->transform(
-        function ($item) {
-
-            $currentStock =
-                (float) ($item->total_stock_in ?? 0)
-                -
-                (float) ($item->total_stock_out ?? 0);
-
-            $settings =
-                $item->purchaseSettings;
+        $items = $query
+            ->orderBy('item_code')
+            ->paginate(20)
+            ->withQueryString();
 
 
-            if (!$settings) {
+        /*
+        |--------------------------------------------------------------------------
+        | Add Planning Status
+        |--------------------------------------------------------------------------
+        */
 
-                $item->planning_status =
-                    'not_configured';
+        $items->getCollection()->transform(
+            function ($item) {
 
-                return $item;
-            }
+                $currentStock =
+                    (float) ($item->total_stock_in ?? 0)
+                    -
+                    (float) ($item->total_stock_out ?? 0);
+
+                $settings =
+                    $item->purchaseSettings;
 
 
-            $safetyStock =
-                (float) $settings->safety_stock;
+                if (!$settings) {
 
-            $minimumStock =
-                $settings->minimum_stock !== null
+                    $item->planning_status =
+                        'not_configured';
+
+                    return $item;
+                }
+
+
+                $safetyStock =
+                    (float) $settings->safety_stock;
+
+                $minimumStock =
+                    $settings->minimum_stock !== null
                     ? (float) $settings->minimum_stock
                     : $safetyStock;
 
-            $maximumStock =
-                $settings->maximum_stock !== null
+                $maximumStock =
+                    $settings->maximum_stock !== null
                     ? (float) $settings->maximum_stock
                     : null;
 
 
-            if ($currentStock < $minimumStock) {
+                if ($currentStock < $minimumStock) {
 
-                $item->planning_status =
-                    'below_minimum';
+                    $item->planning_status =
+                        'below_minimum';
 
-            } elseif ($currentStock < $safetyStock) {
+                } elseif ($currentStock < $safetyStock) {
 
-                $item->planning_status =
-                    'below_safety';
+                    $item->planning_status =
+                        'below_safety';
 
-            } elseif (
-                $maximumStock !== null &&
-                $currentStock > $maximumStock
-            ) {
+                } elseif (
+                    $maximumStock !== null &&
+                    $currentStock > $maximumStock
+                ) {
 
-                $item->planning_status =
-                    'above_maximum';
+                    $item->planning_status =
+                        'above_maximum';
 
-            } else {
+                } else {
 
-                $item->planning_status =
-                    'ok';
+                    $item->planning_status =
+                        'ok';
+                }
+
+
+                return $item;
             }
+        );
 
 
-            return $item;
+        /*
+        |--------------------------------------------------------------------------
+        | Apply Planning Status Filter
+        |--------------------------------------------------------------------------
+        |
+        | Since planning status depends on calculated current stock,
+        | filter the paginator collection after calculation.
+        |
+        */
+
+        if ($planningStatus !== 'all') {
+
+            $items->setCollection(
+                $items->getCollection()
+                    ->filter(function ($item) use ($planningStatus) {
+
+                        return
+                            $item->planning_status
+                            === $planningStatus;
+                    })
+                    ->values()
+            );
         }
-    );
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Apply Planning Status Filter
-    |--------------------------------------------------------------------------
-    |
-    | Since planning status depends on calculated current stock,
-    | filter the paginator collection after calculation.
-    |
-    */
-
-    if ($planningStatus !== 'all') {
-
-        $items->setCollection(
-            $items->getCollection()
-                ->filter(function ($item) use ($planningStatus) {
-
-                    return
-                        $item->planning_status
-                        === $planningStatus;
-                })
-                ->values()
+        return view(
+            'inventory.index',
+            compact(
+                'items',
+                'search',
+                'stockStatus',
+                'planningStatus',
+                'productModelId',
+                'itemId'
+            )
         );
     }
-
-
-    return view(
-        'inventory.index',
-        compact(
-            'items',
-            'search',
-            'stockStatus',
-            'planningStatus'
-        )
-    );
-}
 
 
     /*
@@ -385,11 +412,11 @@ class InventoryController extends Controller
 
         $currentPageItems =
             $allMovements
-            ->slice(
-                ($currentPage - 1) * $perPage,
-                $perPage
-            )
-            ->values();
+                ->slice(
+                    ($currentPage - 1) * $perPage,
+                    $perPage
+                )
+                ->values();
 
 
         $movements =
@@ -440,7 +467,7 @@ class InventoryController extends Controller
 
         $results = $items->map(function ($item) {
             return [
-                'id'   => $item->item_code,
+                'id' => $item->item_code,
                 'text' => $item->item_code . ' - ' . $item->item_name,
             ];
         });

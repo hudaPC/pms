@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends(auth()->user()->role === 'admin' ? 'layouts.admin' : 'layouts.user')
 
 @section('title', 'Supplier Invoice')
 
@@ -30,8 +30,8 @@
                     @if ($supplierInvoice->items->isNotEmpty())
                         <form action="{{ route('supplier-invoices.confirm', $supplierInvoice) }}" method="POST" class="mr-2"
                             onsubmit="return confirm(
-                                                    'Confirm this Supplier Invoice? After confirmation, invoice items will be locked.'
-                                                );">
+                                                                'Confirm this Supplier Invoice? After confirmation, invoice items will be locked.'
+                                                            );">
 
                             @csrf
 
@@ -59,128 +59,107 @@
 
 
                 {{-- Create Purchase Order --}}
-@if (
-    in_array(
-        $supplierInvoice->status,
-        ['unpaid', 'partially_paid', 'paid']
-    )
-    && !$supplierInvoice->purchase_order_id
-    && $supplierInvoice->items->isNotEmpty()
-    && $supplierInvoice->po_creation_mode === 'manual'
-)
+                @if (
+                            in_array(
+                                $supplierInvoice->status,
+                                ['unpaid', 'partially_paid', 'paid']
+                            )
+                            && !$supplierInvoice->purchase_order_id
+                            && $supplierInvoice->items->isNotEmpty()
+                            && $supplierInvoice->po_creation_mode === 'manual'
+                        )
 
-    <form
-        action="{{ route('supplier-invoices.create-purchase-order', $supplierInvoice) }}"
-        method="POST"
-        class="mr-2"
-        onsubmit="return confirm(
-            'Create Purchase Order from this Supplier Invoice? PO quantities and prices will be copied from the invoice items.'
-        );"
-    >
+                        <form action="{{ route('supplier-invoices.create-purchase-order', $supplierInvoice) }}" method="POST"
+                            class="mr-2" onsubmit="return confirm(
+                        'Create Purchase Order from this Supplier Invoice? PO quantities and prices will be copied from the invoice items.'
+                    );">
 
-        @csrf
+                            @csrf
 
 
-        {{-- PO Number --}}
-        <div class="form-group mb-2">
+                            {{-- PO Number --}}
+                            <div class="form-group mb-2">
 
-            <label for="po_number" class="mb-1">
+                                <label for="po_number" class="mb-1">
 
-                <small>
-                    PO Number
-                </small>
+                                    <small>
+                                        PO Number
+                                    </small>
 
-            </label>
+                                </label>
 
-            <input
-                type="text"
-                name="po_number"
-                id="po_number"
-                class="form-control form-control-sm @error('po_number') is-invalid @enderror"
-                value="{{ old('po_number') }}"
-                maxlength="50"
-                placeholder="Enter PO Number"
-                required
-            >
+                                <input type="text" name="po_number" id="po_number"
+                                    class="form-control form-control-sm @error('po_number') is-invalid @enderror"
+                                    value="{{ old('po_number') }}" maxlength="50" placeholder="Enter PO Number" required>
 
-            @error('po_number')
-                <div class="invalid-feedback">
-                    {{ $message }}
-                </div>
-            @enderror
+                                @error('po_number')
+                                    <div class="invalid-feedback">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
 
 
-                    {{-- Order Date --}}
-        <div class="form-group mb-2">
+                                {{-- Order Date --}}
+                                <div class="form-group mb-2">
 
-            <label for="order_date" class="mb-1">
+                                    <label for="order_date" class="mb-1">
 
-                <small>
-                    Order Date
-                </small>
+                                        <small>
+                                            Order Date
+                                        </small>
 
-            </label>
+                                    </label>
 
-            <input
-                type="date"
-                name="order_date"
-                id="order_date"
-                class="form-control form-control-sm @error('order_date') is-invalid @enderror"
-                value="{{ old('order_date', now()->format('Y-m-d')) }}"
-                required
-            >
+                                    <input type="date" name="order_date" id="order_date"
+                                        class="form-control form-control-sm @error('order_date') is-invalid @enderror"
+                                        value="{{ old('order_date', now()->format('Y-m-d')) }}" required>
 
-            @error('order_date')
-                <div class="invalid-feedback">
-                    {{ $message }}
-                </div>
-            @enderror
+                                    @error('order_date')
+                                        <div class="invalid-feedback">
+                                            {{ $message }}
+                                        </div>
+                                    @enderror
 
-        </div>
+                                </div>
 
-        </div>
+                            </div>
 
 
-        {{-- Expected Delivery Date --}}
-        <div class="form-group mb-2">
+                            {{-- Expected Delivery Date --}}
+                            <div class="form-group mb-2">
 
-            <label for="expected_delivery_date" class="mb-1">
+                                <label for="expected_delivery_date" class="mb-1">
 
-                <small>
-                    Expected Delivery Date
-                </small>
+                                    <small>
+                                        Expected Delivery Date
+                                    </small>
 
-            </label>
+                                </label>
 
-            <input
-                type="date"
-                name="expected_delivery_date"
-                id="expected_delivery_date"
-                class="form-control form-control-sm @error('expected_delivery_date') is-invalid @enderror"
-                value="{{ old('expected_delivery_date') }}"               
-                required
-            >
+                                <input type="date" name="expected_delivery_date" id="expected_delivery_date"
+                                    class="form-control form-control-sm @error('expected_delivery_date') is-invalid @enderror"
+                                    value="{{ old('expected_delivery_date') }}" required>
 
-            @error('expected_delivery_date')
-                <div class="invalid-feedback">
-                    {{ $message }}
-                </div>
-            @enderror
+                                @error('expected_delivery_date')
+                                    <div class="invalid-feedback">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
 
-        </div>
+                            </div>
 
 
-        <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary">
 
-            <i class="fas fa-file-signature mr-1"></i>
+                                <i class="fas fa-file-signature mr-1"></i>
 
-            Create Purchase Order
+                                Create Purchase Order
 
-        </button>
+                            </button>
 
-    </form>
+                        </form>
 
-@endif
+                @endif
 
                 {{-- Cancel Supplier Invoice --}}
                 @if ($supplierInvoice->status === 'unpaid' && !$supplierInvoice->purchaseOrder)
@@ -255,8 +234,7 @@
                         <div class="mt-1">
 
                             @if ($supplierInvoice->productionPlan)
-                                <a
-                                    href="{{ route('production-plans.requirements', $supplierInvoice->productionPlan) }}">
+                                <a href="{{ route('production-plans.requirements', $supplierInvoice->productionPlan) }}">
 
                                     {{ $supplierInvoice->productionPlan->reference }}
 
@@ -347,8 +325,8 @@
                         <div class="mt-1">
 
                             @if (in_array($supplierInvoice->status, ['unpaid', 'partially_paid', 'paid']))
-                                <form action="{{ route('supplier-invoices.due-date.update', $supplierInvoice) }}"
-                                    method="POST" class="form-inline">
+                                <form action="{{ route('supplier-invoices.due-date.update', $supplierInvoice) }}" method="POST"
+                                    class="form-inline">
 
                                     @csrf
                                     @method('PATCH')
@@ -487,8 +465,7 @@
                 </h3>
 
                 @if ($supplierInvoice->status === 'draft')
-                    <a href="{{ route('supplier-invoices.items.create', $supplierInvoice) }}"
-                        class="btn btn-sm btn-primary">
+                    <a href="{{ route('supplier-invoices.items.create', $supplierInvoice) }}" class="btn btn-sm btn-primary">
 
                         <i class="fas fa-plus mr-1"></i>
 
@@ -609,8 +586,8 @@
                                                 action="{{ route('supplier-invoices.items.destroy', [$supplierInvoice, $invoiceItem]) }}"
                                                 method="POST" class="d-inline"
                                                 onsubmit="return confirm(
-                                                                                                                                                                                                                                                            'Are you sure you want to delete this invoice item?'
-                                                                                                                                                                                                                                                        );">
+                                                                                                                                                                                                                                                                        'Are you sure you want to delete this invoice item?'
+                                                                                                                                                                                                                                                                    );">
 
                                                 @csrf
                                                 @method('DELETE')
@@ -682,39 +659,39 @@
                     <div class="card-body">
 
                         {{-- Total Items --}}
-<div class="d-flex justify-content-between mb-2">
+                        <div class="d-flex justify-content-between mb-2">
 
-    <span>
-        Total Items
-    </span>
+                            <span>
+                                Total Items
+                            </span>
 
-    <strong>
-        {{ $supplierInvoice->items->count() }}
-    </strong>
+                            <strong>
+                                {{ $supplierInvoice->items->count() }}
+                            </strong>
 
-</div>
-
-
-{{-- Total Quantity --}}
-<div class="d-flex justify-content-between mb-2">
-
-    <span>
-        Total Quantity
-    </span>
-
-    <strong class="text-info">
-
-        {{ number_format(
-            (float) $supplierInvoice->items->sum('quantity'),
-            3
-        ) }}
-
-    </strong>
-
-</div>
+                        </div>
 
 
-<hr>
+                        {{-- Total Quantity --}}
+                        <div class="d-flex justify-content-between mb-2">
+
+                            <span>
+                                Total Quantity
+                            </span>
+
+                            <strong class="text-info">
+
+                                {{ number_format(
+        (float) $supplierInvoice->items->sum('quantity'),
+        3
+    ) }}
+
+                            </strong>
+
+                        </div>
+
+
+                        <hr>
 
                         <div class="d-flex justify-content-between mb-2">
 
@@ -807,7 +784,7 @@
                             </strong>
 
                         </div>
-                        @if (in_array($supplierInvoice->status, ['unpaid', 'partially_paid']) && (float) $supplierInvoice->balance_amount > 0)
+                        @if (in_array($supplierInvoice->status, ['unpaid', 'partially_paid']) && (float) $supplierInvoice->balance_amount > 0 && auth()->user()->role === 'admin')
                             <hr>
 
                             <a href="{{ route('supplier-invoices.payments.create', $supplierInvoice) }}"
@@ -1061,26 +1038,26 @@
                                     ===================================================== --}}
                                     <td class="text-center">
 
-                                        @if ($payment->status !== 'void' && $supplierInvoice->status !== 'cancelled')
-                                            <button type="button" class="btn btn-sm btn-danger void-payment-btn"
-                                                data-url="{{ route('supplier-invoices.payments.destroy', [$supplierInvoice, $payment]) }}"
-                                                data-reference="{{ $payment->reference }}"
-                                                data-amount="{{ number_format((float) $payment->amount, 4, '.', '') }}">
+                                        @if ($payment->status !== 'void' && $supplierInvoice->status !== 'cancelled' && auth()->user()->role === 'admin')
+    <button type="button" class="btn btn-sm btn-danger void-payment-btn"
+        data-url="{{ route('supplier-invoices.payments.destroy', [$supplierInvoice, $payment]) }}"
+        data-reference="{{ $payment->reference }}"
+        data-amount="{{ number_format((float) $payment->amount, 4, '.', '') }}">
 
-                                                <i class="fas fa-ban mr-1"></i>
+        <i class="fas fa-ban mr-1"></i>
 
-                                                Void
+        Void
 
-                                            </button>
-                                        @else
-                                            <span class="text-muted">
+    </button>
+@else
+    <span class="text-muted">
 
-                                                <i class="fas fa-lock mr-1"></i>
+        <i class="fas fa-lock mr-1"></i>
 
-                                                Locked
+        Locked
 
-                                            </span>
-                                        @endif
+    </span>
+@endif
 
                                     </td>
 
@@ -1115,7 +1092,7 @@
     {{-- End History card --}}
     @push('scripts')
         <script>
-            $(document).ready(function() {
+            $(document).ready(function () {
 
 
                 /*
@@ -1129,13 +1106,13 @@
                     toastr.error(
                         @json($errors->first('cancellation_reason')),
                         'Invoice Cancellation Blocked', {
-                            closeButton: true,
-                            progressBar: false,
-                            timeOut: 0,
-                            extendedTimeOut: 0,
-                            positionClass: 'toast-top-right',
-                            preventDuplicates: true
-                        }
+                        closeButton: true,
+                        progressBar: false,
+                        timeOut: 0,
+                        extendedTimeOut: 0,
+                        positionClass: 'toast-top-right',
+                        preventDuplicates: true
+                    }
                     );
                 @endif
 
@@ -1148,7 +1125,7 @@
 
                 $('#btnCancelInvoice').on(
                     'click',
-                    function() {
+                    function () {
 
                         const button =
                             $(this);
@@ -1166,111 +1143,111 @@
 
                             html: `
 
-                                    <div class="text-left">
+                                            <div class="text-left">
 
-                                        <div class="alert alert-danger">
+                                                <div class="alert alert-danger">
 
-                                            <strong>
-                                                Invoice:
-                                            </strong>
+                                                    <strong>
+                                                        Invoice:
+                                                    </strong>
 
-                                            ${invoiceNumber}
+                                                    ${invoiceNumber}
 
-                                            <br><br>
+                                                    <br><br>
 
-                                            Cancelling this invoice will keep the
-                                            invoice and its items for audit history,
-                                            but its quantities will no longer count
-                                            as active invoiced quantities.
+                                                    Cancelling this invoice will keep the
+                                                    invoice and its items for audit history,
+                                                    but its quantities will no longer count
+                                                    as active invoiced quantities.
 
-                                        </div>
-
-
-                                        <label class="font-weight-bold">
-
-                                            Cancellation Reason
-
-                                            <span class="text-danger">
-                                                *
-                                            </span>
-
-                                        </label>
+                                                </div>
 
 
-                                        <select
-                                            id="swalCancellationReason"
-                                            class="form-control"
-                                        >
+                                                <label class="font-weight-bold">
 
-                                            <option value="">
-                                                -- Select Reason --
-                                            </option>
+                                                    Cancellation Reason
 
-                                            <option value="Wrong invoice quantity">
-                                                Wrong invoice quantity
-                                            </option>
+                                                    <span class="text-danger">
+                                                        *
+                                                    </span>
 
-                                            <option value="Wrong supplier invoice">
-                                                Wrong supplier invoice
-                                            </option>
-
-                                            <option value="Wrong purchase order">
-                                                Wrong purchase order
-                                            </option>
-
-                                            <option value="Duplicate supplier invoice">
-                                                Duplicate supplier invoice
-                                            </option>
-
-                                            <option value="Incorrect invoice price">
-                                                Incorrect invoice price
-                                            </option>
-
-                                            <option value="Supplier cancelled invoice">
-                                                Supplier cancelled invoice
-                                            </option>
-
-                                            <option value="Data entry mistake">
-                                                Data entry mistake
-                                            </option>
-
-                                            <option value="Other">
-                                                Other
-                                            </option>
-
-                                        </select>
+                                                </label>
 
 
-                                        <div
-                                            id="otherCancellationReasonWrapper"
-                                            class="mt-3"
-                                            style="display:none;"
-                                        >
+                                                <select
+                                                    id="swalCancellationReason"
+                                                    class="form-control"
+                                                >
 
-                                            <label class="font-weight-bold">
+                                                    <option value="">
+                                                        -- Select Reason --
+                                                    </option>
 
-                                                Other Reason
+                                                    <option value="Wrong invoice quantity">
+                                                        Wrong invoice quantity
+                                                    </option>
 
-                                                <span class="text-danger">
-                                                    *
-                                                </span>
+                                                    <option value="Wrong supplier invoice">
+                                                        Wrong supplier invoice
+                                                    </option>
 
-                                            </label>
+                                                    <option value="Wrong purchase order">
+                                                        Wrong purchase order
+                                                    </option>
+
+                                                    <option value="Duplicate supplier invoice">
+                                                        Duplicate supplier invoice
+                                                    </option>
+
+                                                    <option value="Incorrect invoice price">
+                                                        Incorrect invoice price
+                                                    </option>
+
+                                                    <option value="Supplier cancelled invoice">
+                                                        Supplier cancelled invoice
+                                                    </option>
+
+                                                    <option value="Data entry mistake">
+                                                        Data entry mistake
+                                                    </option>
+
+                                                    <option value="Other">
+                                                        Other
+                                                    </option>
+
+                                                </select>
 
 
-                                            <textarea
-                                                id="swalOtherCancellationReason"
-                                                class="form-control"
-                                                rows="3"
-                                                maxlength="1000"
-                                                placeholder="Enter the reason for cancelling this supplier invoice..."
-                                            ></textarea>
+                                                <div
+                                                    id="otherCancellationReasonWrapper"
+                                                    class="mt-3"
+                                                    style="display:none;"
+                                                >
 
-                                        </div>
+                                                    <label class="font-weight-bold">
 
-                                    </div>
+                                                        Other Reason
 
-                                `,
+                                                        <span class="text-danger">
+                                                            *
+                                                        </span>
+
+                                                    </label>
+
+
+                                                    <textarea
+                                                        id="swalOtherCancellationReason"
+                                                        class="form-control"
+                                                        rows="3"
+                                                        maxlength="1000"
+                                                        placeholder="Enter the reason for cancelling this supplier invoice..."
+                                                    ></textarea>
+
+                                                </div>
+
+                                            </div>
+
+                                        `,
 
                             icon: 'warning',
 
@@ -1311,7 +1288,7 @@
 
                                 reasonSelect.addEventListener(
                                     'change',
-                                    function() {
+                                    function () {
 
                                         if (
                                             this.value ===
@@ -1398,7 +1375,7 @@
 
                             }
 
-                        }).then(function(result) {
+                        }).then(function (result) {
 
 
                             /*
@@ -1512,7 +1489,7 @@
 
                 $('.void-payment-btn').on(
                     'click',
-                    function() {
+                    function () {
 
                         const button =
                             $(this);
@@ -1539,118 +1516,118 @@
 
                             html: `
 
-                                    <div class="text-left">
+                                            <div class="text-left">
 
-                                        <div class="alert alert-warning">
+                                                <div class="alert alert-warning">
 
-                                            <strong>
-                                                Payment:
-                                            </strong>
+                                                    <strong>
+                                                        Payment:
+                                                    </strong>
 
-                                            ${reference}
+                                                    ${reference}
 
-                                            <br>
+                                                    <br>
 
-                                            <strong>
-                                                Amount:
-                                            </strong>
+                                                    <strong>
+                                                        Amount:
+                                                    </strong>
 
-                                            ${amount}
+                                                    ${amount}
 
-                                            <br><br>
+                                                    <br><br>
 
-                                            Voiding this payment will recalculate
-                                            the supplier invoice paid amount,
-                                            balance and payment status.
+                                                    Voiding this payment will recalculate
+                                                    the supplier invoice paid amount,
+                                                    balance and payment status.
 
-                                        </div>
-
-
-                                        <label class="font-weight-bold">
-
-                                            Void Reason
-
-                                            <span class="text-danger">
-                                                *
-                                            </span>
-
-                                        </label>
+                                                </div>
 
 
-                                        <select
-                                            id="swalVoidReason"
-                                            class="form-control"
-                                        >
+                                                <label class="font-weight-bold">
 
-                                            <option value="">
-                                                -- Select Reason --
-                                            </option>
+                                                    Void Reason
 
-                                            <option value="Incorrect payment amount">
-                                                Incorrect payment amount
-                                            </option>
+                                                    <span class="text-danger">
+                                                        *
+                                                    </span>
 
-                                            <option value="Payment entered against wrong invoice">
-                                                Payment entered against wrong invoice
-                                            </option>
-
-                                            <option value="Duplicate payment entry">
-                                                Duplicate payment entry
-                                            </option>
-
-                                            <option value="Payment transaction cancelled">
-                                                Payment transaction cancelled
-                                            </option>
-
-                                            <option value="Cheque cancelled or dishonoured">
-                                                Cheque cancelled or dishonoured
-                                            </option>
-
-                                            <option value="Bank transfer reversed">
-                                                Bank transfer reversed
-                                            </option>
-
-                                            <option value="Payment reference entered incorrectly">
-                                                Payment reference entered incorrectly
-                                            </option>
-
-                                            <option value="Other">
-                                                Other
-                                            </option>
-
-                                        </select>
+                                                </label>
 
 
-                                        <div
-                                            id="otherVoidReasonWrapper"
-                                            class="mt-3"
-                                            style="display:none;"
-                                        >
+                                                <select
+                                                    id="swalVoidReason"
+                                                    class="form-control"
+                                                >
 
-                                            <label class="font-weight-bold">
+                                                    <option value="">
+                                                        -- Select Reason --
+                                                    </option>
 
-                                                Other Reason
+                                                    <option value="Incorrect payment amount">
+                                                        Incorrect payment amount
+                                                    </option>
 
-                                                <span class="text-danger">
-                                                    *
-                                                </span>
+                                                    <option value="Payment entered against wrong invoice">
+                                                        Payment entered against wrong invoice
+                                                    </option>
 
-                                            </label>
+                                                    <option value="Duplicate payment entry">
+                                                        Duplicate payment entry
+                                                    </option>
+
+                                                    <option value="Payment transaction cancelled">
+                                                        Payment transaction cancelled
+                                                    </option>
+
+                                                    <option value="Cheque cancelled or dishonoured">
+                                                        Cheque cancelled or dishonoured
+                                                    </option>
+
+                                                    <option value="Bank transfer reversed">
+                                                        Bank transfer reversed
+                                                    </option>
+
+                                                    <option value="Payment reference entered incorrectly">
+                                                        Payment reference entered incorrectly
+                                                    </option>
+
+                                                    <option value="Other">
+                                                        Other
+                                                    </option>
+
+                                                </select>
 
 
-                                            <textarea
-                                                id="swalOtherVoidReason"
-                                                class="form-control"
-                                                rows="3"
-                                                maxlength="500"
-                                                placeholder="Enter the reason for voiding this payment..."
-                                            ></textarea>
+                                                <div
+                                                    id="otherVoidReasonWrapper"
+                                                    class="mt-3"
+                                                    style="display:none;"
+                                                >
 
-                                        </div>
+                                                    <label class="font-weight-bold">
 
-                                    </div>
+                                                        Other Reason
 
-                                `,
+                                                        <span class="text-danger">
+                                                            *
+                                                        </span>
+
+                                                    </label>
+
+
+                                                    <textarea
+                                                        id="swalOtherVoidReason"
+                                                        class="form-control"
+                                                        rows="3"
+                                                        maxlength="500"
+                                                        placeholder="Enter the reason for voiding this payment..."
+                                                    ></textarea>
+
+                                                </div>
+
+                                            </div>
+
+                                        `,
 
                             icon: 'warning',
 
@@ -1691,7 +1668,7 @@
 
                                 reasonSelect.addEventListener(
                                     'change',
-                                    function() {
+                                    function () {
 
                                         if (
                                             this.value ===
@@ -1778,7 +1755,7 @@
 
                             }
 
-                        }).then(function(result) {
+                        }).then(function (result) {
 
 
                             /*

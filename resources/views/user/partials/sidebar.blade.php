@@ -55,7 +55,79 @@
 
                 </li>
 
+                {{-- ===================================================== --}}
+                {{-- MATERIAL USAGE --}}
+                {{-- ===================================================== --}}
+
+                @php
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Material Usage Active State
+                    |--------------------------------------------------------------------------
+                    |
+                    | Both the new global Material Usage module and the old
+                    | item-specific Usage Log pages belong to this menu.
+                    |
+                    | Examples:
+                    |
+                    | /material-usage
+                    | /material-usage/create
+                    | /items/1/usage-logs
+                    | /items/1/usage-logs/2/edit
+                    |
+                    */
+
+                    $materialUsageActive =
+                        request()->is('material-usage*') ||
+                        request()->is('items/*/usage-logs*');
+
+                @endphp
+
+
+                <li class="nav-item">
+
+                    <a
+                        href="{{ route('material-usage.index') }}"
+                        class="nav-link
+                            {{ $materialUsageActive ? 'active' : '' }}"
+                    >
+
+                        <i class="nav-icon fas fa-clipboard-list"></i>
+
+                        <p>
+                            Material Usage
+                        </p>
+
+                    </a>
+
+                </li>
+
+
                 {{-- Add more user-only links here later, e.g. Profile, My Requests, etc. --}}
+
+
+                {{-- ===================================================== --}}
+                {{-- ITEM MASTER --}}
+                {{-- ===================================================== --}}
+
+                <li class="nav-item">
+
+                    <a
+                        href="{{ route('items.index') }}"
+                        class="nav-link
+                            {{ request()->is('items*') && !request()->is('items/*/usage-logs*') ? 'active' : '' }}"
+                    >
+
+                        <i class="nav-icon fas fa-boxes"></i>
+
+                        <p>
+                            Item Master
+                        </p>
+
+                    </a>
+
+                </li>
 
                 {{-- ===================================================== --}}
                 {{-- LOGOUT --}}

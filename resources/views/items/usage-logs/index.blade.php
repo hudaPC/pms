@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends(auth()->user()->role === 'admin' ? 'layouts.admin' : 'layouts.user')
 
 @section('title', 'Usage Logs')
 
@@ -29,27 +29,41 @@
 
                 <a href="{{ route('items.usage-logs.create', $item) }}" class="btn btn-primary">
 
-                    <i class="fas fa-plus mr-1"></i>
+    <i class="fas fa-plus mr-1"></i>
 
-                    Add Usage
+    Add Usage
 
-                </a>
+</a>
 
-                <a href="{{ route('items.purchase-planning.index', $item) }}" class="btn btn-info">
+@if(auth()->user()->role === 'admin')
 
-                    <i class="fas fa-chart-line mr-1"></i>
+    <a href="{{ route('items.purchase-planning.index', $item) }}" class="btn btn-info">
 
-                    Purchase Planning
+        <i class="fas fa-chart-line mr-1"></i>
 
-                </a>
+        Purchase Planning
 
-                <a href="{{ route('items.index') }}" class="btn btn-secondary">
+    </a>
 
-                    <i class="fas fa-arrow-left mr-1"></i>
+    <a href="{{ route('items.index') }}" class="btn btn-secondary">
 
-                    Back to Items
+        <i class="fas fa-arrow-left mr-1"></i>
 
-                </a>
+        Back to Items
+
+    </a>
+
+@else
+
+    <a href="{{ route('material-usage.index') }}" class="btn btn-secondary">
+
+        <i class="fas fa-arrow-left mr-1"></i>
+
+        Back to Material Usage
+
+    </a>
+
+@endif
 
             </div>
 

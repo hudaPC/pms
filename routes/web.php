@@ -35,9 +35,9 @@ use App\Http\Controllers\PurchaseReturnController;
 */
 
 // Home
- Route::get('/', function () {
-    return redirect()->route('login');
- });
+// Route::get('/', function () {
+//     return redirect()->route('login');
+// });
 
 
 /*
@@ -83,6 +83,60 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Material Usage (available to admin AND user)
+    |--------------------------------------------------------------------------
+    */
+
+    // Usage Logs
+    Route::resource(
+        'items.usage-logs',
+        UsageLogController::class
+    )->except(['show']);
+
+    Route::get(
+        '/items/{item}/usage-logs/next-reference',
+        [UsageLogController::class, 'nextReference']
+    )->name('items.usage-logs.next-reference');
+
+    Route::get(
+        '/material-usage',
+        [UsageLogController::class, 'allUsage']
+    )->name('material-usage.index');
+
+    Route::get(
+        '/material-usage/create',
+        [UsageLogController::class, 'createMaterialUsage']
+    )->name('material-usage.create');
+
+    Route::post(
+        '/material-usage',
+        [UsageLogController::class, 'storeMaterialUsage']
+    )->name('material-usage.store');
+
+    Route::get(
+        '/material-usage/product-models/{productModel}/items',
+        [UsageLogController::class, 'materialUsageItems']
+    )->name('material-usage.product-model-items');
+    /*
+    |--------------------------------------------------------------------------
+    | Item Master (available to admin AND user)
+    |--------------------------------------------------------------------------
+    */
+
+        // Select2 AJAX
+    Route::get('/items-search/product-models', [ItemController::class, 'searchProductModels'])
+        ->name('items.search.product-models');
+
+    Route::get('/items-search/item-codes', [ItemController::class, 'searchItemCodes'])
+        ->name('items.search.item-codes');
+
+    // Items - view only (everyone can see the list)
+    Route::get('/items', [ItemController::class, 'index'])
+        ->name('items.index');
+
 });
 
 
@@ -108,19 +162,35 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('units', UnitController::class)
         ->except(['show']);
 
-    // Items
-    // Select2 AJAX
-    Route::get('/items-search/product-models', [ItemController::class, 'searchProductModels'])
-        ->name('items.search.product-models');
 
-    Route::get('/items-search/item-codes', [ItemController::class, 'searchItemCodes'])
-        ->name('items.search.item-codes');
-    Route::resource('items', ItemController::class)
-        ->except(['show']);
 
     // Suppliers
     Route::resource('suppliers', SupplierController::class)
         ->except(['show']);
+
+
+    // Suppliers
+    Route::resource('suppliers', SupplierController::class)
+        ->except(['show']);
+
+    // Items - create/edit/delete (admin only)
+    Route::get('/items/create', [ItemController::class, 'create'])
+        ->name('items.create');
+
+    Route::post('/items', [ItemController::class, 'store'])
+        ->name('items.store');
+
+    Route::get('/items/{item}/edit', [ItemController::class, 'edit'])
+        ->name('items.edit');
+
+    Route::put('/items/{item}', [ItemController::class, 'update'])
+        ->name('items.update');
+
+    Route::delete('/items/{item}', [ItemController::class, 'destroy'])
+        ->name('items.destroy');
+
+    // Item Suppliers
+
 
     // Item Suppliers
     Route::get(
@@ -182,40 +252,6 @@ Route::get(
     '/items/{item}/purchase-planning',
     [PurchasePlanningController::class, 'index']
 )->name('items.purchase-planning.index');
-
-
-    // Usage Logs
-    Route::resource(
-        'items.usage-logs',
-        UsageLogController::class
-    )->except(['show']);
-
-
-    Route::get(
-        '/items/{item}/usage-logs/next-reference',
-        [UsageLogController::class, 'nextReference']
-    )->name('items.usage-logs.next-reference');
-
-    Route::get(
-        '/material-usage',
-        [UsageLogController::class, 'allUsage']
-    )->name('material-usage.index');
-
-
-    Route::get(
-        '/material-usage/create',
-        [UsageLogController::class, 'createMaterialUsage']
-    )->name('material-usage.create');
-    
-    Route::post(
-    '/material-usage',
-    [UsageLogController::class, 'storeMaterialUsage']
-)->name('material-usage.store');
-
-    Route::get(
-        '/material-usage/product-models/{productModel}/items',
-        [UsageLogController::class, 'materialUsageItems']
-    )->name('material-usage.product-model-items');
 
 
     // Calendar View

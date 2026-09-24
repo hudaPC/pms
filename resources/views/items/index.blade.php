@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends(auth()->user()->role === 'admin' ? 'layouts.admin' : 'layouts.user')
 
 @section('title', 'Items')
 
@@ -107,8 +107,14 @@
             {{-- Add Item --}}
             <div class="col-auto">
 
-                <a href="{{ route('items.create') }}"
-                   class="btn btn-primary">
+                <a href="{{ auth()->user()->role === 'admin' ? route('items.create') : '#' }}"
+                class="btn btn-primary {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                @if(auth()->user()->role !== 'admin')
+                    tabindex="-1"
+                    aria-disabled="true"
+                    style="pointer-events: none; opacity: 0.5;"
+                @endif
+                >
 
                     <i class="fas fa-plus mr-1"></i>
 
@@ -289,8 +295,15 @@
                                         {{-- Suppliers --}}
                                         {{-- ================================================= --}}
 
-                                        <a href="{{ route('items.suppliers.index', $item) }}" class="btn btn-sm btn-info"
-                                            title="Suppliers Item">
+                                        <a href="{{ auth()->user()->role === 'admin' ? route('items.suppliers.index', $item) : '#' }}"
+                                            class="btn btn-sm btn-info {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                                            title="Suppliers Item"
+                                            @if(auth()->user()->role !== 'admin')
+                                                tabindex="-1"
+                                                aria-disabled="true"
+                                                style="pointer-events: none; opacity: 0.5;"
+                                            @endif
+                                        >
 
                                             <i class="fas fa-truck"></i>
 
@@ -301,8 +314,15 @@
                                         {{-- Usage Logs --}}
                                         {{-- ================================================= --}}
 
-                                        <a href="{{ route('items.usage-logs.index', $item) }}"
-                                            class="btn btn-sm btn-secondary" title="Usage Master">
+                                        <a href="{{ auth()->user()->role === 'admin' ? route('items.usage-logs.index', $item) : '#' }}"
+                                            class="btn btn-sm btn-secondary {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                                            title="Usage Master"
+                                            @if(auth()->user()->role !== 'admin')
+                                                tabindex="-1"
+                                                aria-disabled="true"
+                                                style="pointer-events: none; opacity: 0.5;"
+                                            @endif
+                                        >
 
                                             <i class="fas fa-chart-line"></i>
 
@@ -310,16 +330,18 @@
 
 
                                         {{-- ================================================= --}}
-                                        {{-- Customer Supply --}}
-                                        {{-- ================================================= --}}
-
-
-                                        {{-- ================================================= --}}
                                         {{-- Purchase Planning --}}
                                         {{-- ================================================= --}}
 
-                                        <a href="{{ route('items.purchase-planning.index', $item) }}"
-                                            class="btn btn-sm btn-primary" title="Purchase Planning">
+                                        <a href="{{ auth()->user()->role === 'admin' ? route('items.purchase-planning.index', $item) : '#' }}"
+                                            class="btn btn-sm btn-primary {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                                            title="Purchase Planning"
+                                            @if(auth()->user()->role !== 'admin')
+                                                tabindex="-1"
+                                                aria-disabled="true"
+                                                style="pointer-events: none; opacity: 0.5;"
+                                            @endif
+                                        >
 
                                             <i class="fas fa-chart-area"></i>
 
@@ -330,8 +352,15 @@
                                         {{-- Purchase Settings --}}
                                         {{-- ================================================= --}}
 
-                                        <a href="{{ route('items.purchase-planning.edit', $item) }}"
-                                            class="btn btn-sm btn-info" title="Purchase Settings">
+                                        <a href="{{ auth()->user()->role === 'admin' ? route('items.purchase-planning.edit', $item) : '#' }}"
+                                            class="btn btn-sm btn-info {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                                            title="Purchase Settings"
+                                            @if(auth()->user()->role !== 'admin')
+                                                tabindex="-1"
+                                                aria-disabled="true"
+                                                style="pointer-events: none; opacity: 0.5;"
+                                            @endif
+                                        >
 
                                             <i class="fas fa-cogs"></i>
 
@@ -342,8 +371,15 @@
                                         {{-- Edit Item --}}
                                         {{-- ================================================= --}}
 
-                                        <a href="{{ route('items.edit', $item) }}" class="btn btn-sm btn-warning"
-                                            title="Edit Item">
+                                        <a href="{{ auth()->user()->role === 'admin' ? route('items.edit', $item) : '#' }}"
+                                            class="btn btn-sm btn-warning {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                                            title="Edit Item"
+                                            @if(auth()->user()->role !== 'admin')
+                                                tabindex="-1"
+                                                aria-disabled="true"
+                                                style="pointer-events: none; opacity: 0.5;"
+                                            @endif
+                                        >
 
                                             <i class="fas fa-edit"></i>
 
@@ -361,7 +397,8 @@
 
                                             @method('DELETE')
 
-                                            <button type="submit" class="btn btn-sm btn-danger" title="Delete Item">
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Delete Item"
+                                                {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}>
 
                                                 <i class="fas fa-trash"></i>
 

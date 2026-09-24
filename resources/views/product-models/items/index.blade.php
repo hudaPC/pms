@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends(auth()->user()->role === 'admin' ? 'layouts.admin' : 'layouts.user')
 
 @section('title', 'Product Model Items')
 
@@ -26,23 +26,29 @@
 
         <div>
 
-            <a href="{{ route('product-models.items.create', $productModel) }}"
-               class="btn btn-primary">
+            <a href="{{ auth()->user()->role === 'admin' ? route('product-models.items.create', $productModel) : '#' }}"
+                class="btn btn-primary {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                @if(auth()->user()->role !== 'admin')
+                    tabindex="-1"
+                    aria-disabled="true"
+                    style="pointer-events: none; opacity: 0.5;"
+                @endif
+                >
 
-                <i class="fas fa-plus mr-1"></i>
+                    <i class="fas fa-plus mr-1"></i>
 
-                Add Model Item
+                    Add Model Item
 
-            </a>
+                </a>
 
-            <a href="{{ route('product-models.index') }}"
-               class="btn btn-secondary">
+                <a href="{{ route('product-models.index') }}"
+                class="btn btn-secondary">
 
-                <i class="fas fa-arrow-left mr-1"></i>
+                    <i class="fas fa-arrow-left mr-1"></i>
 
-                Back to Product Models
+                    Back to Product Models
 
-            </a>
+                </a>
 
         </div>
 
@@ -245,11 +251,17 @@
 
                                 <td>
 
-                                    <a href="{{ route(
+                                    <a href="{{ auth()->user()->role === 'admin' ? route(
                                         'product-models.items.edit',
                                         [$productModel, $modelItem]
-                                    ) }}"
-                                       class="btn btn-sm btn-warning">
+                                    ) : '#' }}"
+                                    class="btn btn-sm btn-warning {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                                    @if(auth()->user()->role !== 'admin')
+                                        tabindex="-1"
+                                        aria-disabled="true"
+                                        style="pointer-events: none; opacity: 0.5;"
+                                    @endif
+                                    >
 
                                         <i class="fas fa-edit"></i>
 
@@ -262,16 +274,17 @@
                                         'product-models.items.destroy',
                                         [$productModel, $modelItem]
                                     ) }}"
-                                          method="POST"
-                                          class="d-inline"
-                                          onsubmit="return confirm('Are you sure you want to remove this item from the product model?');">
+                                        method="POST"
+                                        class="d-inline"
+                                        onsubmit="return confirm('Are you sure you want to remove this item from the product model?');">
 
                                         @csrf
 
                                         @method('DELETE')
 
                                         <button type="submit"
-                                                class="btn btn-sm btn-danger">
+                                                class="btn btn-sm btn-danger"
+                                                {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}>
 
                                             <i class="fas fa-trash"></i>
 
@@ -325,17 +338,7 @@
             @endif
 
 
-        
-
-        <!-- @if($modelItems->hasPages())
-
-            <div class="card-footer">
-
-                {{ $modelItems->links() }}
-
-            </div>
-
-        @endif -->
+    
 
     </div>
 

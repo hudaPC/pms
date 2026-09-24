@@ -171,16 +171,14 @@
                         <li class="nav-item">
 
 
-                           <a href="{{ route('suppliers.index') }}"
-                            class="nav-link
-                            {{ request()->is('suppliers*') ? 'active' : '' }}"
-                            >
+                            <a href="{{ route('suppliers.index') }}" class="nav-link
+                            {{ request()->is('suppliers*') ? 'active' : '' }}">
 
-                            <i class="far fa-circle nav-icon"></i>
+                                <i class="far fa-circle nav-icon"></i>
 
-                            <p>
-                                Suppliers
-                            </p>
+                                <p>
+                                    Suppliers
+                                </p>
 
                             </a>
 
@@ -190,8 +188,31 @@
 
                 </li>
 
+                {{-- ===================================================== --}}
+                {{-- PRODUCT MODEL --}}
+                {{-- ===================================================== --}}
+
+                <li class="nav-item">
+
+
+                   <a href="{{ url('/product-models') }}"
+                    class="nav-link
+                    {{ request()->is('product-models*') ? 'active' : '' }}"
+                    >
+
+                    <i class="fas fa-cubes nav-icon"></i>
+
+                    <p>
+                        Product Model
+                    </p>
+
+                    </a>
+
+                </li>
+
 
                 {{-- Add more user-only links here later, e.g. Profile, My Requests, etc. --}}
+
 
 
                 {{-- ===================================================== --}}

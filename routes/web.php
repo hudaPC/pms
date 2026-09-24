@@ -126,7 +126,7 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-        // Select2 AJAX
+    // Select2 AJAX
     Route::get('/items-search/product-models', [ItemController::class, 'searchProductModels'])
         ->name('items.search.product-models');
 
@@ -136,36 +136,36 @@ Route::middleware(['auth'])->group(function () {
     // Items - view only (everyone can see the list)
     Route::get('/items', [ItemController::class, 'index'])
         ->name('items.index');
-         /*
-    |--------------------------------------------------------------------------
-    | Categories (available to admin AND user - view only)
-    |--------------------------------------------------------------------------
-    */
+    /*
+|--------------------------------------------------------------------------
+| Categories (available to admin AND user - view only)
+|--------------------------------------------------------------------------
+*/
 
     Route::get('/categories', [CategoryController::class, 'index'])
         ->name('categories.index');
-            /*
-    |--------------------------------------------------------------------------
-    | Units (available to admin AND user - view only)
-    |--------------------------------------------------------------------------
-    */
+    /*
+|--------------------------------------------------------------------------
+| Units (available to admin AND user - view only)
+|--------------------------------------------------------------------------
+*/
 
     Route::get('/units', [UnitController::class, 'index'])
         ->name('units.index');
 
-        /*
-    |--------------------------------------------------------------------------
-    | Suppliers (available to admin AND user - view only)
-    |--------------------------------------------------------------------------
-    */
+    /*
+|--------------------------------------------------------------------------
+| Suppliers (available to admin AND user - view only)
+|--------------------------------------------------------------------------
+*/
 
     Route::get('/suppliers', [SupplierController::class, 'index'])
         ->name('suppliers.index');
-            /*
-    |--------------------------------------------------------------------------
-    | Product Model (available to admin AND user - view only)
-    |--------------------------------------------------------------------------
-    */
+    /*
+|--------------------------------------------------------------------------
+| Product Model (available to admin AND user - view only)
+|--------------------------------------------------------------------------
+*/
 
     Route::get('/product-models', [ProductModelController::class, 'index'])
         ->name('product-models.index');
@@ -193,7 +193,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     */
 
 
-     // Categories - create/edit/delete (admin only)
+    // Categories - create/edit/delete (admin only)
     Route::get('/categories/create', [CategoryController::class, 'create'])
         ->name('categories.create');
 
@@ -209,7 +209,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
         ->name('categories.destroy');
 
-       // Units - create/edit/delete (admin only)
+    // Units - create/edit/delete (admin only)
     Route::get('/units/create', [UnitController::class, 'create'])
         ->name('units.create');
 
@@ -227,7 +227,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
 
 
-       // Suppliers - create/edit/delete (admin only)
+    // Suppliers - create/edit/delete (admin only)
     Route::get('/suppliers/create', [SupplierController::class, 'create'])
         ->name('suppliers.create');
 
@@ -290,35 +290,35 @@ Route::middleware(['auth', 'admin'])->group(function () {
 // Global Purchase Planning Overview
 // ============================================================
 
-Route::get(
-    '/purchase-planning',
-    [PurchasePlanningController::class, 'overview']
-)->name('purchase-planning.index');
+    Route::get(
+        '/purchase-planning',
+        [PurchasePlanningController::class, 'overview']
+    )->name('purchase-planning.index');
 
 
-// ============================================================
+    // ============================================================
 // Item Purchase Planning Settings
 // ============================================================
 
-Route::get(
-    '/items/{item}/purchase-planning/edit',
-    [ItemPurchaseSettingController::class, 'edit']
-)->name('items.purchase-planning.edit');
+    Route::get(
+        '/items/{item}/purchase-planning/edit',
+        [ItemPurchaseSettingController::class, 'edit']
+    )->name('items.purchase-planning.edit');
 
-Route::put(
-    '/items/{item}/purchase-planning',
-    [ItemPurchaseSettingController::class, 'update']
-)->name('items.purchase-planning.update');
+    Route::put(
+        '/items/{item}/purchase-planning',
+        [ItemPurchaseSettingController::class, 'update']
+    )->name('items.purchase-planning.update');
 
 
-// ============================================================
+    // ============================================================
 // Detailed Item Purchase Planning
 // ============================================================
 
-Route::get(
-    '/items/{item}/purchase-planning',
-    [PurchasePlanningController::class, 'index']
-)->name('items.purchase-planning.index');
+    Route::get(
+        '/items/{item}/purchase-planning',
+        [PurchasePlanningController::class, 'index']
+    )->name('items.purchase-planning.index');
 
 
     // Calendar View
@@ -338,7 +338,7 @@ Route::get(
     )->name('purchase-calendar.search-product-models');
 
 
-        // Product Models - create/edit/delete (admin only)
+    // Product Models - create/edit/delete (admin only)
     Route::get('/product-models/create', [ProductModelController::class, 'create'])
         ->name('product-models.create');
 
@@ -359,11 +359,6 @@ Route::get(
     | Product Model Items / BOM
     |--------------------------------------------------------------------------
     */
-
-    Route::get(
-        '/product-models/{productModel}/items',
-        [ProductModelItemController::class, 'index']
-    )->name('product-models.items.index');
 
 
     Route::get(
@@ -557,6 +552,8 @@ Route::get(
         '/stock-adjustments/{stockAdjustment}',
         [StockAdjustmentController::class, 'destroy']
     )->name('stock-adjustments.destroy');
+
+
 
     // Search filter
     Route::get(

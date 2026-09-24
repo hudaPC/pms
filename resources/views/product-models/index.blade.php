@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends(auth()->user()->role === 'admin' ? 'layouts.admin' : 'layouts.user')
 
 @section('title', 'Product Models')
 
@@ -20,14 +20,20 @@
 
         </div>
 
-        <a href="{{ route('product-models.create') }}"
-           class="btn btn-primary">
+        <a href="{{ auth()->user()->role === 'admin' ? route('product-models.create') : '#' }}"
+            class="btn btn-primary {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+            @if(auth()->user()->role !== 'admin')
+                tabindex="-1"
+                aria-disabled="true"
+                style="pointer-events: none; opacity: 0.5;"
+            @endif
+            >
 
-            <i class="fas fa-plus mr-1"></i>
+                <i class="fas fa-plus mr-1"></i>
 
-            Add Product Model
+                Add Product Model
 
-        </a>
+            </a>
 
     </div>
 
@@ -130,6 +136,8 @@
                                     @endif
 
                                 </td>
+                                <!-- Action -->
+
 
                                 <td>
                                     <a href="{{ route('product-models.items.index', $productModel) }}"
@@ -140,8 +148,14 @@
 
                                         </a>
 
-                                    <a href="{{ route('product-models.edit', $productModel) }}"
-                                       class="btn btn-sm btn-warning">
+                                    <a href="{{ auth()->user()->role === 'admin' ? route('product-models.edit', $productModel) : '#' }}"
+                                    class="btn btn-sm btn-warning {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}"
+                                    @if(auth()->user()->role !== 'admin')
+                                        tabindex="-1"
+                                        aria-disabled="true"
+                                        style="pointer-events: none; opacity: 0.5;"
+                                    @endif
+                                    >
 
                                         <i class="fas fa-edit"></i>
 
@@ -151,16 +165,17 @@
 
 
                                     <form action="{{ route('product-models.destroy', $productModel) }}"
-                                          method="POST"
-                                          class="d-inline"
-                                          onsubmit="return confirm('Are you sure you want to delete this product model?');">
+                                        method="POST"
+                                        class="d-inline"
+                                        onsubmit="return confirm('Are you sure you want to delete this product model?');">
 
                                         @csrf
 
                                         @method('DELETE')
 
                                         <button type="submit"
-                                                class="btn btn-sm btn-danger">
+                                                class="btn btn-sm btn-danger"
+                                                {{ auth()->user()->role !== 'admin' ? 'disabled' : '' }}>
 
                                             <i class="fas fa-trash"></i>
 
@@ -197,16 +212,6 @@
 
         </div>
 
-
-        <!-- @if($productModels->hasPages())
-
-            <div class="card-footer">
-
-                {{ $productModels->links() }}
-
-            </div>
-
-        @endif -->
 
 {{-- Pagination --}}
             @if($productModels->hasPages())

@@ -27,6 +27,7 @@ use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\SupplierLedgerController;
 use App\Http\Controllers\AccountsPayableController;
 use App\Http\Controllers\PurchaseReturnController;
+use App\Http\Controllers\ReportingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -650,38 +651,11 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     // Manual Purchase Order Product model Items
     Route::get(
         '/purchase-orders/{purchaseOrder}/product-models/{productModel}/items',
         [PurchaseOrderItemController::class, 'itemsByProductModel']
     )->name('purchase-orders.product-model-items');
-
-
-
-
-
-
-
-
-
 
 
     //Supplier paynent controller
@@ -761,5 +735,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
             'cancel'
         ]
     )->name('purchase-returns.cancel');
+
+
+    //REPORTING CONTROLLER
+      Route::get('/reporting', [App\Http\Controllers\ReportingController::class, 'index'])
+        ->name('reporting.index');
 
 });

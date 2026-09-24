@@ -144,11 +144,11 @@
                     */
 
                    $masterItemsActive =
-    request()->routeIs('items.index') ||
-    request()->routeIs('items.create') ||
-    request()->routeIs('items.show') ||
-    request()->routeIs('items.edit') ||
-    request()->is('items/*/suppliers*');
+                    request()->routeIs('items.index') ||
+                    request()->routeIs('items.create') ||
+                    request()->routeIs('items.show') ||
+                    request()->routeIs('items.edit') ||
+                    request()->is('items/*/suppliers*');
 
                     $masterDataActive =
                         request()->is('categories*') ||
@@ -277,32 +277,32 @@
 
 
                 {{-- ========================================================= --}}
-{{-- Purchase Planning --}}
-{{-- ========================================================= --}}
+                {{-- Purchase Planning --}}
+                {{-- ========================================================= --}}
 
-@php
-    $purchasePlanningActive =
-        request()->is('purchase-planning*') ||
-        request()->is('items/*/purchase-planning*');
-@endphp
+                @php
+                    $purchasePlanningActive =
+                        request()->is('purchase-planning*') ||
+                        request()->is('items/*/purchase-planning*');
+                @endphp
 
-<li class="nav-item">
+                <li class="nav-item">
 
-    <a
-        href="{{ route('purchase-planning.index') }}"
-        class="nav-link
-            {{ $purchasePlanningActive ? 'active' : '' }}"
-    >
+                    <a
+                        href="{{ route('purchase-planning.index') }}"
+                        class="nav-link
+                            {{ $purchasePlanningActive ? 'active' : '' }}"
+                    >
 
-        <i class="nav-icon fas fa-chart-line"></i>
+                        <i class="nav-icon fas fa-chart-line"></i>
 
-        <p>
-            Purchase Planning
-        </p>
+                        <p>
+                            Purchase Planning
+                        </p>
 
-    </a>
+                    </a>
 
-</li>
+                </li>
 
 
 
@@ -723,6 +723,133 @@
                     </ul>
 
                 </li>
+
+
+
+
+
+
+
+
+
+
+
+
+
+                {{-- ===================================================== --}}
+                {{-- Reporting --}}
+                {{-- ===================================================== --}}
+
+                @php
+
+                    $reportingActive =
+                        request()->is('reporting*') ||
+                        request()->is('stock-adjustments*');
+
+                @endphp
+
+
+                <li
+                    class="nav-item has-treeview
+                        {{ $reportingActive ? 'menu-open' : '' }}"
+                >
+
+                    <a
+                        href="#"
+                        class="nav-link
+                            {{ $reportingActive ? 'active' : '' }}"
+                    >
+
+                        <i class="nav-icon fas fa-boxes"></i>
+
+                        <p>
+
+                            Reporting
+
+                            <i class="right fas fa-angle-left"></i>
+
+                        </p>
+
+                    </a>
+
+
+                    <ul class="nav nav-treeview">
+
+
+                        {{-- Current Stock --}}
+
+                        <li class="nav-item">
+
+                            <a
+                                href="{{ route('reporting.index') }}"
+                                class="nav-link
+                                    {{ request()->is('reporting*') ? 'active' : '' }}"
+                            >
+
+                                <i class="far fa-circle nav-icon"></i>
+
+                                <p>
+                                    Product Model
+                                </p>
+
+                            </a>
+
+                        </li>
+
+
+                        {{-- Stock Adjustments --}}
+
+                        <li class="nav-item">
+
+                            <a
+                                href="#"
+                                class="nav-link
+                                    {{ request()->is('stock-adjustments*') ? 'active' : '' }}"
+                            >
+
+                                <i class="far fa-circle nav-icon"></i>
+
+                                <p>
+                                    Stock Adjustments
+                                </p>
+
+                            </a>
+
+                        </li>
+
+
+                    </ul>
+
+                </li>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -64,8 +64,7 @@
                                     -- Select Purchase Order --
                                 </option>
 
-                                @foreach($purchaseOrders as $po)
-
+                                @foreach ($purchaseOrders as $po)
                                     <option value="{{ $po->id }}">
 
                                         {{ $po->po_number }}
@@ -73,7 +72,6 @@
                                         - {{ ucfirst(str_replace('_', ' ', $po->status)) }}
 
                                     </option>
-
                                 @endforeach
 
                             </select>
@@ -108,6 +106,7 @@
                             <th>Received Qty</th>
                             <th>Pending Receipt</th>
                             <th>Issued Qty</th>
+                            <th>Returned Qty</th>
                             <th>Balance in Stock</th>
                         </tr>
                     </thead>
@@ -126,7 +125,7 @@
 
 @push('scripts')
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
 
             var purchaseOrderSelect =
                 $('#purchase_order_id');
@@ -144,12 +143,13 @@
 
                 html += '<strong>Receiving History</strong>';
                 html += '<table class="table table-bordered table-sm history-table mt-1 mb-3">';
-                html += '<thead><tr><th>GRN No</th><th>Receipt Date</th><th>Received Qty</th><th>Remarks</th></tr></thead>';
+                html +=
+                    '<thead><tr><th>GRN No</th><th>Receipt Date</th><th>Received Qty</th><th>Remarks</th></tr></thead>';
                 html += '<tbody>';
 
                 if (response.receipts && response.receipts.length > 0) {
 
-                    $.each(response.receipts, function (i, r) {
+                    $.each(response.receipts, function(i, r) {
                         html += '<tr>' +
                             '<td>' + (r.grn_number || '') + '</td>' +
                             '<td>' + (r.receipt_date || '') + '</td>' +
@@ -167,12 +167,13 @@
 
                 html += '<strong>Issuing History</strong>';
                 html += '<table class="table table-bordered table-sm history-table mt-1 mb-0">';
-                html += '<thead><tr><th>Usage Date</th><th>Quantity</th><th>Reference</th><th>Remarks</th></tr></thead>';
+                html +=
+                    '<thead><tr><th>Usage Date</th><th>Quantity</th><th>Reference</th><th>Remarks</th></tr></thead>';
                 html += '<tbody>';
 
                 if (response.issues && response.issues.length > 0) {
 
-                    $.each(response.issues, function (i, u) {
+                    $.each(response.issues, function(i, u) {
                         html += '<tr>' +
                             '<td>' + (u.usage_date || '') + '</td>' +
                             '<td>' + (u.quantity || '') + '</td>' +
@@ -188,6 +189,29 @@
                 html += '</tbody></table>';
 
                 html += '</div>';
+                html += '<strong>Return History</strong>';
+                html += '<table class="table table-bordered table-sm history-table mt-1 mb-0">';
+                html +=
+                    '<thead><tr><th>Return No</th><th>Return Date</th><th>Return Qty</th><th>Reason</th><th>Remarks</th></tr></thead>';
+                html += '<tbody>';
+
+                if (response.returns && response.returns.length > 0) {
+
+                    $.each(response.returns, function(i, r) {
+                        html += '<tr>' +
+                            '<td>' + (r.return_number || '') + '</td>' +
+                            '<td>' + (r.return_date || '') + '</td>' +
+                            '<td>' + (r.return_quantity || '') + '</td>' +
+                            '<td>' + (r.reason || '') + '</td>' +
+                            '<td>' + (r.remarks || '') + '</td>' +
+                            '</tr>';
+                    });
+
+                } else {
+                    html += '<tr><td colspan="5" class="text-center text-muted">No returns found</td></tr>';
+                }
+
+                html += '</tbody></table>';
 
                 return html;
             }
@@ -202,8 +226,7 @@
             var table = $('#poTrackingTable').DataTable({
                 dom: 'Bfrtip',
                 data: [],
-                columns: [
-                    {
+                columns: [{
                         className: 'details-control',
                         orderable: false,
                         searchable: false,
@@ -214,15 +237,19 @@
                         data: null,
                         orderable: false,
                         searchable: false,
-                        render: function (data, type, row, meta) {
+                        render: function(data, type, row, meta) {
                             return meta.row + 1;
                         }
                     },
-                    { data: 'model_code' },
-                    { data: 'item_code' },
+                    {
+                        data: 'model_code'
+                    },
+                    {
+                        data: 'item_code'
+                    },
                     {
                         data: 'item_name',
-                        render: function (data, type, row) {
+                        render: function(data, type, row) {
 
                             if (type !== 'display' || !data) {
                                 return data;
@@ -230,16 +257,17 @@
 
                             var words = data.split(' ');
 
-                            var short = words.length > 2
-                                ? words.slice(0, 2).join(' ') + '...'
-                                : data;
+                            var short = words.length > 2 ?
+                                words.slice(0, 2).join(' ') + '...' :
+                                data;
 
-                            return '<span title="' + data.replace(/"/g, '&quot;') + '">' + short + '</span>';
+                            return '<span title="' + data.replace(/"/g, '&quot;') + '">' + short +
+                                '</span>';
                         }
                     },
                     {
                         data: 'supplier_name',
-                        render: function (data, type, row) {
+                        render: function(data, type, row) {
 
                             if (type !== 'display' || !data) {
                                 return data;
@@ -247,21 +275,34 @@
 
                             var words = data.split(' ');
 
-                            var short = words.length > 2
-                                ? words.slice(0, 2).join(' ') + '...'
-                                : data;
+                            var short = words.length > 2 ?
+                                words.slice(0, 2).join(' ') + '...' :
+                                data;
 
-                            return '<span title="' + data.replace(/"/g, '&quot;') + '">' + short + '</span>';
+                            return '<span title="' + data.replace(/"/g, '&quot;') + '">' + short +
+                                '</span>';
                         }
                     },
-                    { data: 'ordered_quantity' },
-                    { data: 'received_quantity' },
-                    { data: 'pending_receipt' },
-                    { data: 'issued_quantity' },
-                    { data: 'balance_in_stock' }
-                ],
-                buttons: [
                     {
+                        data: 'ordered_quantity'
+                    },
+                    {
+                        data: 'received_quantity'
+                    },
+                    {
+                        data: 'pending_receipt'
+                    },
+                    {
+                        data: 'issued_quantity'
+                    },
+                    {
+                        data: 'returned_quantity'
+                    },
+                    {
+                        data: 'balance_in_stock'
+                    }
+                ],
+                buttons: [{
                         extend: 'excelHtml5',
                         text: '<i class="fas fa-file-excel mr-1"></i> Excel',
                         className: 'btn btn-success btn-sm',
@@ -299,7 +340,7 @@
                         exportOptions: {
                             columns: ':visible:not(.details-control)'
                         },
-                        customize: function (win) {
+                        customize: function(win) {
 
                             $(win.document.head).append(
                                 '<style>' +
@@ -320,7 +361,7 @@
             |--------------------------------------------------------------------------
             */
 
-            $('#poTrackingTable tbody').on('click', 'td.details-control', function () {
+            $('#poTrackingTable tbody').on('click', 'td.details-control', function() {
 
                 var tr = $(this).closest('tr');
                 var row = table.row(tr);
@@ -342,7 +383,7 @@
                 icon.removeClass('fa-plus-circle').addClass('fa-minus-circle');
 
                 var url =
-                    '{{ route("reporting.po-tracking.item-history", ":poItemId") }}';
+                    '{{ route('reporting.po-tracking.item-history', ':poItemId') }}';
 
                 url = url.replace(
                     ':poItemId',
@@ -354,12 +395,13 @@
                     url: url,
                     type: 'GET',
 
-                    success: function (response) {
+                    success: function(response) {
                         row.child(buildHistoryHtml(response)).show();
                     },
 
-                    error: function () {
-                        row.child('<div class="text-danger p-2">Unable to load history.</div>').show();
+                    error: function() {
+                        row.child('<div class="text-danger p-2">Unable to load history.</div>')
+                            .show();
                     }
 
                 });
@@ -385,7 +427,7 @@
                 }
 
                 var url =
-                    '{{ route("reporting.po-tracking.items", ":purchaseOrder") }}';
+                    '{{ route('reporting.po-tracking.items', ':purchaseOrder') }}';
 
                 url = url.replace(
                     ':purchaseOrder',
@@ -397,14 +439,14 @@
                     url: url,
                     type: 'GET',
 
-                    success: function (response) {
+                    success: function(response) {
 
                         table.rows.add(
                             response.items || []
                         ).draw();
                     },
 
-                    error: function () {
+                    error: function() {
 
                         toastr.error(
                             'Unable to load items for this Purchase Order.'

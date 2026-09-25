@@ -75,7 +75,8 @@ class ReportingController extends Controller
             poi.received_quantity,
             (poi.ordered_quantity - poi.received_quantity) AS pending_receipt,
             COALESCE(ul.total_issued, 0) AS issued_quantity,
-            (poi.received_quantity - COALESCE(ul.total_issued, 0)) AS balance_in_stock
+            COALESCE(pret.total_returned, 0) AS returned_quantity,
+            (poi.received_quantity - COALESCE(ul.total_issued, 0) - COALESCE(pret.total_returned, 0)) AS balance_in_stock
         FROM purchase_order_items poi
         INNER JOIN items i
             ON i.id = poi.item_id
@@ -91,12 +92,25 @@ class ReportingController extends Controller
             WHERE status = 'active'
             GROUP BY item_id
         ) ul ON ul.item_id = poi.item_id
+        LEFT JOIN (
+            SELECT pri.purchase_order_item_id, SUM(pri.return_quantity) AS total_returned
+            FROM purchase_return_items pri
+            INNER JOIN purchase_returns pr
+                ON pr.id = pri.purchase_return_id
+            WHERE pr.status = 'posted'
+            GROUP BY pri.purchase_order_item_id
+        ) pret ON pret.purchase_order_item_id = poi.id
         WHERE poi.purchase_order_id = ?
         ORDER BY i.item_code
     ", [$purchaseOrder]);
 
         return response()->json(['items' => $items]);
     }
+
+
+
+
+
     public function poItemHistory(int $poItem)
     {
         $poItemRow = DB::table('purchase_order_items')->where('id', $poItem)->first();
@@ -131,9 +145,25 @@ class ReportingController extends Controller
         ORDER BY usage_date
     ", [$poItemRow->item_id]);
 
+        $returns = DB::select("
+        SELECT
+            pr.return_number,
+            pr.return_date,
+            pri.return_quantity,
+            pri.reason,
+            pri.remarks
+        FROM purchase_return_items pri
+        INNER JOIN purchase_returns pr
+            ON pr.id = pri.purchase_return_id
+        WHERE pri.purchase_order_item_id = ?
+          AND pr.status = 'posted'
+        ORDER BY pr.return_date
+    ", [$poItem]);
+
         return response()->json([
             'receipts' => $receipts,
             'issues' => $issues,
+            'returns' => $returns,
         ]);
     }
 }

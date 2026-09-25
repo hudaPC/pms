@@ -23,6 +23,10 @@
 
     <link rel="stylesheet" href="{{ asset('admin/plugins/select2/css/select2.min.css') }}">
 
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="{{ asset('admin/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('admin/plugins/datatables-buttons/css/buttons.bootstrap4.min.css') }}">
+
     <style>
         .select2-container--default .select2-selection--single {
     height: 38px;
@@ -95,6 +99,19 @@
 
 <!-- Select2 JS -->
 <script src="{{ asset('admin/plugins/select2/js/select2.min.js') }}"></script>
+
+<!-- DataTables core -->
+<script src="{{ asset('admin/plugins/datatables/jquery.dataTables.min.js') }}"></script>
+<script src="{{ asset('admin/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js') }}"></script>
+
+<!-- DataTables Buttons (Excel/CSV/PDF/Print) -->
+<script src="{{ asset('admin/plugins/datatables-buttons/js/dataTables.buttons.min.js') }}"></script>
+<script src="{{ asset('admin/plugins/datatables-buttons/js/buttons.bootstrap4.min.js') }}"></script>
+<script src="{{ asset('admin/plugins/datatables-buttons/js/buttons.html5.min.js') }}"></script>
+<script src="{{ asset('admin/plugins/datatables-buttons/js/buttons.print.min.js') }}"></script>
+<script src="{{ asset('admin/plugins/jszip/jszip.min.js') }}"></script>
+<script src="{{ asset('admin/plugins/pdfmake/pdfmake.min.js') }}"></script>
+<script src="{{ asset('admin/plugins/pdfmake/vfs_fonts.js') }}"></script>
 
 <script>
      // -----------------------------

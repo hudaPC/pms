@@ -36,9 +36,9 @@ use App\Http\Controllers\ReportingController;
 */
 
 // Home
- Route::get('/', function () {
+Route::get('/', function () {
     return redirect()->route('login');
- });
+});
 
 
 /*
@@ -193,8 +193,8 @@ Route::middleware(['auth'])->group(function () {
             'createPurchaseOrder'
         ]
     )->name(
-            'supplier-invoices.create-purchase-order'
-        );
+        'supplier-invoices.create-purchase-order'
+    );
 
     Route::resource(
         'supplier-invoices',
@@ -234,8 +234,8 @@ Route::middleware(['auth'])->group(function () {
         '/supplier-invoices/{supplierInvoice}/product-models/{productModel}/items',
         [SupplierInvoiceItemController::class, 'itemsByProductModel']
     )->name(
-            'supplier-invoices.product-model-items'
-        );
+        'supplier-invoices.product-model-items'
+    );
     Route::post(
         '/supplier-invoices/{supplierInvoice}/items',
         [SupplierInvoiceItemController::class, 'store']
@@ -260,7 +260,7 @@ Route::middleware(['auth'])->group(function () {
     )->name('supplier-invoices.items.destroy');
 
 
-    
+
     //INVENTORY ROUTES
     Route::get(
         '/inventory',
@@ -278,8 +278,8 @@ Route::middleware(['auth'])->group(function () {
         '/stock-adjustments/product-models/{productModel}/items',
         [StockAdjustmentController::class, 'itemsByProductModel']
     )->name(
-            'stock-adjustments.product-model-items'
-        );
+        'stock-adjustments.product-model-items'
+    );
 
     Route::get(
         '/stock-adjustments',
@@ -321,9 +321,6 @@ Route::middleware(['auth'])->group(function () {
         '/inventory/item-search',
         [InventoryController::class, 'itemSearch']
     )->name('inventory.item-search');
-
-
-
 });
 
 
@@ -436,8 +433,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
 
     // ============================================================
-// Global Purchase Planning Overview
-// ============================================================
+    // Global Purchase Planning Overview
+    // ============================================================
 
     Route::get(
         '/purchase-planning',
@@ -446,8 +443,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
 
     // ============================================================
-// Item Purchase Planning Settings
-// ============================================================
+    // Item Purchase Planning Settings
+    // ============================================================
 
     Route::get(
         '/items/{item}/purchase-planning/edit',
@@ -461,8 +458,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
 
     // ============================================================
-// Detailed Item Purchase Planning
-// ============================================================
+    // Detailed Item Purchase Planning
+    // ============================================================
 
     Route::get(
         '/items/{item}/purchase-planning',
@@ -738,7 +735,18 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
 
     //REPORTING CONTROLLER
-      Route::get('/reporting', [App\Http\Controllers\ReportingController::class, 'index'])
+    Route::get('/reporting', [ReportingController::class, 'index'])
         ->name('reporting.index');
 
+    Route::get('/reporting/items/{productModel}', [ReportingController::class, 'itemsByModel'])
+        ->name('reporting.items-by-model');
+
+    Route::get('/reporting/po-tracking', [ReportingController::class, 'poTrackingIndex'])
+        ->name('reporting.po-tracking.index');
+
+    Route::get('/reporting/po-tracking/items/{purchaseOrder}', [ReportingController::class, 'poTrackingItems'])
+        ->name('reporting.po-tracking.items');
+        Route::get('/reporting/po-tracking/item-history/{poItem}', [App\Http\Controllers\ReportingController::class, 'poItemHistory'])
+    ->name('reporting.po-tracking.item-history');
+    
 });

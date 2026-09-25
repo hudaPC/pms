@@ -3,6 +3,29 @@
 @section('title', 'Material Usage')
 
 @section('content')
+<style>
+        .table-compact {
+            font-size: 0.75rem;
+        }
+ 
+        .table-compact th,
+        .table-compact td {
+            padding: 0.4rem 0.5rem;
+            vertical-align: middle;
+        }
+ 
+        .table-compact .badge {
+            font-size: 0.75rem;
+            padding: 0.25em 0.5em;
+        }
+ 
+        .btn-xs {
+            padding: 0.15rem 0.4rem;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            border-radius: 0.2rem;
+        }
+    </style>
 
     <div class="container-fluid py-3">
 
@@ -278,7 +301,7 @@
 
                 <div class="table-responsive">
 
-                    <table class="table table-bordered table-hover mb-0">
+                     <table class="table table-bordered table-hover table-sm mb-0 table-compact">
 
                         <thead class="thead-light">
 

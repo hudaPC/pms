@@ -12,6 +12,7 @@ class UsageLog extends Model
 
     protected $fillable = [
         'item_id',
+        'product_model_id',
         'source',
         'production_plan_id',
         'usage_date',
@@ -69,5 +70,12 @@ class UsageLog extends Model
     public function isVoided(): bool
     {
         return $this->status === 'void';
+    }
+    public function productModel()
+    {
+        return $this->belongsTo(
+            \App\Models\ProductModel::class,
+            'product_model_id'
+        );
     }
 }

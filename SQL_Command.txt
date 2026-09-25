@@ -245,4 +245,9 @@ MODIFY COLUMN movement_type ENUM(
     'stock_adjustment_out'
 ) NOT NULL;
 
+************************
+ALTER TABLE usage_logs
+ADD COLUMN product_model_id BIGINT UNSIGNED NULL
+AFTER item_id;
+
 

@@ -296,6 +296,10 @@
                                     Item
                                 </th>
 
+                                <th>
+                                    Product Model
+                                </th>
+
                                 <th class="text-right">
                                     Quantity
                                 </th>
@@ -327,8 +331,7 @@
 
                         <tbody>
 
-                            @forelse($usageLogs as $usageLog)
-
+                            @forelse ($usageLogs as $usageLog)
                                 <tr>
 
                                     <td>
@@ -352,6 +355,78 @@
                                         <small class="text-muted">
                                             {{ $usageLog->item?->item_name }}
                                         </small>
+
+                                    </td>
+
+                                    {{-- Product Model --}}
+                                    <td>
+
+                                        @if ($usageLog->productModel)
+
+                                            <strong>
+                                                {{ $usageLog->productModel->model_code }}
+                                            </strong>
+
+                                            <br>
+
+                                            <small class="text-muted">
+                                                {{ $usageLog->productModel->model_name }}
+                                            </small>
+
+                                        @elseif ($usageLog->productionPlan?->productModel)
+
+                                            <strong>
+                                                {{ $usageLog->productionPlan->productModel->model_code }}
+                                            </strong>
+
+                                            <br>
+
+                                            <small class="text-muted">
+                                                {{ $usageLog->productionPlan->productModel->model_name }}
+                                            </small>
+
+                                        @else
+
+                                            @php
+                                                $linkedModels =
+                                                    $usageLog->item?->productModelItems
+                                                        ?->pluck('productModel')
+                                                        ->filter()
+                                                        ->unique('id')
+                                                        ->values() ?? collect();
+                                            @endphp
+
+                                            @if ($linkedModels->count() === 1)
+
+                                                <strong>
+                                                    {{ $linkedModels->first()->model_code }}
+                                                </strong>
+
+                                                <br>
+
+                                                <small class="text-muted">
+                                                    {{ $linkedModels->first()->model_name }}
+                                                </small>
+
+                                            @elseif ($linkedModels->count() > 1)
+
+                                                <span class="badge badge-warning">
+                                                    Multiple Models
+                                                </span>
+
+                                                <br>
+
+                                                <small class="text-muted">
+                                                    Selected model not recorded
+                                                </small>
+
+                                            @else
+
+                                                <span class="text-muted">-</span>
+
+                                            @endif
+
+                                        @endif
 
                                     </td>
 
@@ -468,7 +543,7 @@
 
                                 <tr>
 
-                                    <td colspan="9" class="text-center py-5 text-muted">
+                                    <td colspan="10" class="text-center py-5 text-muted">
 
                                         <i class="fas fa-inbox fa-2x mb-2"></i>
 
@@ -479,7 +554,6 @@
                                     </td>
 
                                 </tr>
-
                             @endforelse
 
                         </tbody>

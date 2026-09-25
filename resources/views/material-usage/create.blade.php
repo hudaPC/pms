@@ -4,44 +4,51 @@
 
 @section('content')
 
-    <div class="container py-4">
+    <div class="container-fluid py-4">
 
-        {{-- Header --}}
+        {{-- =========================================================
+         PAGE HEADER
+    ========================================================= --}}
+
         <div class="d-flex justify-content-between align-items-center mb-4">
 
             <div>
-
                 <h2 class="mb-1">
+                    <i class="fas fa-box-open mr-2"></i>
                     Add Material Usage
                 </h2>
 
                 <p class="text-muted mb-0">
-                    Record manual material consumption
+                    Issue multiple materials from different Product Models
                 </p>
-
             </div>
 
             <a href="{{ route('material-usage.index') }}" class="btn btn-secondary">
+
                 <i class="fas fa-arrow-left mr-1"></i>
                 Back to Material Usage
+
             </a>
 
         </div>
 
 
-        {{-- Validation Errors --}}
-        @if($errors->any())
+        {{-- =========================================================
+         VALIDATION ERRORS
+    ========================================================= --}}
+
+        @if ($errors->any())
 
             <div class="alert alert-danger">
 
-                <ul class="mb-0">
+                <strong>
+                    Please correct the following errors:
+                </strong>
 
-                    @foreach($errors->all() as $error)
+                <ul class="mb-0 mt-2">
 
-                        <li>
-                            {{ $error }}
-                        </li>
-
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
                     @endforeach
 
                 </ul>
@@ -51,23 +58,32 @@
         @endif
 
 
-        <div class="card card-primary card-outline">
+        {{-- =========================================================
+         MAIN FORM
+    ========================================================= --}}
 
-            <div class="card-header">
+        <form action="{{ route('material-usage.store') }}" method="POST" id="materialUsageForm">
 
-                <h3 class="card-title">
+            @csrf
 
-                    <i class="fas fa-box-open mr-2"></i>
 
-                    Usage Information
+            {{-- =====================================================
+             COMMON ISSUE INFORMATION
+        ===================================================== --}}
 
-                </h3>
+            <div class="card card-primary card-outline">
 
-            </div>
+                <div class="card-header">
 
-            <form action="{{ route('material-usage.store') }}" method="POST" id="materialUsageForm">
+                    <h3 class="card-title">
 
-                @csrf
+                        <i class="fas fa-info-circle mr-2"></i>
+
+                        Issue Information
+
+                    </h3>
+
+                </div>
 
 
                 <div class="card-body">
@@ -75,151 +91,29 @@
                     <div class="row">
 
 
-                        {{-- Product Model --}}
-                        <div class="col-md-4">
-
-                            <div class="form-group">
-
-                                <label>
-                                    Product Model
-                                    <span class="text-danger">*</span>
-                                </label>
-
-                                <select name="product_model_id" id="product_model_id"
-                                    class="form-control @error('product_model_id') is-invalid @enderror" required>
-
-                                    <option value="">
-                                        -- Select Product Model --
-                                    </option>
-
-                                    @foreach($productModels as $productModel)
-
-                                        <option value="{{ $productModel->id }}" @selected(
-                                            old('product_model_id')
-                                            == $productModel->id
-                                        )>
-
-                                            {{ $productModel->model_code }}
-
-                                            @if($productModel->model_name)
-
-                                                -
-                                                {{ $productModel->model_name }}
-
-                                            @endif
-
-                                        </option>
-
-                                    @endforeach
-
-                                </select>
-
-                                @error('product_model_id')
-
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-
-                                @enderror
-
-                                <small class="form-text text-muted">
-                                    Select the Product Model first.
-                                </small>
-
-                            </div>
-
-                        </div>
-
-
-                        {{-- Item --}}
-                        <div class="col-md-4">
-
-                            <div class="form-group">
-
-                                <label>
-                                    Item
-                                    <span class="text-danger">*</span>
-                                </label>
-
-                                <select name="item_id" id="item_id"
-                                    class="form-control no-select2 @error('item_id') is-invalid @enderror" required
-                                    disabled>
-
-                                    <option value="">
-                                        -- Select Product Model First --
-                                    </option>
-
-                                </select>
-
-                                @error('item_id')
-
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-
-                                @enderror
-
-                                <small id="currentStockHelp" class="form-text text-muted"></small>
-
-                            </div>
-
-                        </div>
-
-
                         {{-- Usage Date --}}
+
                         <div class="col-md-4">
 
                             <div class="form-group">
 
-                                <label>
+                                <label for="usage_date">
+
                                     Usage Date
+
                                     <span class="text-danger">*</span>
+
                                 </label>
 
-                                <input type="date" name="usage_date" id="usage_date" value="{{ old(
-        'usage_date',
-        now()->format('Y-m-d')
-    ) }}" class="form-control @error('usage_date') is-invalid @enderror" required>
+                                <input type="date" name="usage_date" id="usage_date"
+                                    value="{{ old('usage_date', now()->format('Y-m-d')) }}"
+                                    class="form-control @error('usage_date') is-invalid @enderror" required>
 
                                 @error('usage_date')
-
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
-
                                 @enderror
-
-                            </div>
-
-                        </div>
-
-
-                        {{-- Quantity --}}
-                        <div class="col-md-4">
-
-                            <div class="form-group">
-
-                                <label>
-                                    Usage Quantity
-                                    <span class="text-danger">*</span>
-                                </label>
-
-                                <input type="number" name="quantity" id="quantity" step="0.001" min="0.001"
-                                    value="{{ old('quantity') }}"
-                                    class="form-control @error('quantity') is-invalid @enderror" placeholder="0.000"
-                                    required>
-
-                                @error('quantity')
-
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-
-                                @enderror
-
-                                <small id="quantityHelp" class="form-text text-muted">
-                                    Usage cannot exceed available stock.
-                                </small>
 
                             </div>
 
@@ -227,12 +121,15 @@
 
 
                         {{-- Reference --}}
+
                         <div class="col-md-4">
 
                             <div class="form-group">
 
-                                <label>
-                                    Reference
+                                <label for="reference">
+
+                                    Issue Reference
+
                                 </label>
 
                                 <input type="text" name="reference" id="reference" value="{{ old('reference') }}"
@@ -240,15 +137,15 @@
                                     placeholder="Generated automatically when saving">
 
                                 @error('reference')
-
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
-
                                 @enderror
 
                                 <small class="form-text text-muted">
-                                    Leave blank to generate automatically.
+
+                                    One reference will be shared by all material rows.
+
                                 </small>
 
                             </div>
@@ -257,18 +154,23 @@
 
 
                         {{-- Source --}}
+
                         <div class="col-md-4">
 
                             <div class="form-group">
 
                                 <label>
+
                                     Source
+
                                 </label>
 
                                 <input type="text" class="form-control" value="Manual" readonly>
 
                                 <small class="form-text text-muted">
+
                                     Production Plan usage is managed separately.
+
                                 </small>
 
                             </div>
@@ -277,24 +179,24 @@
 
 
                         {{-- Remarks --}}
+
                         <div class="col-md-12">
 
                             <div class="form-group">
 
-                                <label>
+                                <label for="remarks">
+
                                     Remarks
+
                                 </label>
 
-                                <textarea name="remarks" rows="3"
-                                    class="form-control @error('remarks') is-invalid @enderror"
-                                    placeholder="Optional remarks">{{ old('remarks') }}</textarea>
+                                <textarea name="remarks" id="remarks" rows="2" class="form-control @error('remarks') is-invalid @enderror"
+                                    placeholder="Optional remarks for this material issue">{{ old('remarks') }}</textarea>
 
                                 @error('remarks')
-
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
-
                                 @enderror
 
                             </div>
@@ -305,289 +207,413 @@
 
                 </div>
 
+            </div>
 
-                <div class="card-footer text-right">
 
-                    <a href="{{ route('material-usage.index') }}" class="btn btn-secondary">
-                        Cancel
-                    </a>
+            {{-- =====================================================
+             MATERIAL ITEMS
+        ===================================================== --}}
 
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save mr-1"></i>
-                        Save Material Usage
-                    </button>
+            <div class="card card-success card-outline">
+
+                <div class="card-header">
+
+                    <h3 class="card-title">
+
+                        <i class="fas fa-list mr-2"></i>
+
+                        Material Issue Details
+
+                    </h3>
+
+                    <div class="card-tools">
+
+                        <span class="badge badge-info p-2" id="materialRowCount">
+
+                            0 Items
+
+                        </span>
+
+                    </div>
 
                 </div>
 
-            </form>
 
-        </div>
+                <div class="card-body">
+
+
+                    <div class="alert alert-info">
+
+                        <i class="fas fa-info-circle mr-1"></i>
+
+                        Select a Product Model for each row.
+                        The Item dropdown will load active BOM items
+                        belonging to that Product Model.
+
+                    </div>
+
+
+                    <div class="table-responsive">
+
+                        <table class="table table-bordered table-hover" id="materialItemsTable">
+
+                            <thead class="thead-light">
+
+                                <tr>
+
+                                    <th style="width: 55px;" class="text-center">
+                                        #
+                                    </th>
+
+                                    <th style="min-width: 220px;">
+                                        Product Model
+                                        <span class="text-danger">*</span>
+                                    </th>
+
+                                    <th style="min-width: 300px;">
+                                        Item
+                                        <span class="text-danger">*</span>
+                                    </th>
+
+                                    <th style="min-width: 140px;">
+                                        Available Stock
+                                    </th>
+
+                                    <th style="min-width: 160px;">
+                                        Issue Quantity
+                                        <span class="text-danger">*</span>
+                                    </th>
+
+                                    <th style="width: 75px;" class="text-center">
+                                        Action
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+
+                            <tbody id="materialItemsBody">
+
+                                {{-- Dynamic rows will be inserted here. --}}
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+
+                    <button type="button" class="btn btn-success" id="addMaterialRow">
+
+                        <i class="fas fa-plus-circle mr-1"></i>
+
+                        Add Material Row
+
+                    </button>
+
+
+                    <div class="mt-3">
+
+                        <small class="text-muted">
+
+                            <i class="fas fa-shield-alt mr-1"></i>
+
+                            Issue quantities cannot exceed available stock.
+                            The server will validate all material rows before saving.
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                {{-- =================================================
+                 FORM FOOTER
+            ================================================= --}}
+
+                <div class="card-footer text-right">
+
+                    <a href="{{ route('material-usage.index') }}" class="btn btn-secondary mr-2">
+
+                        Cancel
+
+                    </a>
+
+                    <button type="submit" class="btn btn-primary" id="saveMaterialUsage">
+
+                        <i class="fas fa-save mr-1"></i>
+
+                        Save Material Usage
+
+                    </button>
+
+                  
+
+                </div>
+
+            </div>
+
+        </form>
 
     </div>
 
 
+    {{-- =============================================================
+     JAVASCRIPT
+============================================================= --}}
+
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
 
-            var productModelSelect =
-                $('#product_model_id');
+            'use strict';
 
-            var itemSelect =
-                $('#item_id');
 
-            var currentStockHelp =
-                document.getElementById(
-                    'currentStockHelp'
+            /*
+            |--------------------------------------------------------------------------
+            | Existing Product Models
+            |--------------------------------------------------------------------------
+            */
+
+            const productModels =
+                {{ Illuminate\Support\Js::from(
+                    $productModels->map(
+                            fn($model) => [
+                                'id' => $model->id,
+                                'model_code' => $model->model_code,
+                                'model_name' => $model->model_name,
+                            ],
+                        )->values(),
+                ) }};
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Restore Rows After Validation Error
+            |--------------------------------------------------------------------------
+            */
+
+            const oldItems = @json(old('items', []));
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Existing AJAX Route
+            |--------------------------------------------------------------------------
+            */
+
+            const itemsUrlTemplate = @json(route('material-usage.product-model-items', [
+                    'productModel' => '__PRODUCT_MODEL_ID__',
+                ]));
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Elements
+            |--------------------------------------------------------------------------
+            */
+
+            const materialItemsBody = $('#materialItemsBody');
+
+            const addMaterialRowButton = $('#addMaterialRow');
+
+            const materialRowCount = $('#materialRowCount');
+
+            const materialUsageForm = $('#materialUsageForm');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Unique Row Counter
+            |--------------------------------------------------------------------------
+            |
+            | Do not reuse an index after deleting a row.
+            |
+            */
+
+            let nextRowIndex = 0;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Build Product Model Options
+            |--------------------------------------------------------------------------
+            */
+
+            function buildProductModelOptions(selectedId = '') {
+
+                const select = $('<select>', {
+
+                    class: 'form-control product-model-select',
+
+                    required: true
+
+                });
+
+
+                select.append(
+
+                    $('<option>', {
+
+                        value: '',
+
+                        text: '-- Select Product Model --'
+
+                    })
+
                 );
 
-            var oldItemId =
-                @json(old('item_id'));
 
+                productModels.forEach(function(model) {
 
-            /*
-            |--------------------------------------------------------------------------
-            | Item Select2
-            |--------------------------------------------------------------------------
-            */
+                    let label = model.model_code;
 
-            /*
-    |--------------------------------------------------------------------------
-    | Item Select2
-    |--------------------------------------------------------------------------
-    */
+                    if (model.model_name) {
 
-            itemSelect.select2({
-                width: '100%',
-                placeholder: '-- Select Item --',
-                allowClear: true,
+                        label += ' - ' + model.model_name;
 
-                templateResult: function (option) {
-
-                    if (!option.id) {
-                        return option.text; // placeholder / loading rows
                     }
 
-                    var $option = $(option.element);
 
-                    var stock = Number($option.data('current-stock') || 0);
-                    var unit = $option.data('unit') || '';
+                    const option = $('<option>', {
 
-                    var formattedStock = stock.toLocaleString(undefined, {
-                        minimumFractionDigits: 3,
-                        maximumFractionDigits: 3
+                        value: model.id,
+
+                        text: label
+
                     });
 
-                    return $(
-                        '<div class="d-flex justify-content-between align-items-center">' +
-                        '<span>' + option.text + '</span>' +
-                        '<span class="badge badge-light border ml-2">' +
-                        formattedStock + ' ' + unit +
-                        '</span>' +
-                        '</div>'
-                    );
-                }
-            });
+
+                    if (String(selectedId) === String(model.id)) {
+
+                        option.prop('selected', true);
+
+                    }
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Current Stock
-            |--------------------------------------------------------------------------
-            */
+                    select.append(option);
 
-            function showCurrentStock() {
+                });
 
-                var option =
-                    itemSelect.find(
-                        'option:selected'
-                    );
 
-                if (!option.val()) {
+                return select;
 
-                    currentStockHelp.textContent = '';
-
-                    return;
-                }
-
-                var stock =
-                    Number(
-                        option.data(
-                            'current-stock'
-                        ) || 0
-                    );
-
-                var unit =
-                    option.data('unit') || '';
-
-                currentStockHelp.textContent =
-                    'Current stock: ' +
-                    stock.toLocaleString(
-                        undefined,
-                        {
-                            minimumFractionDigits: 3,
-                            maximumFractionDigits: 3
-                        }
-                    ) +
-                    ' ' +
-                    unit;
             }
 
 
             /*
             |--------------------------------------------------------------------------
-            | Load BOM Items
+            | Format Stock
             |--------------------------------------------------------------------------
             */
 
-            function loadItemsByProductModel() {
+            function formatStock(stock) {
 
-                var productModelId =
-                    productModelSelect.val();
+                return Number(stock || 0).toLocaleString(
 
-                currentStockHelp.textContent = '';
+                    undefined,
 
-                itemSelect
-                    .empty()
-                    .append(
-                        '<option value="">' +
-                        '-- Select Product Model First --' +
-                        '</option>'
-                    )
-                    .prop('disabled', true)
-                    .trigger('change');
+                    {
 
+                        minimumFractionDigits: 3,
 
-                if (!productModelId) {
-                    return;
-                }
+                        maximumFractionDigits: 3
 
+                    }
 
-                itemSelect
-                    .empty()
-                    .append(
-                        '<option value="">' +
-                        'Loading items...' +
-                        '</option>'
-                    )
-                    .prop('disabled', true)
-                    .trigger('change');
-
-
-                var url =
-                    '{{ route(
-        "material-usage.product-model-items",
-        ":productModel"
-    ) }}';
-
-                url = url.replace(
-                    ':productModel',
-                    productModelId
                 );
 
-
-                $.ajax({
-
-                    url: url,
-                    type: 'GET',
-
-                    success: function (response) {
-
-                        itemSelect.empty();
-
-                        itemSelect.append(
-                            '<option value="">' +
-                            '-- Select Item --' +
-                            '</option>'
-                        );
+            }
 
 
-                        if (
-                            !response.items ||
-                            response.items.length === 0
-                        ) {
+            /*
+            |--------------------------------------------------------------------------
+            | Update Row Count
+            |--------------------------------------------------------------------------
+            */
 
-                            itemSelect.append(
-                                '<option value="" disabled>' +
-                                'No active BOM items found' +
-                                '</option>'
-                            );
+            function updateRowCount() {
 
-                            itemSelect
-                                .prop('disabled', true)
-                                .trigger('change');
+                const count = materialItemsBody.children('tr').length;
 
-                            return;
+                materialRowCount.text(
+
+                    count + (count === 1 ? ' Item' : ' Items')
+
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Initialize Item Select2
+            |--------------------------------------------------------------------------
+            */
+
+            function initializeItemSelect2(itemSelect) {
+
+                itemSelect.select2({
+
+                    width: '100%',
+
+                    placeholder: '-- Select Item --',
+
+                    allowClear: true,
+
+                    templateResult: function(option) {
+
+                        if (!option.id) {
+
+                            return option.text;
+
                         }
 
 
-                        $.each(
-                            response.items,
-                            function (index, item) {
+                        const selectedOption = $(option.element);
 
-                                var option =
-                                    $('<option></option>')
-                                        .val(item.id)
-                                        .text(
-                                            '[' +
-                                            item.product_model +
-                                            '] ' +
-                                            item.item_code +
-                                            ' - ' +
-                                            item.item_name
-                                        )
-                                        .attr(
-                                            'data-current-stock',
-                                            item.current_stock
-                                        )
-                                        .attr(
-                                            'data-unit',
-                                            item.unit || ''
-                                        );
+                        const stock = Number(
 
-                                itemSelect.append(
-                                    option
-                                );
-                            }
+                            selectedOption.attr('data-current-stock') || 0
+
+                        );
+
+                        const unit =
+
+                            selectedOption.attr('data-unit') || '';
+
+
+                        const wrapper = $('<div>', {
+
+                            class: 'd-flex justify-content-between align-items-center'
+
+                        });
+
+
+                        wrapper.append(
+
+                            $('<span>').text(option.text)
+
                         );
 
 
-                        itemSelect.prop(
-                            'disabled',
-                            false
-                        );
+                        wrapper.append(
 
+                            $('<span>', {
 
-                        if (oldItemId) {
+                                class: 'badge badge-light border ml-2'
 
-                            itemSelect
-                                .val(
-                                    String(oldItemId)
-                                )
-                                .trigger('change');
+                            }).text(
 
-                            oldItemId = null;
+                                formatStock(stock) + ' ' + unit
 
-                        } else {
-
-                            itemSelect.trigger(
-                                'change'
-                            );
-                        }
-
-                    },
-
-
-                    error: function () {
-
-                        itemSelect
-                            .empty()
-                            .append(
-                                '<option value="">' +
-                                'Unable to load items' +
-                                '</option>'
                             )
-                            .prop('disabled', true)
-                            .trigger('change');
+
+                        );
+
+
+                        return wrapper;
 
                     }
 
@@ -598,37 +624,737 @@
 
             /*
             |--------------------------------------------------------------------------
-            | Events
+            | Display Current Stock For One Row
             |--------------------------------------------------------------------------
             */
 
-            productModelSelect.on(
-                'change select2:select select2:clear',
-                function () {
+            function showCurrentStock(row) {
 
-                    oldItemId = null;
+                const itemSelect = row.find('.item-select');
 
-                    loadItemsByProductModel();
+                const stockDisplay = row.find('.current-stock-display');
+
+                const quantityInput = row.find('.quantity-input');
+
+
+                const selectedOption = itemSelect.find('option:selected');
+
+
+                if (!selectedOption.val()) {
+
+                    stockDisplay.text('—');
+
+                    quantityInput.removeAttr('max');
+
+                    return;
+
                 }
-            );
 
 
-            itemSelect.on(
-                'change select2:select',
-                showCurrentStock
-            );
+                const stock = Number(
+
+                    selectedOption.attr('data-current-stock') || 0
+
+                );
+
+
+                const unit =
+
+                    selectedOption.attr('data-unit') || '';
+
+
+                stockDisplay.text(
+
+                    formatStock(stock) + ' ' + unit
+
+                );
+
+
+                quantityInput.attr('max', stock);
+
+            }
 
 
             /*
             |--------------------------------------------------------------------------
-            | Restore Old Product Model
+            | Load BOM Items For One Product Model
             |--------------------------------------------------------------------------
             */
 
-            if (productModelSelect.val()) {
+            function loadItemsByProductModel(
 
-                loadItemsByProductModel();
+                row,
+
+                selectedItemId = ''
+
+            ) {
+
+                const productModelSelect =
+
+                    row.find('.product-model-select');
+
+
+                const itemSelect =
+
+                    row.find('.item-select');
+
+
+                const stockDisplay =
+
+                    row.find('.current-stock-display');
+
+
+                const productModelId =
+
+                    productModelSelect.val();
+
+
+                /*
+                | Abort previous AJAX request for this row.
+                */
+
+                const previousRequest = row.data('itemsRequest');
+
+                if (previousRequest) {
+
+                    previousRequest.abort();
+
+                }
+
+
+                itemSelect.empty();
+
+                itemSelect.append(
+
+                    $('<option>', {
+
+                        value: '',
+
+                        text: '-- Select Product Model First --'
+
+                    })
+
+                );
+
+
+                itemSelect.prop('disabled', true);
+
+                itemSelect.trigger('change');
+
+
+                stockDisplay.text('—');
+
+
+                if (!productModelId) {
+
+                    return;
+
+                }
+
+
+                itemSelect.empty();
+
+                itemSelect.append(
+
+                    $('<option>', {
+
+                        value: '',
+
+                        text: 'Loading items...'
+
+                    })
+
+                );
+
+
+                itemSelect.trigger('change');
+
+
+                const url = itemsUrlTemplate.replace(
+
+                    '__PRODUCT_MODEL_ID__',
+
+                    encodeURIComponent(productModelId)
+
+                );
+
+
+                const request = $.ajax({
+
+                    url: url,
+
+                    type: 'GET',
+
+                    dataType: 'json',
+
+
+                    success: function(response) {
+
+                        /*
+                        | Ignore results if the row was removed
+                        | or its Product Model changed.
+                        */
+
+                        if (
+
+                            !row.closest('body').length ||
+
+                            String(productModelSelect.val()) !==
+
+                            String(productModelId)
+
+                        ) {
+
+                            return;
+
+                        }
+
+
+                        itemSelect.empty();
+
+
+                        itemSelect.append(
+
+                            $('<option>', {
+
+                                value: '',
+
+                                text: '-- Select Item --'
+
+                            })
+
+                        );
+
+
+                        const items = response.items || [];
+
+
+                        if (items.length === 0) {
+
+                            itemSelect.append(
+
+                                $('<option>', {
+
+                                    value: '',
+
+                                    text: 'No active BOM items found',
+
+                                    disabled: true
+
+                                })
+
+                            );
+
+
+                            itemSelect.prop('disabled', true);
+
+                            itemSelect.trigger('change');
+
+                            return;
+
+                        }
+
+
+                        items.forEach(function(item) {
+
+                            const option = $('<option>', {
+
+                                value: item.id,
+
+                                text:
+
+                                    '[' + item.product_model + '] ' +
+
+                                    item.item_code + ' - ' +
+
+                                    item.item_name
+
+                            });
+
+
+                            option.attr(
+
+                                'data-current-stock',
+
+                                item.current_stock
+
+                            );
+
+
+                            option.attr(
+
+                                'data-unit',
+
+                                item.unit || ''
+
+                            );
+
+
+                            itemSelect.append(option);
+
+                        });
+
+
+                        itemSelect.prop('disabled', false);
+
+
+                        if (selectedItemId) {
+
+                            itemSelect.val(
+
+                                String(selectedItemId)
+
+                            );
+
+                        }
+
+
+                        itemSelect.trigger('change');
+
+                        showCurrentStock(row);
+
+                    },
+
+
+                    error: function(xhr, status) {
+
+                        if (status === 'abort') {
+
+                            return;
+
+                        }
+
+
+                        itemSelect.empty();
+
+
+                        itemSelect.append(
+
+                            $('<option>', {
+
+                                value: '',
+
+                                text: 'Unable to load items'
+
+                            })
+
+                        );
+
+
+                        itemSelect.prop('disabled', true);
+
+                        itemSelect.trigger('change');
+
+
+                        stockDisplay.text('—');
+
+                    }
+
+                });
+
+
+                row.data('itemsRequest', request);
+
             }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Add Material Row
+            |--------------------------------------------------------------------------
+            */
+
+            function addMaterialRow(
+
+                selectedProductModelId = '',
+
+                selectedItemId = '',
+
+                selectedQuantity = ''
+
+            ) {
+
+                const index = nextRowIndex++;
+
+
+                const row = $('<tr>', {
+
+                    class: 'material-row'
+
+                });
+
+
+                /*
+                | Row Number
+                */
+
+                const numberCell = $('<td>', {
+
+                    class: 'text-center align-middle row-number'
+
+                });
+
+
+                /*
+                | Product Model
+                */
+
+                const modelCell = $('<td>', {
+
+                    class: 'align-middle'
+
+                });
+
+
+                const productModelSelect =
+
+                    buildProductModelOptions(selectedProductModelId);
+
+
+                productModelSelect.attr(
+
+                    'name',
+
+                    'items[' + index + '][product_model_id]'
+
+                );
+
+
+                modelCell.append(productModelSelect);
+
+
+                /*
+                | Item
+                */
+
+                const itemCell = $('<td>', {
+
+                    class: 'align-middle'
+
+                });
+
+
+                const itemSelect = $('<select>', {
+
+                    class: 'form-control item-select no-select2',
+
+                    required: true,
+
+                    disabled: true
+
+                });
+
+
+                itemSelect.attr(
+
+                    'name',
+
+                    'items[' + index + '][item_id]'
+
+                );
+
+
+                itemSelect.append(
+
+                    $('<option>', {
+
+                        value: '',
+
+                        text: '-- Select Product Model First --'
+
+                    })
+
+                );
+
+
+                itemCell.append(itemSelect);
+
+
+                /*
+                | Available Stock
+                */
+
+                const stockCell = $('<td>', {
+
+                    class: 'align-middle'
+
+                });
+
+
+                const stockDisplay = $('<span>', {
+
+                    class: 'current-stock-display badge badge-light border p-2'
+
+                }).text('—');
+
+
+                stockCell.append(stockDisplay);
+
+
+                /*
+                | Quantity
+                */
+
+                const quantityCell = $('<td>', {
+
+                    class: 'align-middle'
+
+                });
+
+
+                const quantityInput = $('<input>', {
+
+                    type: 'number',
+
+                    class: 'form-control quantity-input',
+
+                    step: '0.001',
+
+                    min: '0.001',
+
+                    placeholder: '0.000',
+
+                    required: true
+
+                });
+
+
+                quantityInput.attr(
+
+                    'name',
+
+                    'items[' + index + '][quantity]'
+
+                );
+
+
+                quantityInput.val(selectedQuantity);
+
+
+                quantityCell.append(quantityInput);
+
+
+                /*
+                | Remove Button
+                */
+
+                const actionCell = $('<td>', {
+
+                    class: 'text-center align-middle'
+
+                });
+
+
+                const removeButton = $('<button>', {
+
+                    type: 'button',
+
+                    class: 'btn btn-danger btn-sm remove-material-row',
+
+                    title: 'Remove this material row'
+
+                });
+
+
+                removeButton.append(
+
+                    $('<i>', {
+
+                        class: 'fas fa-trash'
+
+                    })
+
+                );
+
+
+                actionCell.append(removeButton);
+
+
+                /*
+                | Append Cells
+                */
+
+                row.append(numberCell);
+
+                row.append(modelCell);
+
+                row.append(itemCell);
+
+                row.append(stockCell);
+
+                row.append(quantityCell);
+
+                row.append(actionCell);
+
+
+                materialItemsBody.append(row);
+
+
+                /*
+                | Initialize Select2
+                */
+
+                initializeItemSelect2(itemSelect);
+
+
+                /*
+                | Product Model Change
+                */
+
+                productModelSelect.on('change', function() {
+
+                    loadItemsByProductModel(row);
+
+                });
+
+
+                /*
+                | Item Change
+                */
+
+                itemSelect.on('change', function() {
+
+                    showCurrentStock(row);
+
+                });
+
+
+                /*
+                | Remove Row
+                */
+
+                removeButton.on('click', function() {
+
+                    const request = row.data('itemsRequest');
+
+                    if (request) {
+
+                        request.abort();
+
+                    }
+
+
+                    if (itemSelect.hasClass('select2-hidden-accessible')) {
+
+                        itemSelect.select2('destroy');
+
+                    }
+
+
+                    row.remove();
+
+
+                    updateRowNumbers();
+
+                    updateRowCount();
+
+                });
+
+
+                /*
+                | Load Previously Selected Item
+                */
+
+                if (selectedProductModelId) {
+
+                    loadItemsByProductModel(
+
+                        row,
+
+                        selectedItemId
+
+                    );
+
+                }
+
+
+                updateRowNumbers();
+
+                updateRowCount();
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Update Visible Row Numbers
+            |--------------------------------------------------------------------------
+            */
+
+            function updateRowNumbers() {
+
+                materialItemsBody.children('tr').each(
+
+                    function(index) {
+
+                        $(this).find('.row-number').text(
+
+                            index + 1
+
+                        );
+
+                    }
+
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Add Row Button
+            |--------------------------------------------------------------------------
+            */
+
+            addMaterialRowButton.on('click', function() {
+
+                addMaterialRow();
+
+            });
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Restore Old Rows
+            |--------------------------------------------------------------------------
+            */
+
+            const restoredItems = Array.isArray(oldItems)
+
+                ?
+                oldItems
+
+                :
+                Object.values(oldItems || {});
+
+
+            if (restoredItems.length > 0) {
+
+                restoredItems.forEach(function(item) {
+
+                    addMaterialRow(
+
+                        item.product_model_id || '',
+
+                        item.item_id || '',
+
+                        item.quantity ?? ''
+
+                    );
+
+                });
+
+            } else {
+
+                /*
+                | Start with one empty row.
+                */
+
+                addMaterialRow();
+
+            }
+
+
 
         });
     </script>

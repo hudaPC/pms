@@ -154,7 +154,7 @@
 
                         <p>
 
-                            Master Data
+                            M A S T E R  D A T A
 
                             <i class="right fas fa-angle-left"></i>
 
@@ -300,7 +300,7 @@
 
                         <p>
 
-                            Purchasing
+                            P U R C H A S I N G
 
                             <i class="right fas fa-angle-left"></i>
 
@@ -412,7 +412,7 @@
                         <i class="nav-icon fas fa-clipboard-list"></i>
 
                         <p>
-                            Material Usage
+                            I T E M  U S A G E
                         </p>
 
                     </a>

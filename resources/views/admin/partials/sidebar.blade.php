@@ -32,8 +32,7 @@
 
                 <li class="nav-item">
 
-                    <a href="{{ url('/dashboard') }}"
-                        class="nav-link
+                    <a href="{{ url('/dashboard') }}" class="nav-link
                             {{ request()->is('dashboard') ? 'active' : '' }}">
 
                         <i class="nav-icon fas fa-tachometer-alt"></i>
@@ -53,8 +52,7 @@
 
                 <li class="nav-item">
 
-                    <a href="{{ url('/purchase-calendar') }}"
-                        class="nav-link
+                    <a href="{{ url('/purchase-calendar') }}" class="nav-link
                             {{ request()->is('purchase-calendar*') ? 'active' : '' }}">
 
                         <i class="fas fa-calendar-alt nav-icon"></i>
@@ -74,8 +72,7 @@
 
                 <li class="nav-item">
 
-                    <a href="{{ url('/product-models') }}"
-                        class="nav-link
+                    <a href="{{ url('/product-models') }}" class="nav-link
                             {{ request()->is('product-models*') ? 'active' : '' }}">
 
                         <i class="fas fa-cubes nav-icon"></i>
@@ -95,8 +92,7 @@
 
                 <li class="nav-item">
 
-                    <a href="{{ url('/production-plans') }}"
-                        class="nav-link
+                    <a href="{{ url('/production-plans') }}" class="nav-link
                             {{ request()->is('production-plans*') ? 'active' : '' }}">
 
                         <i class="fas fa-industry nav-icon"></i>
@@ -146,8 +142,7 @@
                 <li class="nav-item has-treeview
                         {{ $masterDataActive ? 'menu-open' : '' }}">
 
-                    <a href="#"
-                        class="nav-link
+                    <a href="#" class="nav-link
                             {{ $masterDataActive ? 'active' : '' }}">
 
                         <i class="nav-icon fas fa-database"></i>
@@ -170,8 +165,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ route('categories.index') }}"
-                                class="nav-link
+                            <a href="{{ route('categories.index') }}" class="nav-link
                                     {{ request()->is('categories*') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -189,8 +183,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ route('units.index') }}"
-                                class="nav-link
+                            <a href="{{ route('units.index') }}" class="nav-link
                                     {{ request()->is('units*') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -208,8 +201,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ route('items.index') }}"
-                                class="nav-link
+                            <a href="{{ route('items.index') }}" class="nav-link
                                     {{ $masterItemsActive ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -227,8 +219,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ route('suppliers.index') }}"
-                                class="nav-link
+                            <a href="{{ route('suppliers.index') }}" class="nav-link
                                     {{ request()->is('suppliers*') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -259,8 +250,7 @@
 
                 <li class="nav-item">
 
-                    <a href="{{ route('purchase-planning.index') }}"
-                        class="nav-link
+                    <a href="{{ route('purchase-planning.index') }}" class="nav-link
                             {{ $purchasePlanningActive ? 'active' : '' }}">
 
                         <i class="nav-icon fas fa-chart-line"></i>
@@ -292,8 +282,7 @@
                 <li class="nav-item has-treeview
                         {{ $purchasingActive ? 'menu-open' : '' }}">
 
-                    <a href="#"
-                        class="nav-link
+                    <a href="#" class="nav-link
                             {{ $purchasingActive ? 'active' : '' }}">
 
                         <i class="nav-icon fas fa-shopping-cart"></i>
@@ -316,8 +305,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ url('/purchase-orders') }}"
-                                class="nav-link
+                            <a href="{{ url('/purchase-orders') }}" class="nav-link
                                     {{ request()->is('purchase-orders*') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -335,8 +323,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ url('/goods-receipts') }}"
-                                class="nav-link
+                            <a href="{{ url('/goods-receipts') }}" class="nav-link
                                     {{ request()->is('goods-receipts*') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -354,8 +341,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ route('purchase-returns.index') }}"
-                                class="nav-link
+                            <a href="{{ route('purchase-returns.index') }}" class="nav-link
                                     {{ request()->routeIs('purchase-returns.*') ? 'active' : '' }}">
 
                                 <i class="nav-icon fas fa-undo-alt"></i>
@@ -405,15 +391,14 @@
 
                 <li class="nav-item">
 
-                    <a href="{{ route('material-usage.index') }}"
-                        class="nav-link
+                    <a href="{{ route('material-usage.index') }}" class="nav-link
                             {{ $materialUsageActive ? 'active' : '' }}">
 
                         <i class="nav-icon fas fa-clipboard-list"></i>
 
                         <p>
-    ITEM&nbsp;&nbsp;&nbsp;USAGE
-</p>
+                            ITEM&nbsp;&nbsp;USAGE
+                        </p>
 
 
 
@@ -437,15 +422,14 @@
                 <li class="nav-item has-treeview
                         {{ $invoicingActive ? 'menu-open' : '' }}">
 
-                    <a href="#"
-                        class="nav-link
+                    <a href="#" class="nav-link
                             {{ $invoicingActive ? 'active' : '' }}">
 
                         <i class="nav-icon fas fa-file-invoice"></i>
 
                         <p>
 
-                            Invoicing
+                            I N V O I C I N G
 
                             <i class="right fas fa-angle-left"></i>
 
@@ -458,8 +442,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ url('/supplier-invoices') }}"
-                                class="nav-link
+                            <a href="{{ url('/supplier-invoices') }}" class="nav-link
                                     {{ request()->is('supplier-invoices*') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -492,15 +475,14 @@
                 <li class="nav-item has-treeview
                         {{ $inventoryActive ? 'menu-open' : '' }}">
 
-                    <a href="#"
-                        class="nav-link
+                    <a href="#" class="nav-link
                             {{ $inventoryActive ? 'active' : '' }}">
 
                         <i class="nav-icon fas fa-boxes"></i>
 
                         <p>
 
-                            Inventory
+                            I N V E T O R Y
 
                             <i class="right fas fa-angle-left"></i>
 
@@ -516,8 +498,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ route('inventory.index') }}"
-                                class="nav-link
+                            <a href="{{ route('inventory.index') }}" class="nav-link
                                     {{ request()->is('inventory*') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -535,8 +516,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ route('stock-adjustments.index') }}"
-                                class="nav-link
+                            <a href="{{ route('stock-adjustments.index') }}" class="nav-link
                                     {{ request()->is('stock-adjustments*') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -570,12 +550,10 @@
                 @endphp
 
 
-                <li
-                    class="nav-item has-treeview
+                <li class="nav-item has-treeview
                         {{ $accountsPayableActive ? 'menu-open' : '' }}">
 
-                    <a href="#"
-                        class="nav-link
+                    <a href="#" class="nav-link
                             {{ $accountsPayableActive ? 'active' : '' }}">
 
                         <i class="nav-icon fas fa-file-invoice-dollar"></i>
@@ -598,8 +576,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ route('supplier-payments.index') }}"
-                                class="nav-link
+                            <a href="{{ route('supplier-payments.index') }}" class="nav-link
                                     {{ request()->routeIs('supplier-payments.*') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -617,8 +594,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ route('supplier-ledger.index') }}"
-                                class="nav-link
+                            <a href="{{ route('supplier-ledger.index') }}" class="nav-link
                                     {{ request()->routeIs('supplier-ledger.*') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -636,8 +612,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ route('accounts-payable.index') }}"
-                                class="nav-link
+                            <a href="{{ route('accounts-payable.index') }}" class="nav-link
                                     {{ request()->routeIs('accounts-payable.*') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -682,8 +657,7 @@
                         {{ $reportingActive ? 'menu-open' : '' }}">
 
 
-                    <a href="#"
-                        class="nav-link
+                    <a href="#" class="nav-link
                             {{ $reportingActive ? 'active' : '' }}">
 
                         <i class="nav-icon fas fa-boxes"></i>
@@ -707,8 +681,7 @@
                         <li class="nav-item">
 
 
-                            <a href="{{ route('reporting.index') }}"
-                                class="nav-link
+                            <a href="{{ route('reporting.index') }}" class="nav-link
                                     {{ request()->is('reporting') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -727,8 +700,7 @@
                         <li class="nav-item">
 
 
-                            <a href="{{ route('reporting.po-tracking.index') }}"
-                                class="nav-link
+                            <a href="{{ route('reporting.po-tracking.index') }}" class="nav-link
                                     {{ request()->is('reporting/po-tracking*') ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
@@ -782,8 +754,7 @@
 
                 <li class="nav-item">
 
-                    <a href="#"
-                        class="nav-link
+                    <a href="#" class="nav-link
                             {{ request()->is('settings*') ? 'active' : '' }}">
 
                         <i class="nav-icon fas fa-cogs"></i>

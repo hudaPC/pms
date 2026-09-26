@@ -23,7 +23,7 @@ composer require barryvdh/laravel-dompdf
 
 php artisan vendor:publish --provider="Barryvdh\DomPDF\ServiceProvider"
 
-php artisan route:clear
+
 php artisan config:clear
 php artisan cache:clear
 php artisan view:clear

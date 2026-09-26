@@ -655,268 +655,160 @@ class PurchaseOrderItemController extends Controller
     */
 
     public function store(
-        Request $request,
-        PurchaseOrder $purchaseOrder
-    ) {
-        /*
+    Request $request,
+    PurchaseOrder $purchaseOrder
+) {
+    abort_if(
+        $purchaseOrder->status !== 'draft',
+        403,
+        'Items can only be added to draft purchase orders.'
+    );
+
+    abort_if(
+        $purchaseOrder->source === 'supplier-invoice',
+        403,
+        'Items for a Supplier Invoice Purchase Order must come from the Supplier Invoice and cannot be added manually.'
+    );
+
+    /*
     |--------------------------------------------------------------------------
-    | Purchase Order Must Be Draft
+    | Convert Empty Strings To Null Before Validation
     |--------------------------------------------------------------------------
+    |
+    | Empty text boxes are submitted as "" not null, which breaks
+    | the "nullable|numeric" rule below. This fixes that.
+    |
     */
 
-        abort_if(
-            $purchaseOrder->status !== 'draft',
-            403,
-            'Items can only be added to draft purchase orders.'
-        );
+    $request->merge([
+        'unit_price' => collect($request->input('unit_price', []))
+            ->map(fn ($value) => $value === '' ? null : $value)
+            ->all(),
 
+        'remarks' => collect($request->input('remarks', []))
+            ->map(fn ($value) => $value === '' ? null : $value)
+            ->all(),
+    ]);
 
-        /*
-    |--------------------------------------------------------------------------
-    | Supplier Invoice PO Items Are Locked
-    |--------------------------------------------------------------------------
-    */
-
-        abort_if(
-            $purchaseOrder->source === 'supplier-invoice',
-            403,
-            'Items for a Supplier Invoice Purchase Order must come from the Supplier Invoice and cannot be added manually.'
-        );
-
-
-        /*
+    /*
     |--------------------------------------------------------------------------
     | Validation
     |--------------------------------------------------------------------------
+    |
+    | Every field is now an ARRAY - one entry per row on the page.
+    |
     */
 
-        $validated = $request->validate([
+    $validated = $request->validate([
 
-            'product_model_id' => [
-                'required',
-                'exists:product_models,id',
-            ],
+        'product_model_id'   => ['required', 'array', 'min:1'],
+        'product_model_id.*'  => ['required', 'exists:product_models,id'],
 
-            'item_id' => [
-                'required',
-                'exists:items,id',
-            ],
+        'item_id'             => ['required', 'array'],
+        'item_id.*'           => ['required', 'exists:items,id'],
 
-            'ordered_quantity' => [
-                'required',
-                'numeric',
-                'min:0.001',
-            ],
+        'ordered_quantity'    => ['required', 'array'],
+        'ordered_quantity.*'  => ['required', 'numeric', 'min:0.001'],
 
-            'unit_price' => [
-                'nullable',
-                'numeric',
-                'min:0',
-            ],
+        'unit_price'          => ['array'],
+        'unit_price.*'        => ['nullable', 'numeric', 'min:0'],
 
-            'remarks' => [
-                'nullable',
-                'string',
-            ],
+        'remarks'             => ['array'],
+        'remarks.*'           => ['nullable', 'string'],
 
-        ]);
+    ]);
 
+    $rowsToInsert = [];
+    $errors = [];
+    $seenInThisSubmission = [];
 
-        /*
-    |--------------------------------------------------------------------------
-    | Find Selected Item
-    |--------------------------------------------------------------------------
-    */
+    foreach ($validated['item_id'] as $index => $itemId) {
+
+        $productModelId = $validated['product_model_id'][$index] ?? null;
+        $orderedQuantity = $validated['ordered_quantity'][$index] ?? null;
+        $unitPriceInput = $validated['unit_price'][$index] ?? null;
+        $remarks = $validated['remarks'][$index] ?? null;
+
+        $rowNumber = $index + 1;
 
         $item = Item::query()
-            ->whereKey(
-                $validated['item_id']
-            )
-            ->where(
-                'status',
-                true
-            )
+            ->whereKey($itemId)
+            ->where('status', true)
             ->first();
 
-
         if (!$item) {
-
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'item_id' =>
-                        'The selected item is not active or does not exist.',
-                ]);
+            $errors["item_id.$index"] = "Row {$rowNumber}: The selected item is not active or does not exist.";
+            continue;
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Validate Product Model
-    |--------------------------------------------------------------------------
-    |
-    | The selected item must belong to the selected Product Model.
-    |
-    */
-
-        if (
-            (int) $item->product_model_id
-            !==
-            (int) $validated['product_model_id']
-        ) {
-
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'item_id' =>
-                        'The selected item does not belong to the selected Product Model.',
-                ]);
+        if ((int) $item->product_model_id !== (int) $productModelId) {
+            $errors["item_id.$index"] = "Row {$rowNumber}: The selected item does not belong to the selected Product Model.";
+            continue;
         }
 
+        $duplicateKey = $productModelId . '-' . $itemId;
 
-        /*
-    |--------------------------------------------------------------------------
-    | Validate Supplier / Item Relationship
-    |--------------------------------------------------------------------------
-    |
-    | The item must be active for the supplier of this Purchase Order.
-    |
-    */
+        if (isset($seenInThisSubmission[$duplicateKey])) {
+            $errors["item_id.$index"] = "Row {$rowNumber}: This item was selected more than once on this page. Please remove the duplicate row.";
+            continue;
+        }
 
-        $supplierItem =
-            $item->suppliers()
-                ->where(
-                    'suppliers.id',
-                    $purchaseOrder->supplier_id
-                )
-                ->where(
-                    'item_suppliers.status',
-                    true
-                )
-                ->first();
+        $seenInThisSubmission[$duplicateKey] = true;
 
-
-
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Prevent Duplicate Product Model + Item
-    |--------------------------------------------------------------------------
-    */
-
-        $alreadyExists =
-            PurchaseOrderItem::query()
-                ->where(
-                    'purchase_order_id',
-                    $purchaseOrder->id
-                )
-                ->where(
-                    'product_model_id',
-                    $validated['product_model_id']
-                )
-                ->where(
-                    'item_id',
-                    $validated['item_id']
-                )
-                ->exists();
-
+        $alreadyExists = PurchaseOrderItem::query()
+            ->where('purchase_order_id', $purchaseOrder->id)
+            ->where('product_model_id', $productModelId)
+            ->where('item_id', $itemId)
+            ->exists();
 
         if ($alreadyExists) {
-
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'item_id' =>
-                        'This item has already been added for the selected Product Model.',
-                ]);
+            $errors["item_id.$index"] = "Row {$rowNumber}: This item has already been added for the selected Product Model.";
+            continue;
         }
 
+        $supplierItem = $item->suppliers()
+            ->where('suppliers.id', $purchaseOrder->supplier_id)
+            ->where('item_suppliers.status', true)
+            ->first();
 
-        /*
-    |--------------------------------------------------------------------------
-    | Supplier MOQ
-    |--------------------------------------------------------------------------
-    */
+        $supplierUnitPrice = $supplierItem?->pivot?->unit_price;
 
-
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Unit Price
-    |--------------------------------------------------------------------------
-    |
-    | Use the supplier-specific configured price when available.
-    | Otherwise use the manually entered Unit Price.
-    |
-    */
-
-        $supplierUnitPrice =
-            $supplierItem?->pivot?->unit_price;
-
-
-        $unitPrice =
-            $supplierUnitPrice !== null
+        $unitPrice = $supplierUnitPrice !== null
             ? (float) $supplierUnitPrice
-            : (
-                isset($validated['unit_price'])
-                ? (float) $validated['unit_price']
-                : null
-            );
+            : ($unitPriceInput !== null ? (float) $unitPriceInput : null);
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Create Purchase Order Item
-    |--------------------------------------------------------------------------
-    */
-
-        PurchaseOrderItem::create([
-
-            'purchase_order_id' =>
-                $purchaseOrder->id,
-
-            'product_model_id' =>
-                $validated['product_model_id'],
-
-            'item_id' =>
-                $validated['item_id'],
-
-            'ordered_quantity' =>
-                $validated['ordered_quantity'],
-
-            'unit_price' =>
-                $unitPrice,
-
-            'received_quantity' =>
-                0,
-
-            'planned_order_date' =>
-                null,
-
-            'remarks' =>
-                $validated['remarks'] ?? null,
-
-        ]);
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Redirect
-    |--------------------------------------------------------------------------
-    */
-
-        return redirect()
-            ->route(
-                'purchase-orders.show',
-                $purchaseOrder
-            )
-            ->with(
-                'success',
-                'Purchase Order item added successfully.'
-            );
+        $rowsToInsert[] = [
+            'purchase_order_id'  => $purchaseOrder->id,
+            'product_model_id'   => $productModelId,
+            'item_id'            => $itemId,
+            'ordered_quantity'   => $orderedQuantity,
+            'unit_price'         => $unitPrice,
+            'received_quantity'  => 0,
+            'planned_order_date' => null,
+            'remarks'            => $remarks,
+            'created_at'         => now(),
+            'updated_at'         => now(),
+        ];
     }
+
+    if (!empty($errors)) {
+        return back()->withInput()->withErrors($errors);
+    }
+
+    if (empty($rowsToInsert)) {
+        return back()->withInput()->withErrors([
+            'item_id' => 'Please add at least one valid item.',
+        ]);
+    }
+
+    DB::transaction(function () use ($rowsToInsert) {
+        PurchaseOrderItem::insert($rowsToInsert);
+    });
+
+    return redirect()
+        ->route('purchase-orders.show', $purchaseOrder)
+        ->with('success', count($rowsToInsert) . ' item(s) added successfully.');
+}
 
 
     public function edit(

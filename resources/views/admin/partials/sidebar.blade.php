@@ -154,7 +154,7 @@
 
                         <p>
 
-                            M A S T E R  D A T A
+                            M A S T E R &nbsp; D A T A
 
                             <i class="right fas fa-angle-left"></i>
 
@@ -412,8 +412,10 @@
                         <i class="nav-icon fas fa-clipboard-list"></i>
 
                         <p>
-                            I T E M  U S A G E
-                        </p>
+    ITEM&nbsp;&nbsp;&nbsp;USAGE
+</p>
+
+
 
                     </a>
 

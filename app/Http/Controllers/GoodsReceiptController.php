@@ -10,6 +10,7 @@ use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrder;
 use Illuminate\Http\Request;
 use App\Models\PurchaseReturn;
+use App\Models\GoodsReceiptItem;
 
 class GoodsReceiptController extends Controller
 {
@@ -123,18 +124,35 @@ class GoodsReceiptController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $goodsReceipts =
-            GoodsReceipt::with([
-                'purchaseOrder.supplier',
-            ])
-            ->withCount('items')
-            ->withSum(
-                'items as total_received_quantity',
-                'received_quantity'
+
+$goodsReceipts =
+    GoodsReceipt::with([
+        'purchaseOrder.supplier',
+    ])
+    ->withCount('items')
+    ->withSum(
+        'items as total_received_quantity',
+        'received_quantity'
+    )
+    ->addSelect([
+        'total_price' => GoodsReceiptItem::query()
+            ->join(
+                'purchase_order_items',
+                'purchase_order_items.id',
+                '=',
+                'goods_receipt_items.purchase_order_item_id'
             )
-            ->latest('receipt_date')
-            ->latest('id')
-            ->paginate(20);
+            ->whereColumn(
+                'goods_receipt_items.goods_receipt_id',
+                'goods_receipts.id'
+            )
+            ->selectRaw(
+                'SUM(goods_receipt_items.received_quantity * purchase_order_items.unit_price)'
+            ),
+    ])
+    ->latest('receipt_date')
+    ->latest('id')
+    ->paginate(20);
 
 
         /*

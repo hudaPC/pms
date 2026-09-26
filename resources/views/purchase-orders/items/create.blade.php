@@ -389,8 +389,26 @@
             });
 
             addRowBtn.addEventListener('click', function () {
-                addRow();
-            });
+
+    // Get the Product Model selected in the last existing row (if any).
+    const $lastRow = $('#itemsTableBody .item-row').last();
+    const previousProductModelId = $lastRow.length
+        ? $lastRow.find('.product-model-select').val()
+        : '';
+
+    const newRow = addRow();
+    const $newRow = $(newRow);
+
+    if (previousProductModelId) {
+
+        $newRow.find('.product-model-select').val(previousProductModelId);
+
+        // Load items for the new row using that Product Model.
+        loadItemsForRow($newRow, function () {
+            checkForDuplicates();
+        });
+    }
+});
 
 
             /*

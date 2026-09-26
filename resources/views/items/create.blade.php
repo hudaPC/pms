@@ -525,15 +525,15 @@
                     </label>
 
                     <input
-    type="number"
-    name="lead_time_days"
-    id="lead_time_days"
-    value="{{ old('lead_time_days', 60) }}"
-    class="form-control @error('lead_time_days') is-invalid @enderror"
-    min="0"
-    step="1"
-    placeholder="Example: 60"
->
+                        type="number"
+                        name="lead_time_days"
+                        id="lead_time_days"
+                        value="{{ old('lead_time_days', 60) }}"
+                        class="form-control @error('lead_time_days') is-invalid @enderror"
+                        min="0"
+                        step="1"
+                        placeholder="Example: 60"
+                    >
 
                     <small class="form-text text-muted">
                         Base lead time. Preferred supplier lead time can override this.
@@ -563,15 +563,15 @@
                     </label>
 
                     <input
-    type="number"
-    name="order_cycle_days"
-    id="order_cycle_days"
-    value="{{ old('order_cycle_days', 60) }}"
-    class="form-control @error('order_cycle_days') is-invalid @enderror"
-    min="0"
-    step="1"
-    placeholder="Example: 60"
->
+                            type="number"
+                            name="order_cycle_days"
+                            id="order_cycle_days"
+                            value="{{ old('order_cycle_days', 60) }}"
+                            class="form-control @error('order_cycle_days') is-invalid @enderror"
+                            min="0"
+                            step="1"
+                            placeholder="Example: 60"
+                        >
 
                     <small class="form-text text-muted">
                         Normal interval between purchase orders.
@@ -604,7 +604,7 @@
                         type="number"
                         name="order_quantity"
                         id="order_quantity"
-                        value="{{ old('order_quantity', 0) }}"
+                        value="{{ old('order_quantity', 500) }}"
                         class="form-control @error('order_quantity') is-invalid @enderror"
                         min="0"
                         step="0.001"
@@ -643,7 +643,7 @@
                         type="number"
                         name="minimum_stock"
                         id="minimum_stock"
-                        value="{{ old('minimum_stock') }}"
+                        value="{{ old('minimum_stock', 500) }}"
                         class="form-control @error('minimum_stock') is-invalid @enderror"
                         min="0"
                         step="0.001"
@@ -682,7 +682,7 @@
                         type="number"
                         name="maximum_stock"
                         id="maximum_stock"
-                        value="{{ old('maximum_stock') }}"
+                        value="{{ old('maximum_stock', 1500) }}"
                         class="form-control @error('maximum_stock') is-invalid @enderror"
                         min="0"
                         step="0.001"

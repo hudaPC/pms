@@ -10,146 +10,114 @@
 
     <style>
 
-        /*
-        |--------------------------------------------------------------------------
-        | PAGE
-        |--------------------------------------------------------------------------
-        |
-        | IMPORTANT:
-        | The header is approximately 270-290px tall.
-        |
-        | We reserve 300px at the top for it.
-        |
-        */
-
         @page {
-            margin: 315px 30px 50px 30px;
+            margin: 25px 30px 50px 30px;
         }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | BODY
-        |--------------------------------------------------------------------------
-        */
 
         body {
             font-family: DejaVu Sans, sans-serif;
             font-size: 11px;
             color: #000;
-
             margin: 0;
             padding: 0;
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | REPEATING HEADER
-        |--------------------------------------------------------------------------
-        |
-        | IMPORTANT:
-        |
-        | Do NOT use top: 0 here.
-        |
-        | Dompdf positions fixed elements relative to the page content area.
-        | Therefore we pull the header back into the top margin.
-        |
-        */
+        /* =========================================================
+           MAIN PURCHASE ORDER TABLE
+           ========================================================= */
 
-        .page-header {
-            position: fixed;
-
-            top: -290px;
-
-            left: 0;
-            right: 0;
-
+        .po-table {
             width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | COMPANY HEADER IMAGE
-        |--------------------------------------------------------------------------
-        */
+        /* =========================================================
+           REPEATING HEADER
+           ========================================================= */
+
+        .po-header-cell {
+            border: none;
+            padding: 0;
+        }
+
 
         .heading-img {
             width: 100%;
             height: auto;
-
             display: block;
-
             margin: 0 0 5px 0;
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | PURCHASE ORDER TITLE
-        |--------------------------------------------------------------------------
-        */
+        /* =========================================================
+           PURCHASE ORDER TITLE
+           ========================================================= */
 
         .po-title {
             text-align: center;
-
             text-decoration: underline;
 
             font-size: 16px;
 
             line-height: 18px;
 
-            margin: 5px 0 10px 0;
+            margin-top: 8px;
+            margin-bottom: 12px;
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | SUPPLIER / PO INFORMATION
-        |--------------------------------------------------------------------------
-        */
+        /* =========================================================
+           SUPPLIER / PO INFORMATION
+           ========================================================= */
 
         .info-table {
             width: 100%;
-
             border-collapse: collapse;
-
-            margin: 0;
-            padding: 0;
+            margin-bottom: 12px;
         }
 
         .info-table td {
-            vertical-align: top;
+            border: none;
+
+            padding: 0;
 
             font-size: 11px;
 
             line-height: 15px;
 
-            padding: 0;
+            vertical-align: top;
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | ITEMS TABLE
-        |--------------------------------------------------------------------------
-        */
+        /* =========================================================
+           ITEMS TABLE HEADER
+           ========================================================= */
 
-        .items-table {
-    width: 100%;
-    border-collapse: collapse;
+        .items-header th {
+            border: 1px solid #333;
 
-    /* Push table below Supplier / PO information */
-    margin-top: 18px;
-    margin-bottom: 15px;
+            padding: 5px;
 
-    table-layout: fixed;
-}
+            font-size: 10px;
+
+            line-height: 13px;
+
+            background: #f0f0f0;
+
+            text-align: left;
+
+            font-weight: bold;
+        }
 
 
-        .items-table th,
-        .items-table td {
+        /* =========================================================
+           ITEMS
+           ========================================================= */
+
+        .item-row td {
             border: 1px solid #333;
 
             padding: 5px;
@@ -160,105 +128,80 @@
         }
 
 
-        .items-table th {
-            background: #f0f0f0;
-
-            text-align: left;
-
-            font-weight: bold;
-        }
-
-
-        .items-table td.number {
+        .number {
             text-align: right;
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | COLUMN WIDTHS
-        |--------------------------------------------------------------------------
-        */
+        /* =========================================================
+           COLUMN WIDTHS
+           ========================================================= */
 
-        .items-table th:nth-child(1),
-        .items-table td:nth-child(1) {
+        .col-no {
             width: 4%;
             text-align: center;
         }
 
-        .items-table th:nth-child(2),
-        .items-table td:nth-child(2) {
+        .col-model {
             width: 12%;
         }
 
-        .items-table th:nth-child(3),
-        .items-table td:nth-child(3) {
+        .col-code {
             width: 15%;
         }
 
-        .items-table th:nth-child(4),
-        .items-table td:nth-child(4) {
+        .col-name {
             width: 20%;
         }
 
-        .items-table th:nth-child(5),
-        .items-table td:nth-child(5) {
+        .col-date {
             width: 13%;
         }
 
-        .items-table th:nth-child(6),
-        .items-table td:nth-child(6) {
+        .col-qty {
             width: 9%;
         }
 
-        .items-table th:nth-child(7),
-        .items-table td:nth-child(7) {
+        .col-unit {
             width: 13%;
         }
 
-        .items-table th:nth-child(8),
-        .items-table td:nth-child(8) {
+        .col-total {
             width: 14%;
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | DON'T SPLIT TABLE ROWS
-        |--------------------------------------------------------------------------
-        */
+        /* =========================================================
+           DON'T SPLIT ROW
+           ========================================================= */
 
-        .items-table tr {
+        .item-row {
             page-break-inside: avoid;
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | TOTALS
-        |--------------------------------------------------------------------------
-        */
+        /* =========================================================
+           TOTALS
+           ========================================================= */
 
         .footer-table {
             width: 100%;
-
             border-collapse: collapse;
-
-            margin-top: 10px;
+            margin-top: 12px;
         }
 
         .footer-table td {
-            font-size: 11px;
+            border: none;
 
             padding: 3px 0;
+
+            font-size: 11px;
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | AMOUNT IN WORDS
-        |--------------------------------------------------------------------------
-        */
+        /* =========================================================
+           AMOUNT IN WORDS
+           ========================================================= */
 
         .amount-in-words {
             margin-top: 8px;
@@ -268,16 +211,12 @@
             line-height: 16px;
 
             word-wrap: break-word;
-
-            white-space: normal;
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | SIGNATURE
-        |--------------------------------------------------------------------------
-        */
+        /* =========================================================
+           SIGNATURE
+           ========================================================= */
 
         .signature-box {
             width: 250px;
@@ -289,7 +228,6 @@
             margin-top: 50px;
         }
 
-
         .signature-line {
             border-top: 1px solid #000;
 
@@ -300,130 +238,195 @@
             font-size: 11px;
         }
 
-
         .clearfix {
             clear: both;
         }
 
     </style>
-
 </head>
 
 
 <body>
 
 
-    {{-- =====================================================================
-         REPEATING HEADER
-         ===================================================================== --}}
+    {{-- =============================================================
+         ONE TABLE
+         THE THEAD WILL REPEAT ON EVERY PAGE
+         ============================================================= --}}
 
-    <div class="page-header">
-
-
-        {{-- COMPANY HEADING IMAGE --}}
-        @if ($headingImageData)
-
-            <img
-                src="{{ $headingImageData }}"
-                class="heading-img"
-            >
-
-        @else
-
-            <p style="color:red;">
-                Heading image not found at public/images/heading.jpg
-            </p>
-
-        @endif
+    <table class="po-table">
 
 
-        {{-- PURCHASE ORDER TITLE --}}
-        <div class="po-title">
-            PURCHASE ORDER
-        </div>
-
-
-        {{-- SUPPLIER / PO INFORMATION --}}
-        <table class="info-table">
-
-            <tr>
-
-                {{-- LEFT --}}
-                <td style="width: 50%;">
-
-                    <strong>Supplier:</strong>
-                    {{ $purchaseOrder->supplier->name ?? '-' }}
-
-                    <br>
-
-                    <strong>Contact Person:</strong>
-                    {{ $purchaseOrder->supplier->contact_person ?? '-' }}
-
-                </td>
-
-
-                {{-- RIGHT --}}
-                <td
-                    style="
-                        width: 50%;
-                        text-align: right;
-                    "
-                >
-
-                    <strong>PO No:</strong>
-                    {{ $purchaseOrder->po_number }}
-
-                    <br>
-
-                    <strong>Date:</strong>
-
-                    {{ $purchaseOrder->order_date
-                        ? $purchaseOrder->order_date->format('d-M-Y')
-                        : '-'
-                    }}
-
-                </td>
-
-            </tr>
-
-        </table>
-
-
-    </div>
-
-
-    {{-- =====================================================================
-         ITEMS
-         ===================================================================== --}}
-
-    <table class="items-table">
+        {{-- =========================================================
+             REPEATING HEADER
+             ========================================================= --}}
 
         <thead>
 
+
+            {{-- COMPANY HEADING --}}
             <tr>
 
-                <th>#</th>
+                <td
+                    colspan="8"
+                    class="po-header-cell"
+                >
 
-                <th>Model Name</th>
+                    @if ($headingImageData)
 
-                <th>Item Code</th>
+                        <img
+                            src="{{ $headingImageData }}"
+                            class="heading-img"
+                        >
 
-                <th>Item Name</th>
+                    @else
 
-                <th>Delivery Date</th>
+                        <p style="color:red;">
+                            Heading image not found at public/images/heading.jpg
+                        </p>
 
-                <th>Order Qty</th>
+                    @endif
 
-                <th>Unit Price</th>
-
-                <th>Total Price</th>
+                </td>
 
             </tr>
+
+
+            {{-- PURCHASE ORDER TITLE --}}
+            <tr>
+
+                <td
+                    colspan="8"
+                    class="po-header-cell"
+                >
+
+                    <div class="po-title">
+                        PURCHASE ORDER
+                    </div>
+
+                </td>
+
+            </tr>
+
+
+            {{-- SUPPLIER / PO INFORMATION --}}
+            <tr>
+
+                <td
+                    colspan="8"
+                    class="po-header-cell"
+                >
+
+                    <table class="info-table">
+
+                        <tr>
+
+                            {{-- LEFT --}}
+                            <td style="width: 50%;">
+
+                                <strong>
+                                    Supplier:
+                                </strong>
+
+                                {{ $purchaseOrder->supplier->name ?? '-' }}
+
+                                <br>
+
+                                <strong>
+                                    Contact Person:
+                                </strong>
+
+                                {{ $purchaseOrder->supplier->contact_person ?? '-' }}
+
+                            </td>
+
+
+                            {{-- RIGHT --}}
+                            <td
+                                style="
+                                    width: 50%;
+                                    text-align: right;
+                                "
+                            >
+
+                                <strong>
+                                    PO No:
+                                </strong>
+
+                                {{ $purchaseOrder->po_number }}
+
+                                <br>
+
+                                <strong>
+                                    Date:
+                                </strong>
+
+                                {{ $purchaseOrder->order_date
+                                    ? $purchaseOrder->order_date->format('d-M-Y')
+                                    : '-'
+                                }}
+
+                            </td>
+
+                        </tr>
+
+                    </table>
+
+                </td>
+
+            </tr>
+
+
+            {{-- =====================================================
+                 ITEMS COLUMN HEADER
+                 ===================================================== --}}
+
+            <tr class="items-header">
+
+                <th class="col-no">
+                    #
+                </th>
+
+                <th class="col-model">
+                    Model Name
+                </th>
+
+                <th class="col-code">
+                    Item Code
+                </th>
+
+                <th class="col-name">
+                    Item Name
+                </th>
+
+                <th class="col-date">
+                    Delivery Date
+                </th>
+
+                <th class="col-qty">
+                    Order Qty
+                </th>
+
+                <th class="col-unit">
+                    Unit Price
+                </th>
+
+                <th class="col-total">
+                    Total Price
+                </th>
+
+            </tr>
+
 
         </thead>
 
 
+        {{-- =========================================================
+             ITEMS
+             ========================================================= --}}
+
         <tbody>
+
 
             @foreach ($purchaseOrder->items as $poItem)
 
@@ -437,34 +440,35 @@
                 @endphp
 
 
-                <tr>
+                <tr class="item-row">
 
-                    {{-- # --}}
-                    <td>
+
+                    {{-- NUMBER --}}
+                    <td class="col-no">
                         {{ $loop->iteration }}
                     </td>
 
 
                     {{-- MODEL --}}
-                    <td>
+                    <td class="col-model">
                         {{ $poItem->productModel->model_code ?? '-' }}
                     </td>
 
 
                     {{-- ITEM CODE --}}
-                    <td>
+                    <td class="col-code">
                         {{ $poItem->item->item_code ?? '-' }}
                     </td>
 
 
                     {{-- ITEM NAME --}}
-                    <td>
+                    <td class="col-name">
                         {{ $poItem->item->item_name ?? '-' }}
                     </td>
 
 
                     {{-- DELIVERY DATE --}}
-                    <td>
+                    <td class="col-date">
                         {{ $purchaseOrder->expected_delivery_date
                             ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
                             : '-'
@@ -473,36 +477,52 @@
 
 
                     {{-- QUANTITY --}}
-                    <td class="number">
+                    <td class="col-qty number">
                         {{ number_format($poItem->ordered_quantity, 0) }}
                     </td>
 
 
                     {{-- UNIT PRICE --}}
-                    <td class="number">
+                    <td class="col-unit number">
+
                         $
-                        {{ number_format($poItem->unit_price ?? 0, 4) }}
+
+                        {{ number_format(
+                            $poItem->unit_price ?? 0,
+                            4
+                        ) }}
+
                     </td>
 
 
                     {{-- TOTAL --}}
-                    <td class="number">
+                    <td class="col-total number">
+
                         $
-                        {{ number_format($lineTotal, 4) }}
+
+                        {{ number_format(
+                            $lineTotal,
+                            4
+                        ) }}
+
                     </td>
+
 
                 </tr>
 
+
             @endforeach
 
+
         </tbody>
+
 
     </table>
 
 
-    {{-- =====================================================================
+    {{-- =============================================================
          TOTALS
-         ===================================================================== --}}
+         ============================================================= --}}
 
     <table class="footer-table">
 
@@ -541,9 +561,9 @@
     </table>
 
 
-    {{-- =====================================================================
-         AMOUNT IN WORDS
-         ===================================================================== --}}
+    {{-- =============================================================
+         TOTAL IN WORDS
+         ============================================================= --}}
 
     <p class="amount-in-words">
 
@@ -556,14 +576,16 @@
     </p>
 
 
-    {{-- =====================================================================
+    {{-- =============================================================
          SIGNATURE
-         ===================================================================== --}}
+         ============================================================= --}}
 
     <div class="signature-box">
 
         <div class="signature-line">
+
             Authorized Signature
+
         </div>
 
     </div>
@@ -572,9 +594,9 @@
     <div class="clearfix"></div>
 
 
-    {{-- =====================================================================
+    {{-- =============================================================
          PAGE NUMBER
-         ===================================================================== --}}
+         ============================================================= --}}
 
     <script type="text/php">
 
@@ -595,11 +617,13 @@
                 $size
             );
 
-            $x = $pdf->get_width()
+            $x =
+                $pdf->get_width()
                 - $width
                 - 25;
 
-            $y = $pdf->get_height()
+            $y =
+                $pdf->get_height()
                 - 30;
 
             $pdf->page_text(

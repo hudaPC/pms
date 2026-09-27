@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\SupplierInvoice;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PurchaseOrderController extends Controller
 {
@@ -182,12 +183,12 @@ class PurchaseOrderController extends Controller
                         ->with(
                             'warning',
                             'This Purchase Order is scheduled for '
-                                . $plannedDate->format('d-M-Y')
-                                . '. It cannot be created yet. '
-                                . $daysUntilOrder
-                                . ' day'
-                                . ($daysUntilOrder === 1 ? '' : 's')
-                                . ' remaining.'
+                            . $plannedDate->format('d-M-Y')
+                            . '. It cannot be created yet. '
+                            . $daysUntilOrder
+                            . ' day'
+                            . ($daysUntilOrder === 1 ? '' : 's')
+                            . ' remaining.'
                         );
                 }
             }
@@ -214,17 +215,17 @@ class PurchaseOrderController extends Controller
 
                 $planningSuppliers =
                     $planningItem->suppliers()
-                    ->where(
-                        'item_suppliers.status',
-                        true
-                    )
-                    ->orderByDesc(
-                        'item_suppliers.is_preferred'
-                    )
-                    ->orderBy(
-                        'suppliers.name'
-                    )
-                    ->get();
+                        ->where(
+                            'item_suppliers.status',
+                            true
+                        )
+                        ->orderByDesc(
+                            'item_suppliers.is_preferred'
+                        )
+                        ->orderBy(
+                            'suppliers.name'
+                        )
+                        ->get();
             }
 
 
@@ -236,15 +237,15 @@ class PurchaseOrderController extends Controller
 
             $preferredSupplier =
                 $planningSuppliers
-                ->first(
-                    function ($supplier) {
+                    ->first(
+                        function ($supplier) {
 
-                        return (bool)
-                        $supplier
-                            ->pivot
-                            ->is_preferred;
-                    }
-                );
+                            return (bool) 
+                                $supplier
+                                    ->pivot
+                                    ->is_preferred;
+                        }
+                    );
 
 
             /*
@@ -280,8 +281,8 @@ class PurchaseOrderController extends Controller
 
                 if (
                     $preferredSupplier
-                    ->pivot
-                    ->lead_time_days !== null
+                        ->pivot
+                        ->lead_time_days !== null
                 ) {
 
                     $planningSupplierLeadTimeDays =
@@ -290,11 +291,11 @@ class PurchaseOrderController extends Controller
                             ->lead_time_days;
                 } elseif (
                     $planningItem
-                    ->purchaseSettings
+                        ->purchaseSettings
                     &&
                     $planningItem
-                    ->purchaseSettings
-                    ->lead_time_days !== null
+                        ->purchaseSettings
+                        ->lead_time_days !== null
                 ) {
 
                     $planningSupplierLeadTimeDays =
@@ -316,8 +317,8 @@ class PurchaseOrderController extends Controller
 
                 $planningSupplierUnitPrice =
                     $preferredSupplier
-                    ->pivot
-                    ->unit_price !== null
+                        ->pivot
+                        ->unit_price !== null
                     ? (float) $preferredSupplier
                         ->pivot
                         ->unit_price
@@ -332,8 +333,8 @@ class PurchaseOrderController extends Controller
 
                 $planningSupplierMinimumOrderQty =
                     $preferredSupplier
-                    ->pivot
-                    ->minimum_order_qty !== null
+                        ->pivot
+                        ->minimum_order_qty !== null
                     ? (float) $preferredSupplier
                         ->pivot
                         ->minimum_order_qty
@@ -361,10 +362,10 @@ class PurchaseOrderController extends Controller
                         Carbon::parse(
                             $plannedOrderDate
                         )
-                        ->addDays(
-                            $planningSupplierLeadTimeDays
-                        )
-                        ->format('Y-m-d');
+                            ->addDays(
+                                $planningSupplierLeadTimeDays
+                            )
+                            ->format('Y-m-d');
                 }
             }
         }
@@ -564,7 +565,7 @@ class PurchaseOrderController extends Controller
                     ->withInput()
                     ->withErrors([
                         'planned_order_date' =>
-                        'The planned order date is required for Purchase Planning.',
+                            'The planned order date is required for Purchase Planning.',
                     ]);
             }
 
@@ -578,7 +579,7 @@ class PurchaseOrderController extends Controller
                     ->withInput()
                     ->withErrors([
                         'planned_order_date' =>
-                        'This Purchase Order is scheduled for '
+                            'This Purchase Order is scheduled for '
                             . $plannedDate->format('d-M-Y')
                             . ' and cannot be created yet.',
                     ]);
@@ -660,6 +661,163 @@ class PurchaseOrderController extends Controller
             compact('purchaseOrder')
         );
     }
+    public function pdf(PurchaseOrder $purchaseOrder)
+    {
+        $purchaseOrder->load([
+            'supplier',
+            'items.item',
+        ]);
+
+        $totalQty = $purchaseOrder->items->sum('ordered_quantity');
+
+        $totalPrice = $purchaseOrder->items->sum(function ($item) {
+            return (float) $item->ordered_quantity * (float) ($item->unit_price ?? 0);
+        });
+
+       $totalPriceInWords = $this->amountToWords($totalPrice);
+
+        // Convert the heading image to base64 so DomPDF can embed it reliably
+        $headingPath = public_path('images/heading.jpg');
+
+        $headingImageData = file_exists($headingPath)
+            ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($headingPath))
+            : null;
+
+        $pdf = Pdf::setOptions(['isPhpEnabled' => true]);
+
+        $pdf = Pdf::loadView('purchase-orders.pdf', compact(
+            'purchaseOrder',
+            'totalQty',
+            'totalPrice',
+            'totalPriceInWords',
+            'headingImageData'
+        ))->setPaper('a4', 'portrait');
+        $pdf->setOption('isPhpEnabled', true);
+
+        $safeFileName = str_replace(['/', '\\'], '-', $purchaseOrder->po_number);
+
+        return $pdf->download('PO-' . $safeFileName . '.pdf');
+    }
+
+
+    private function amountToWords(float $amount): string
+    {
+        $amount = round($amount, 2);
+
+        $whole = (int) floor($amount);
+        $cents = (int) round(($amount - $whole) * 100);
+
+        if ($cents === 100) {
+            $whole++;
+            $cents = 0;
+        }
+
+        $wholeWords = $whole > 0 ? $this->numberToWords($whole) : '';
+        $centsWords = $cents > 0 ? $this->threeDigitsToWords($cents) . ' Cents' : '';
+
+        if ($wholeWords !== '' && $centsWords !== '') {
+            return $wholeWords . ' and ' . $centsWords . ' Only';
+        }
+
+        if ($wholeWords !== '') {
+            return $wholeWords . ' Only';
+        }
+
+        if ($centsWords !== '') {
+            return $centsWords . ' Only';
+        }
+
+        return 'Zero Only';
+    }
+
+    private function numberToWords(int $number): string
+    {
+        if ($number === 0) {
+            return '';
+        }
+
+        $crore = intdiv($number, 10000000);
+        $number %= 10000000;
+
+        $lakh = intdiv($number, 100000);
+        $number %= 100000;
+
+        $thousand = intdiv($number, 1000);
+        $number %= 1000;
+
+        $hundred = $number;
+
+        $words = '';
+
+        if ($crore > 0) {
+            $words .= $this->threeDigitsToWords($crore) . ' Crore ';
+        }
+
+        if ($lakh > 0) {
+            $words .= $this->threeDigitsToWords($lakh) . ' Lakh ';
+        }
+
+        if ($thousand > 0) {
+            $words .= $this->threeDigitsToWords($thousand) . ' Thousand ';
+        }
+
+        if ($hundred > 0) {
+            $words .= $this->threeDigitsToWords($hundred);
+        }
+
+        return trim($words);
+    }
+
+    private function threeDigitsToWords(int $number): string
+    {
+        $ones = [
+            '',
+            'One',
+            'Two',
+            'Three',
+            'Four',
+            'Five',
+            'Six',
+            'Seven',
+            'Eight',
+            'Nine',
+            'Ten',
+            'Eleven',
+            'Twelve',
+            'Thirteen',
+            'Fourteen',
+            'Fifteen',
+            'Sixteen',
+            'Seventeen',
+            'Eighteen',
+            'Nineteen',
+        ];
+
+        $tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+        $str = '';
+
+        if ($number >= 100) {
+            $str .= $ones[intdiv($number, 100)] . ' Hundred ';
+            $number %= 100;
+        }
+
+        if ($number > 0) {
+            $str .= $this->twoDigitsToWords($number, $ones, $tens);
+        }
+
+        return trim($str);
+    }
+
+    private function twoDigitsToWords(int $number, array $ones, array $tens): string
+    {
+        if ($number < 20) {
+            return $ones[$number];
+        }
+
+        return trim($tens[intdiv($number, 10)] . ' ' . $ones[$number % 10]);
+    }
+
     /*
 |--------------------------------------------------------------------------
 | Edit Purchase Order
@@ -796,16 +954,16 @@ class PurchaseOrderController extends Controller
         $purchaseOrder->update([
 
             'supplier_id' =>
-            $validated['supplier_id'],
+                $validated['supplier_id'],
 
             'order_date' =>
-            $validated['order_date'],
+                $validated['order_date'],
 
             'expected_delivery_date' =>
-            $validated['expected_delivery_date'] ?? null,
+                $validated['expected_delivery_date'] ?? null,
 
             'remarks' =>
-            $validated['remarks'] ?? null,
+                $validated['remarks'] ?? null,
 
         ]);
 
@@ -860,7 +1018,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'confirm' =>
-                'The purchase order cannot be confirmed because it has no items.',
+                    'The purchase order cannot be confirmed because it has no items.',
             ]);
         }
 
@@ -875,7 +1033,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'confirm' =>
-                'Expected Delivery Date is required before confirming the purchase order.',
+                    'Expected Delivery Date is required before confirming the purchase order.',
             ]);
         }
 
@@ -888,12 +1046,12 @@ class PurchaseOrderController extends Controller
 
         if (
             $purchaseOrder->expected_delivery_date
-            ->lt($purchaseOrder->order_date)
+                ->lt($purchaseOrder->order_date)
         ) {
 
             return back()->withErrors([
                 'confirm' =>
-                'Expected Delivery Date cannot be earlier than the Order Date.',
+                    'Expected Delivery Date cannot be earlier than the Order Date.',
             ]);
         }
 
@@ -910,7 +1068,7 @@ class PurchaseOrderController extends Controller
 
                 return back()->withErrors([
                     'confirm' =>
-                    'All purchase order items must have a valid ordered quantity.',
+                        'All purchase order items must have a valid ordered quantity.',
                 ]);
             }
         }
@@ -968,7 +1126,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'cancel' =>
-                'This Purchase Order has already been cancelled.',
+                    'This Purchase Order has already been cancelled.',
             ]);
         }
 
@@ -992,7 +1150,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'cancel' =>
-                'This Purchase Order cannot be cancelled because goods have already been received against it.',
+                    'This Purchase Order cannot be cancelled because goods have already been received against it.',
             ]);
         }
 
@@ -1016,7 +1174,7 @@ class PurchaseOrderController extends Controller
 
             return back()->withErrors([
                 'cancel' =>
-                'This Purchase Order cannot be cancelled in its current status.',
+                    'This Purchase Order cannot be cancelled in its current status.',
             ]);
         }
 
@@ -1043,8 +1201,8 @@ class PurchaseOrderController extends Controller
                         'purchase_order_id',
                         $purchaseOrder->id
                     )
-                    ->lockForUpdate()
-                    ->first();
+                        ->lockForUpdate()
+                        ->first();
             }
             /*
                |--------------------------------------------------------------------------

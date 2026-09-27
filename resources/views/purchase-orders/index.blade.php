@@ -149,31 +149,35 @@
 
                                     @if ($purchaseOrder->status === 'draft')
 
-    <a
-        href="{{ route(
-            'purchase-orders.edit',
-            $purchaseOrder
-        ) }}"
-        class="btn btn-sm btn-warning"
-    >
+                                        <a
+                                            href="{{ route(
+                                                'purchase-orders.edit',
+                                                $purchaseOrder
+                                            ) }}"
+                                            class="btn btn-sm btn-warning"
+                                        >
 
-        <i class="fas fa-edit"></i>
+                                            <i class="fas fa-edit"></i>
 
-        Edit
+                                            Edit
 
-    </a>
+                                        </a>
 
-@else
+                                    @else
 
-    <span class="badge badge-secondary">
+                                        <span class="badge badge-secondary">
 
-        <i class="fas fa-lock mr-1"></i>
+                                            <i class="fas fa-lock mr-1"></i>
 
-        Locked
+                                            Locked
 
-    </span>
+                                        </span>
 
-@endif
+                                    @endif
+                                    <a href="{{ route('purchase-orders.pdf', $purchaseOrder) }}" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-file-pdf"></i>
+                                        PDF
+                                    </a>
                                 </td>
 
                             </tr>

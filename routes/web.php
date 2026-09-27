@@ -193,8 +193,8 @@ Route::middleware(['auth'])->group(function () {
             'createPurchaseOrder'
         ]
     )->name(
-        'supplier-invoices.create-purchase-order'
-    );
+            'supplier-invoices.create-purchase-order'
+        );
 
     Route::resource(
         'supplier-invoices',
@@ -234,8 +234,8 @@ Route::middleware(['auth'])->group(function () {
         '/supplier-invoices/{supplierInvoice}/product-models/{productModel}/items',
         [SupplierInvoiceItemController::class, 'itemsByProductModel']
     )->name(
-        'supplier-invoices.product-model-items'
-    );
+            'supplier-invoices.product-model-items'
+        );
     Route::post(
         '/supplier-invoices/{supplierInvoice}/items',
         [SupplierInvoiceItemController::class, 'store']
@@ -278,8 +278,8 @@ Route::middleware(['auth'])->group(function () {
         '/stock-adjustments/product-models/{productModel}/items',
         [StockAdjustmentController::class, 'itemsByProductModel']
     )->name(
-        'stock-adjustments.product-model-items'
-    );
+            'stock-adjustments.product-model-items'
+        );
 
     Route::get(
         '/stock-adjustments',
@@ -622,6 +622,15 @@ Route::middleware(['auth', 'admin'])->group(function () {
         '/purchase-orders/{purchaseOrder}/cancel',
         [PurchaseOrderController::class, 'cancel']
     )->name('purchase-orders.cancel');
+    
+    //PDF generation route for purchase orders
+    Route::get(
+        '/purchase-orders/{purchaseOrder}/pdf',
+        [PurchaseOrderController::class, 'pdf']
+    )->name('purchase-orders.pdf');
+    Route::get('purchase-orders/{purchaseOrder}/pdf', [PurchaseOrderController::class, 'pdf'])
+        ->name('purchase-orders.pdf');
+
 
     //Goods RECEIPT
 
@@ -746,7 +755,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     Route::get('/reporting/po-tracking/items/{purchaseOrder}', [ReportingController::class, 'poTrackingItems'])
         ->name('reporting.po-tracking.items');
-        Route::get('/reporting/po-tracking/item-history/{poItem}', [App\Http\Controllers\ReportingController::class, 'poItemHistory'])
-    ->name('reporting.po-tracking.item-history');
-    
+    Route::get('/reporting/po-tracking/item-history/{poItem}', [App\Http\Controllers\ReportingController::class, 'poItemHistory'])
+        ->name('reporting.po-tracking.item-history');
+
 });

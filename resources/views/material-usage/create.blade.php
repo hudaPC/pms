@@ -7,8 +7,8 @@
     <div class="container-fluid py-4">
 
         {{-- =========================================================
-         PAGE HEADER
-    ========================================================= --}}
+        PAGE HEADER
+        ========================================================= --}}
 
         <div class="d-flex justify-content-between align-items-center mb-4">
 
@@ -34,8 +34,8 @@
 
 
         {{-- =========================================================
-         VALIDATION ERRORS
-    ========================================================= --}}
+        VALIDATION ERRORS
+        ========================================================= --}}
 
         @if ($errors->any())
 
@@ -59,8 +59,8 @@
 
 
         {{-- =========================================================
-         MAIN FORM
-    ========================================================= --}}
+        MAIN FORM
+        ========================================================= --}}
 
         <form action="{{ route('material-usage.store') }}" method="POST" id="materialUsageForm">
 
@@ -68,8 +68,8 @@
 
 
             {{-- =====================================================
-             COMMON ISSUE INFORMATION
-        ===================================================== --}}
+            COMMON ISSUE INFORMATION
+            ===================================================== --}}
 
             <div class="card card-primary card-outline">
 
@@ -190,7 +190,8 @@
 
                                 </label>
 
-                                <textarea name="remarks" id="remarks" rows="2" class="form-control @error('remarks') is-invalid @enderror"
+                                <textarea name="remarks" id="remarks" rows="2"
+                                    class="form-control @error('remarks') is-invalid @enderror"
                                     placeholder="Optional remarks for this material issue">{{ old('remarks') }}</textarea>
 
                                 @error('remarks')
@@ -211,8 +212,8 @@
 
 
             {{-- =====================================================
-             MATERIAL ITEMS
-        ===================================================== --}}
+            MATERIAL ITEMS
+            ===================================================== --}}
 
             <div class="card card-success card-outline">
 
@@ -330,8 +331,8 @@
 
 
                 {{-- =================================================
-                 FORM FOOTER
-            ================================================= --}}
+                FORM FOOTER
+                ================================================= --}}
 
                 <div class="card-footer text-right">
 
@@ -349,7 +350,7 @@
 
                     </button>
 
-                  
+
 
                 </div>
 
@@ -361,11 +362,11 @@
 
 
     {{-- =============================================================
-     JAVASCRIPT
-============================================================= --}}
+    JAVASCRIPT
+    ============================================================= --}}
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
 
             'use strict';
 
@@ -377,15 +378,15 @@
             */
 
             const productModels =
-                {{ Illuminate\Support\Js::from(
-                    $productModels->map(
-                            fn($model) => [
-                                'id' => $model->id,
-                                'model_code' => $model->model_code,
-                                'model_name' => $model->model_name,
-                            ],
-                        )->values(),
-                ) }};
+                    {{ Illuminate\Support\Js::from(
+        $productModels->map(
+            fn($model) => [
+                'id' => $model->id,
+                'model_code' => $model->model_code,
+                'model_name' => $model->model_name,
+            ],
+        )->values(),
+    ) }};
 
 
             /*
@@ -404,8 +405,8 @@
             */
 
             const itemsUrlTemplate = @json(route('material-usage.product-model-items', [
-                    'productModel' => '__PRODUCT_MODEL_ID__',
-                ]));
+                'productModel' => '__PRODUCT_MODEL_ID__',
+            ]));
 
 
             /*
@@ -465,7 +466,7 @@
                 );
 
 
-                productModels.forEach(function(model) {
+                productModels.forEach(function (model) {
 
                     let label = model.model_code;
 
@@ -562,7 +563,7 @@
 
                     allowClear: true,
 
-                    templateResult: function(option) {
+                    templateResult: function (option) {
 
                         if (!option.id) {
 
@@ -788,7 +789,7 @@
                     dataType: 'json',
 
 
-                    success: function(response) {
+                    success: function (response) {
 
                         /*
                         | Ignore results if the row was removed
@@ -855,7 +856,7 @@
                         }
 
 
-                        items.forEach(function(item) {
+                        items.forEach(function (item) {
 
                             const option = $('<option>', {
 
@@ -916,7 +917,7 @@
                     },
 
 
-                    error: function(xhr, status) {
+                    error: function (xhr, status) {
 
                         if (status === 'abort') {
 
@@ -1201,7 +1202,7 @@
                 | Product Model Change
                 */
 
-                productModelSelect.on('change', function() {
+                productModelSelect.on('change', function () {
 
                     loadItemsByProductModel(row);
 
@@ -1212,7 +1213,7 @@
                 | Item Change
                 */
 
-                itemSelect.on('change', function() {
+                itemSelect.on('change', function () {
 
                     showCurrentStock(row);
 
@@ -1223,7 +1224,7 @@
                 | Remove Row
                 */
 
-                removeButton.on('click', function() {
+                removeButton.on('click', function () {
 
                     const request = row.data('itemsRequest');
 
@@ -1285,7 +1286,7 @@
 
                 materialItemsBody.children('tr').each(
 
-                    function(index) {
+                    function (index) {
 
                         $(this).find('.row-number').text(
 
@@ -1306,9 +1307,23 @@
             |--------------------------------------------------------------------------
             */
 
-            addMaterialRowButton.on('click', function() {
+            addMaterialRowButton.on('click', function () {
 
-                addMaterialRow();
+                /*
+                | Get the Product Model selected in the last existing row (if any).
+                */
+
+                const lastRow = materialItemsBody.children('tr').last();
+
+                const previousProductModelId =
+
+                    lastRow.length ?
+
+                        lastRow.find('.product-model-select').val() :
+
+                        '';
+
+                addMaterialRow(previousProductModelId);
 
             });
 
@@ -1330,7 +1345,7 @@
 
             if (restoredItems.length > 0) {
 
-                restoredItems.forEach(function(item) {
+                restoredItems.forEach(function (item) {
 
                     addMaterialRow(
 

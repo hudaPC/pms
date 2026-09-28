@@ -113,16 +113,6 @@
 
                 @php
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Master Data
-                    |--------------------------------------------------------------------------
-                    |
-                    | Item-specific Purchase Planning / Usage pages should
-                    | NOT activate Item Master.
-                    |
-                    */
-
                     $masterItemsActive =
                         request()->routeIs('items.index') ||
                         request()->routeIs('items.create') ||
@@ -130,11 +120,15 @@
                         request()->routeIs('items.edit') ||
                         request()->is('items/*/suppliers*');
 
+                    $quickEditActive =
+                        request()->routeIs('items.quick-edit');
+
                     $masterDataActive =
                         request()->is('categories*') ||
                         request()->is('units*') ||
                         request()->is('suppliers*') ||
-                        $masterItemsActive;
+                        $masterItemsActive ||
+                        $quickEditActive;
 
                 @endphp
 
@@ -213,7 +207,22 @@
                             </a>
 
                         </li>
+                        {{-- Quick Edit Items --}}
 
+                        <li class="nav-item">
+
+                            <a href="{{  url('items/quick-edit') }}" class="nav-link
+                            {{ $quickEditActive ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon"></i>
+
+                                <p>
+                                    Quick Edit
+                                </p>
+
+                            </a>
+
+                        </li>
 
                         {{-- Suppliers --}}
 

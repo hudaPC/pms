@@ -309,22 +309,22 @@ class ItemController extends Controller
     */
 
                 'opening_stock' =>
-                $validated['opening_stock'] ?? 0,
+                    $validated['opening_stock'] ?? 0,
 
                 'lead_time_days' =>
-                $validated['lead_time_days'] ?? 60,
+                    $validated['lead_time_days'] ?? 60,
 
                 'order_cycle_days' =>
-                $validated['order_cycle_days'] ?? 60,
+                    $validated['order_cycle_days'] ?? 60,
 
                 'order_quantity' =>
-                $validated['order_quantity'] ?? 0,
+                    $validated['order_quantity'] ?? 0,
 
                 'minimum_stock' =>
-                $validated['minimum_stock'] ?? null,
+                    $validated['minimum_stock'] ?? null,
 
                 'maximum_stock' =>
-                $validated['maximum_stock'] ?? null,
+                    $validated['maximum_stock'] ?? null,
 
 
                 /*
@@ -343,47 +343,47 @@ class ItemController extends Controller
                 'planning_start_date' => null,
             ]);
 
-/*
-|--------------------------------------------------------------------------
-| Create Opening Stock Movement
-|--------------------------------------------------------------------------
-*/
+            /*
+            |--------------------------------------------------------------------------
+            | Create Opening Stock Movement
+            |--------------------------------------------------------------------------
+            */
 
-$openingStock =
-    (float) ($validated['opening_stock'] ?? 0);
+            $openingStock =
+                (float) ($validated['opening_stock'] ?? 0);
 
-if ($openingStock > 0) {
+            if ($openingStock > 0) {
 
-    StockMovement::create([
+                StockMovement::create([
 
-        'item_id' =>
-            $item->id,
+                    'item_id' =>
+                        $item->id,
 
-        'movement_date' =>
-            now()->toDateString(),
+                    'movement_date' =>
+                        now()->toDateString(),
 
-        'movement_type' =>
-            'opening_stock',
+                    'movement_type' =>
+                        'opening_stock',
 
-        'direction' =>
-            'in',
+                    'direction' =>
+                        'in',
 
-        'quantity' =>
-            $openingStock,
+                    'quantity' =>
+                        $openingStock,
 
-        'source_type' =>
-            'item',
+                    'source_type' =>
+                        'item',
 
-        'source_id' =>
-            $item->id,
+                    'source_id' =>
+                        $item->id,
 
-        'reference' =>
-            'Opening Stock',
+                    'reference' =>
+                        'Opening Stock',
 
-        'remarks' =>
-            'Initial opening stock created with item.',
-    ]);
-}
+                    'remarks' =>
+                        'Initial opening stock created with item.',
+                ]);
+            }
             /*
             |--------------------------------------------------------------------------
             | Return Newly Created Item
@@ -437,7 +437,7 @@ if ($openingStock > 0) {
 
         $commonPlanning =
             $itemPurchasePlanningService
-            ->calculate($item);
+                ->calculate($item);
 
         $leadTimeDays =
             $commonPlanning['has_settings']
@@ -453,10 +453,10 @@ if ($openingStock > 0) {
 
         $productionDemand =
             $itemPurchasePlanningService
-            ->getProductionDemand(
-                $item,
-                $leadTimeDays
-            );
+                ->getProductionDemand(
+                    $item,
+                    $leadTimeDays
+                );
 
 
         /*
@@ -490,8 +490,8 @@ if ($openingStock > 0) {
 
         $productModels =
             ProductModel::where('status', true)
-            ->orderBy('model_code')
-            ->get();
+                ->orderBy('model_code')
+                ->get();
 
 
         /*
@@ -502,8 +502,8 @@ if ($openingStock > 0) {
 
         $categories =
             Category::where('status', true)
-            ->orderBy('name')
-            ->get();
+                ->orderBy('name')
+                ->get();
 
 
         /*
@@ -514,8 +514,8 @@ if ($openingStock > 0) {
 
         $units =
             Unit::where('status', true)
-            ->orderBy('name')
-            ->get();
+                ->orderBy('name')
+                ->get();
 
 
         /*
@@ -526,8 +526,8 @@ if ($openingStock > 0) {
 
         $suppliers =
             Supplier::where('status', true)
-            ->orderBy('name')
-            ->get();
+                ->orderBy('name')
+                ->get();
 
 
         /*
@@ -547,466 +547,462 @@ if ($openingStock > 0) {
     /**
      * Update the specified item.
      */
-   public function update(
-    Request $request,
-    Item $item,
-    ItemPurchasePlanningService $itemPurchasePlanningService
-) {
-    /*
-    |--------------------------------------------------------------------------
-    | Validation
-    |--------------------------------------------------------------------------
-    */
-
-    $validated = $request->validate([
-
-        'product_model_id' => [
-            'nullable',
-            'exists:product_models,id',
-        ],
-
-        /*
-        |--------------------------------------------------------------------------
-        | Item Information
-        |--------------------------------------------------------------------------
-        */
-
-        'item_code' => [
-            'required',
-            'string',
-            'max:50',
-
-            Rule::unique('items', 'item_code')
-                ->where(function ($query) use ($request) {
-
-                    return $query->where(
-                        'product_model_id',
-                        $request->product_model_id
-                    );
-
-                })
-                ->ignore($item->id),
-        ],
-
-        'item_name' => [
-            'required',
-            'string',
-            'max:200',
-        ],
-
-        'category_id' => [
-            'required',
-            'exists:categories,id',
-        ],
-
-        'unit_id' => [
-            'required',
-            'exists:units,id',
-        ],
-
-        'default_supplier_id' => [
-            'nullable',
-            'exists:suppliers,id',
-        ],
-
-        'description' => [
-            'nullable',
-            'string',
-        ],
-
-        'status' => [
-            'nullable',
-            'boolean',
-        ],
-
-        /*
-        |--------------------------------------------------------------------------
-        | Purchase Planning Settings
-        |--------------------------------------------------------------------------
-        */
-
-        'opening_stock' => [
-            'nullable',
-            'numeric',
-            'min:0',
-        ],
-
-        'lead_time_days' => [
-            'nullable',
-            'integer',
-            'min:0',
-        ],
-
-        'order_cycle_days' => [
-            'nullable',
-            'integer',
-            'min:0',
-        ],
-
-        'order_quantity' => [
-            'nullable',
-            'numeric',
-            'min:0',
-        ],
-
-        'minimum_stock' => [
-            'nullable',
-            'numeric',
-            'min:0',
-        ],
-
-        'maximum_stock' => [
-            'nullable',
-            'numeric',
-            'min:0',
-        ],
-    ]);
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Checkbox
-    |--------------------------------------------------------------------------
-    */
-
-    $validated['status'] =
-        $request->has('status');
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Update Item + Purchase Settings + Opening Stock
-    |--------------------------------------------------------------------------
-    */
-
-    DB::transaction(function () use (
-        $validated,
-        $item,
-        $itemPurchasePlanningService
+    public function update(
+        Request $request,
+        Item $item,
+        ItemPurchasePlanningService $itemPurchasePlanningService
     ) {
-
         /*
         |--------------------------------------------------------------------------
-        | Update Item
+        | Validation
         |--------------------------------------------------------------------------
         */
 
-        $item->update([
+        $validated = $request->validate([
 
-            'product_model_id' =>
-                $validated['product_model_id'] ?? null,
+            'product_model_id' => [
+                'nullable',
+                'exists:product_models,id',
+            ],
 
-            'item_code' =>
-                $validated['item_code'],
+            /*
+            |--------------------------------------------------------------------------
+            | Item Information
+            |--------------------------------------------------------------------------
+            */
 
-            'item_name' =>
-                $validated['item_name'],
+            'item_code' => [
+                'required',
+                'string',
+                'max:50',
 
-            'category_id' =>
-                $validated['category_id'],
+                Rule::unique('items', 'item_code')
+                    ->where(function ($query) use ($request) {
 
-            'unit_id' =>
-                $validated['unit_id'],
+                        return $query->where(
+                            'product_model_id',
+                            $request->product_model_id
+                        );
 
-            'default_supplier_id' =>
-                $validated['default_supplier_id'] ?? null,
+                    })
+                    ->ignore($item->id),
+            ],
 
-            'description' =>
-                $validated['description'] ?? null,
+            'item_name' => [
+                'required',
+                'string',
+                'max:200',
+            ],
 
-            'status' =>
-                $validated['status'],
+            'category_id' => [
+                'required',
+                'exists:categories,id',
+            ],
+
+            'unit_id' => [
+                'required',
+                'exists:units,id',
+            ],
+
+            'default_supplier_id' => [
+                'nullable',
+                'exists:suppliers,id',
+            ],
+
+            'description' => [
+                'nullable',
+                'string',
+            ],
+
+            'status' => [
+                'nullable',
+                'boolean',
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Purchase Planning Settings
+            |--------------------------------------------------------------------------
+            */
+
+            'opening_stock' => [
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
+
+            'lead_time_days' => [
+                'nullable',
+                'integer',
+                'min:0',
+            ],
+
+            'order_cycle_days' => [
+                'nullable',
+                'integer',
+                'min:0',
+            ],
+
+            'order_quantity' => [
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
+
+            'minimum_stock' => [
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
+
+            'maximum_stock' => [
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
         ]);
 
 
         /*
         |--------------------------------------------------------------------------
-        | Existing Purchase Settings
+        | Checkbox
         |--------------------------------------------------------------------------
         */
 
-        $existingPurchaseSettings =
-            $item->purchaseSettings()
-                ->first();
+        $validated['status'] =
+            $request->has('status');
 
 
         /*
         |--------------------------------------------------------------------------
-        | Save Manual / Base Purchase Settings
+        | Update Item + Purchase Settings + Opening Stock
         |--------------------------------------------------------------------------
         */
 
-        $purchaseSettings =
-            $item->purchaseSettings()
-                ->updateOrCreate(
+        DB::transaction(function () use ($validated, $item, $itemPurchasePlanningService) {
 
-                    [
-                        'item_id' => $item->id,
-                    ],
+            /*
+            |--------------------------------------------------------------------------
+            | Update Item
+            |--------------------------------------------------------------------------
+            */
 
-                    [
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Manual / Base Values
-                        |--------------------------------------------------------------------------
-                        */
+            $item->update([
 
-                        'opening_stock' =>
-                            $validated['opening_stock'] ?? 0,
+                'product_model_id' =>
+                    $validated['product_model_id'] ?? null,
 
-                        'lead_time_days' =>
-                            $validated['lead_time_days'] ?? 60,
+                'item_code' =>
+                    $validated['item_code'],
 
-                        'order_cycle_days' =>
-                            $validated['order_cycle_days'] ?? 60,
+                'item_name' =>
+                    $validated['item_name'],
 
-                        'order_quantity' =>
-                            $validated['order_quantity'] ?? 0,
+                'category_id' =>
+                    $validated['category_id'],
 
-                        'minimum_stock' =>
-                            $validated['minimum_stock'] ?? null,
+                'unit_id' =>
+                    $validated['unit_id'],
 
-                        'maximum_stock' =>
-                            $validated['maximum_stock'] ?? null,
+                'default_supplier_id' =>
+                    $validated['default_supplier_id'] ?? null,
+
+                'description' =>
+                    $validated['description'] ?? null,
+
+                'status' =>
+                    $validated['status'],
+            ]);
 
 
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Preserve Existing Production-Driven Values
-                        |--------------------------------------------------------------------------
-                        */
+            /*
+            |--------------------------------------------------------------------------
+            | Existing Purchase Settings
+            |--------------------------------------------------------------------------
+            */
 
-                        'monthly_usage' =>
-                            $existingPurchaseSettings
+            $existingPurchaseSettings =
+                $item->purchaseSettings()
+                    ->first();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Save Manual / Base Purchase Settings
+            |--------------------------------------------------------------------------
+            */
+
+            $purchaseSettings =
+                $item->purchaseSettings()
+                    ->updateOrCreate(
+
+                        [
+                            'item_id' => $item->id,
+                        ],
+
+                        [
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Manual / Base Values
+                            |--------------------------------------------------------------------------
+                            */
+
+                            'opening_stock' =>
+                                $validated['opening_stock'] ?? 0,
+
+                            'lead_time_days' =>
+                                $validated['lead_time_days'] ?? 60,
+
+                            'order_cycle_days' =>
+                                $validated['order_cycle_days'] ?? 60,
+
+                            'order_quantity' =>
+                                $validated['order_quantity'] ?? 0,
+
+                            'minimum_stock' =>
+                                $validated['minimum_stock'] ?? null,
+
+                            'maximum_stock' =>
+                                $validated['maximum_stock'] ?? null,
+
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Preserve Existing Production-Driven Values
+                            |--------------------------------------------------------------------------
+                            */
+
+                            'monthly_usage' =>
+                                $existingPurchaseSettings
                                 ? $existingPurchaseSettings->monthly_usage
                                 : 0,
 
-                        'safety_stock' =>
-                            $existingPurchaseSettings
+                            'safety_stock' =>
+                                $existingPurchaseSettings
                                 ? $existingPurchaseSettings->safety_stock
                                 : 0,
 
-                        'planning_start_date' =>
-                            $existingPurchaseSettings
+                            'planning_start_date' =>
+                                $existingPurchaseSettings
                                 ? $existingPurchaseSettings->planning_start_date
                                 : null,
-                    ]
-                );
+                        ]
+                    );
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Reload Purchase Settings
-        |--------------------------------------------------------------------------
-        */
+            /*
+            |--------------------------------------------------------------------------
+            | Reload Purchase Settings
+            |--------------------------------------------------------------------------
+            */
 
-        $item->unsetRelation('purchaseSettings');
+            $item->unsetRelation('purchaseSettings');
 
-        $item->load('purchaseSettings');
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Calculate Current Effective Planning
-        |--------------------------------------------------------------------------
-        */
-
-        $commonPlanning =
-            $itemPurchasePlanningService
-                ->calculate($item);
+            $item->load('purchaseSettings');
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Effective Lead Time
-        |--------------------------------------------------------------------------
-        */
+            /*
+            |--------------------------------------------------------------------------
+            | Calculate Current Effective Planning
+            |--------------------------------------------------------------------------
+            */
 
-        $leadTimeDays =
-            $commonPlanning['has_settings']
+            $commonPlanning =
+                $itemPurchasePlanningService
+                    ->calculate($item);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Effective Lead Time
+            |--------------------------------------------------------------------------
+            */
+
+            $leadTimeDays =
+                $commonPlanning['has_settings']
                 ? (int) $commonPlanning['lead_time_days']
                 : (int) ($purchaseSettings->lead_time_days ?? 60);
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Get Production Demand
-        |--------------------------------------------------------------------------
-        */
-
-        $productionDemand =
-            $itemPurchasePlanningService
-                ->getProductionDemand(
-                    $item,
-                    $leadTimeDays
-                );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Save Production-Driven Values
-        |--------------------------------------------------------------------------
-        */
-
-        if ($productionDemand['has_plan']) {
-
-            $purchaseSettings->update([
-
-                'monthly_usage' =>
-                    $productionDemand['monthly_usage'],
-
-                'safety_stock' =>
-                    $productionDemand['safety_stock'],
-
-                'planning_start_date' =>
-                    $productionDemand['planning_start_date'],
-            ]);
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Sync Opening Stock Movement
-        |--------------------------------------------------------------------------
-        |
-        | Keep only one Opening Stock movement for the Item.
-        |
-        | Example:
-        |
-        | Opening Stock 100 -> Current Stock includes 100
-        |
-        | If changed:
-        | 100 -> 150
-        |
-        | Existing movement becomes 150.
-        | It does NOT create another 150 movement.
-        |
-        */
-
-        $openingStock =
-            (float) ($validated['opening_stock'] ?? 0);
-
-
-        $openingStockMovement =
-            StockMovement::where(
-                'item_id',
-                $item->id
-            )
-            ->where(
-                'movement_type',
-                'opening_stock'
-            )
-            ->where(
-                'source_type',
-                'item'
-            )
-            ->where(
-                'source_id',
-                $item->id
-            )
-            ->first();
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Opening Stock Greater Than Zero
-        |--------------------------------------------------------------------------
-        */
-
-        if ($openingStock > 0) {
-
             /*
             |--------------------------------------------------------------------------
-            | Existing Opening Stock Movement
+            | Get Production Demand
             |--------------------------------------------------------------------------
             */
 
-            if ($openingStockMovement) {
+            $productionDemand =
+                $itemPurchasePlanningService
+                    ->getProductionDemand(
+                        $item,
+                        $leadTimeDays
+                    );
 
-                $openingStockMovement->update([
 
-                    'direction' =>
-                        'in',
+            /*
+            |--------------------------------------------------------------------------
+            | Save Production-Driven Values
+            |--------------------------------------------------------------------------
+            */
 
-                    'quantity' =>
-                        $openingStock,
+            if ($productionDemand['has_plan']) {
 
-                    'reference' =>
-                        'Opening Stock',
+                $purchaseSettings->update([
 
-                    'remarks' =>
-                        'Opening stock synchronized from Item settings.',
+                    'monthly_usage' =>
+                        $productionDemand['monthly_usage'],
+
+                    'safety_stock' =>
+                        $productionDemand['safety_stock'],
+
+                    'planning_start_date' =>
+                        $productionDemand['planning_start_date'],
                 ]);
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Sync Opening Stock Movement
+            |--------------------------------------------------------------------------
+            |
+            | Keep only one Opening Stock movement for the Item.
+            |
+            | Example:
+            |
+            | Opening Stock 100 -> Current Stock includes 100
+            |
+            | If changed:
+            | 100 -> 150
+            |
+            | Existing movement becomes 150.
+            | It does NOT create another 150 movement.
+            |
+            */
+
+            $openingStock =
+                (float) ($validated['opening_stock'] ?? 0);
+
+
+            $openingStockMovement =
+                StockMovement::where(
+                    'item_id',
+                    $item->id
+                )
+                    ->where(
+                        'movement_type',
+                        'opening_stock'
+                    )
+                    ->where(
+                        'source_type',
+                        'item'
+                    )
+                    ->where(
+                        'source_id',
+                        $item->id
+                    )
+                    ->first();
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Opening Stock Greater Than Zero
+            |--------------------------------------------------------------------------
+            */
+
+            if ($openingStock > 0) {
+
+                /*
+                |--------------------------------------------------------------------------
+                | Existing Opening Stock Movement
+                |--------------------------------------------------------------------------
+                */
+
+                if ($openingStockMovement) {
+
+                    $openingStockMovement->update([
+
+                        'direction' =>
+                            'in',
+
+                        'quantity' =>
+                            $openingStock,
+
+                        'reference' =>
+                            'Opening Stock',
+
+                        'remarks' =>
+                            'Opening stock synchronized from Item settings.',
+                    ]);
+
+                } else {
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Create Opening Stock Movement
+                    |--------------------------------------------------------------------------
+                    */
+
+                    StockMovement::create([
+
+                        'item_id' =>
+                            $item->id,
+
+                        'movement_date' =>
+                            now()->toDateString(),
+
+                        'movement_type' =>
+                            'opening_stock',
+
+                        'direction' =>
+                            'in',
+
+                        'quantity' =>
+                            $openingStock,
+
+                        'source_type' =>
+                            'item',
+
+                        'source_id' =>
+                            $item->id,
+
+                        'reference' =>
+                            'Opening Stock',
+
+                        'remarks' =>
+                            'Opening stock created from Item settings.',
+                    ]);
+                }
 
             } else {
 
                 /*
                 |--------------------------------------------------------------------------
-                | Create Opening Stock Movement
+                | Opening Stock Changed To Zero
                 |--------------------------------------------------------------------------
                 */
 
-                StockMovement::create([
+                if ($openingStockMovement) {
 
-                    'item_id' =>
-                        $item->id,
-
-                    'movement_date' =>
-                        now()->toDateString(),
-
-                    'movement_type' =>
-                        'opening_stock',
-
-                    'direction' =>
-                        'in',
-
-                    'quantity' =>
-                        $openingStock,
-
-                    'source_type' =>
-                        'item',
-
-                    'source_id' =>
-                        $item->id,
-
-                    'reference' =>
-                        'Opening Stock',
-
-                    'remarks' =>
-                        'Opening stock created from Item settings.',
-                ]);
+                    $openingStockMovement->delete();
+                }
             }
 
-        } else {
-
-            /*
-            |--------------------------------------------------------------------------
-            | Opening Stock Changed To Zero
-            |--------------------------------------------------------------------------
-            */
-
-            if ($openingStockMovement) {
-
-                $openingStockMovement->delete();
-            }
-        }
-
-    });
+        });
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Redirect
-    |--------------------------------------------------------------------------
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | Redirect
+        |--------------------------------------------------------------------------
+        */
 
-    return redirect()
-        ->route('items.index')
-        ->with(
-            'success',
-            'Item updated successfully.'
-        );
-}
+        return redirect()
+            ->route('items.index')
+            ->with(
+                'success',
+                'Item updated successfully.'
+            );
+    }
     /**
      * Remove the specified item.
      */
@@ -1090,5 +1086,113 @@ if ($openingStock > 0) {
         return response()->json([
             'results' => $results,
         ]);
+    }
+
+    // Quick search for items by item code or name, optionally filtered by product model
+    /**
+     * Quick Edit page: Product Model dropdown + items list.
+     */
+    public function quickEdit()
+    {
+        $productModels = ProductModel::where('status', true)
+            ->orderBy('model_code')
+            ->get();
+
+        return view('items.quick-edit', compact('productModels'));
+    }
+
+    /**
+     * JSON: items of a Product Model (same filter as items.index).
+     */
+    public function quickEditList(Request $request)
+    {
+        $request->validate([
+            'product_model_id' => ['required', 'exists:product_models,id'],
+        ]);
+
+        $items = Item::with(['defaultSupplier', 'suppliers'])
+            ->whereHas('productModelItems', function ($q) use ($request) {
+                $q->where('product_model_id', $request->product_model_id);
+            })
+            ->orderBy('item_code')
+            ->get();
+
+        return response()->json([
+            'items' => $items->map(fn($item) => $this->quickEditRow($item))->values(),
+        ]);
+    }
+
+    /**
+     * Update only Item Code, Item Name and Unit Price.
+     */
+    public function quickUpdate(Request $request, Item $item)
+    {
+        $validated = $request->validate([
+            'item_code' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('items', 'item_code')
+                    ->where(fn($q) => $q->where('product_model_id', $item->product_model_id))
+                    ->ignore($item->id),
+            ],
+            'item_name' => ['required', 'string', 'max:200'],
+            'unit_price' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        // Unit price is stored per supplier in item_suppliers,
+        // so we save it against the item's default supplier.
+        if (
+            $request->filled('unit_price')
+            && !$item->default_supplier_id
+        ) {
+            return response()->json([
+                'message' => 'Unit price cannot be saved.',
+                'errors' => [
+                    'unit_price' => ['This item has no default supplier. Set one in the full Edit Item page first.'],
+                ],
+            ], 422);
+        }
+
+        DB::transaction(function () use ($item, $validated) {
+
+            $item->update([
+                'item_code' => $validated['item_code'],
+                'item_name' => $validated['item_name'],
+            ]);
+
+            if ($item->default_supplier_id) {
+                // Updates the pivot row if it exists, creates it if not
+                $item->suppliers()->syncWithoutDetaching([
+                    $item->default_supplier_id => [
+                        'unit_price' => $validated['unit_price'] ?? null,
+                    ],
+                ]);
+            }
+        });
+
+        $item->load(['defaultSupplier', 'suppliers']);
+
+        return response()->json([
+            'message' => 'Item updated successfully.',
+            'item' => $this->quickEditRow($item),
+        ]);
+    }
+
+    private function quickEditRow(Item $item): array
+    {
+        $supplierRow = $item->default_supplier_id
+            ? $item->suppliers->firstWhere('id', $item->default_supplier_id)
+            : null;
+
+        return [
+            'id' => $item->id,
+            'item_code' => $item->item_code,
+            'item_name' => $item->item_name,
+            'supplier' => $item->defaultSupplier->name ?? null,
+            'has_supplier' => (bool) $item->default_supplier_id,
+            'unit_price' => $supplierRow?->pivot->unit_price,
+            'update_url' => route('items.quick-update', $item),
+        ];
     }
 }

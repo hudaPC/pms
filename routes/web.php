@@ -389,6 +389,22 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])
         ->name('suppliers.destroy');
 
+
+// Quick Edit (must come BEFORE routes using /items/{item})
+Route::get('/items/quick-edit', [ItemController::class, 'quickEdit'])
+    ->name('items.quick-edit');
+
+Route::get('/items/quick-edit/list', [ItemController::class, 'quickEditList'])
+    ->name('items.quick-edit.list');
+
+Route::put('/items/{item}/quick-update', [ItemController::class, 'quickUpdate'])
+    ->name('items.quick-update');
+
+// Items - create/edit/delete (admin only)
+Route::get('/items/create', [ItemController::class, 'create'])
+    ->name('items.create');
+
+
     // Items - create/edit/delete (admin only)
     Route::get('/items/create', [ItemController::class, 'create'])
         ->name('items.create');
@@ -404,6 +420,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     Route::delete('/items/{item}', [ItemController::class, 'destroy'])
         ->name('items.destroy');
+
+
 
     // Item Suppliers
     Route::get(

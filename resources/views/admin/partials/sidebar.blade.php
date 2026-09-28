@@ -211,8 +211,7 @@
 
                         <li class="nav-item">
 
-                            <a href="{{  url('items/quick-edit') }}" class="nav-link
-                            {{ $quickEditActive ? 'active' : '' }}">
+                            <a href="{{ route('items.quick-edit') }}" class="nav-link {{ $quickEditActive ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
 

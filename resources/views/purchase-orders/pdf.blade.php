@@ -7,7 +7,6 @@
     <title>Purchase Order - {{ $purchaseOrder->po_number }}</title>
 
     <style>
-
         @page {
             margin: 25px 30px 120px 30px;
         }
@@ -115,7 +114,6 @@
             border: none;
             padding: 0;
         }
-
     </style>
 
 </head>
@@ -170,8 +168,8 @@
                                 <br>
                                 <strong>Date:</strong>
                                 {{ $purchaseOrder->order_date
-                                    ? $purchaseOrder->order_date->format('d-M-Y')
-                                    : '-'
+    ? $purchaseOrder->order_date->format('d-M-Y')
+    : '-'
                                 }}
                             </td>
 
@@ -200,35 +198,35 @@
 
             @foreach ($purchaseOrder->items as $poItem)
 
-                @php
-                    $lineTotal = (float) $poItem->ordered_quantity
-                               * (float) ($poItem->unit_price ?? 0);
-                @endphp
+                    @php
+                        $lineTotal = (float) $poItem->ordered_quantity
+                            * (float) ($poItem->unit_price ?? 0);
+                    @endphp
 
-                <tr class="item-row">
+                    <tr class="item-row">
 
-                    <td style="width: 5%;">{{ $loop->iteration }}</td>
+                        <td style="width: 5%;">{{ $loop->iteration }}</td>
 
-                    <td style="width: 12%;">{{ $poItem->productModel->model_code ?? '-' }}</td>
+                        <td style="width: 12%;">{{ $poItem->productModel->model_code ?? '-' }}</td>
 
-                    <td style="width: 13%;">{{ $poItem->item->item_code ?? '-' }}</td>
+                        <td style="width: 13%;">{{ $poItem->item->item_code ?? '-' }}</td>
 
-                    <td style="width: 27%;">{{ $poItem->item->item_name ?? '-' }}</td>
+                        <td style="width: 27%;">{{ $poItem->item->item_name ?? '-' }}</td>
 
-                    <td style="width: 13%;">
-                        {{ $purchaseOrder->expected_delivery_date
-                            ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
-                            : '-'
-                        }}
-                    </td>
+                        <td style="width: 13%;">
+                            {{ $purchaseOrder->expected_delivery_date
+                ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
+                : '-'
+                                        }}
+                        </td>
 
-                    <td style="width: 8%;">{{ number_format($poItem->ordered_quantity, 0) }}</td>
+                        <td style="width: 8%;">{{ number_format($poItem->ordered_quantity, 0) }}</td>
 
-                    <td style="width: 10%;">$ {{ number_format($poItem->unit_price ?? 0, 2) }}</td>
+                        <td style="width: 10%;">$ {{ number_format($poItem->unit_price ?? 0, 2) }}</td>
 
-                    <td style="width: 12%;">$ {{ number_format($lineTotal, 2) }}</td>
+                        <td style="width: 12%;">$ {{ number_format($lineTotal, 2) }}</td>
 
-                </tr>
+                    </tr>
 
             @endforeach
 
@@ -255,6 +253,8 @@
                         {{ $totalPriceInWords }}
                     </p>
 
+                    <!--<p>Payment Terms: {{ $purchaseOrder->payment_terms ?? '-' }}</p>-->
+                    <p>Payment Term: 6 months after receiving.</p>
 
                 </td>
             </tr>
@@ -286,18 +286,21 @@
             $pdf->page_text($x, $y, $text, $font, $size, array(0, 0, 0));
 
             /* Signature: last page only, fixed at bottom */
+            /*To adjust the gap between "Confirmed By:" and the line, change - 45. A larger number gives a bigger gap. */
+           
             $pdf->page_script('
                 if ($PAGE_NUM == $PAGE_COUNT) {
                     $font = $fontMetrics->getFont("Helvetica", "normal");
                     $size = 11;
                     $label = "Authorized Signature";
+                    $topLabel = "Confirmed By:";
                     $lineWidth = 180;
                     $x2 = $pdf->get_width() - 30;
                     $x1 = $x2 - $lineWidth;
                     $lineY = $pdf->get_height() - 80;
+                    $pdf->text($x1, $lineY - 60, $topLabel, $font, $size, array(0, 0, 0));
                     $pdf->line($x1, $lineY, $x2, $lineY, array(0, 0, 0), 0.8);
-                    $tw = $fontMetrics->getTextWidth($label, $font, $size);
-                    $pdf->text($x1 + ($lineWidth - $tw) / 2, $lineY + 4, $label, $font, $size, array(0, 0, 0));
+                    $pdf->text($x1, $lineY + 4, $label, $font, $size, array(0, 0, 0));
                 }
             ');
 

@@ -217,7 +217,7 @@
                                 <i class="far fa-circle nav-icon"></i>
 
                                 <p>
-                                    Quick Edit
+                                    Quick Item Edit
                                 </p>
 
                             </a>

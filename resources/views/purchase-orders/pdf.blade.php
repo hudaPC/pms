@@ -245,7 +245,7 @@
                             </td>
                             <td style="width: 50%; text-align: right;">
                                 <strong>Total Price:</strong>
-                                $ {{ number_format($totalPrice, 4) }}
+                                $ {{ number_format($totalPrice, 2) }}
                             </td>
                         </tr>
                     </table>

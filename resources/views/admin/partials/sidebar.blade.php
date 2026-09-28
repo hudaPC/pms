@@ -211,7 +211,8 @@
 
                         <li class="nav-item">
 
-                            <a href="{{ route('items.quick-edit') }}" class="nav-link {{ $quickEditActive ? 'active' : '' }}">
+                            <a href="{{ route('items.quick-edit') }}"
+                                class="nav-link {{ $quickEditActive ? 'active' : '' }}">
 
                                 <i class="far fa-circle nav-icon"></i>
 
@@ -369,50 +370,7 @@
 
 
 
-                {{-- ===================================================== --}}
-                {{-- MATERIAL USAGE --}}
-                {{-- ===================================================== --}}
 
-                @php
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Material Usage Active State
-                    |--------------------------------------------------------------------------
-                    |
-                    | Both the new global Material Usage module and the old
-                    | item-specific Usage Log pages belong to this menu.
-                    |
-                    | Examples:
-                    |
-                    | /material-usage
-                    | /material-usage/create
-                    | /items/1/usage-logs
-                    | /items/1/usage-logs/2/edit
-                    |
-                    */
-
-                    $materialUsageActive = request()->is('material-usage*') || request()->is('items/*/usage-logs*');
-
-                @endphp
-
-
-                <li class="nav-item">
-
-                    <a href="{{ route('material-usage.index') }}" class="nav-link
-                            {{ $materialUsageActive ? 'active' : '' }}">
-
-                        <i class="nav-icon fas fa-clipboard-list"></i>
-
-                        <p>
-                            ITEM&nbsp;&nbsp;USAGE
-                        </p>
-
-
-
-                    </a>
-
-                </li>
 
 
 
@@ -467,7 +425,50 @@
 
                 </li>
 
+                {{-- ===================================================== --}}
+                {{-- MATERIAL USAGE --}}
+                {{-- ===================================================== --}}
 
+                @php
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Material Usage Active State
+                    |--------------------------------------------------------------------------
+                    |
+                    | Both the new global Material Usage module and the old
+                    | item-specific Usage Log pages belong to this menu.
+                    |
+                    | Examples:
+                    |
+                    | /material-usage
+                    | /material-usage/create
+                    | /items/1/usage-logs
+                    | /items/1/usage-logs/2/edit
+                    |
+                    */
+
+                    $materialUsageActive = request()->is('material-usage*') || request()->is('items/*/usage-logs*');
+
+                @endphp
+
+
+                <li class="nav-item">
+
+                    <a href="{{ route('material-usage.index') }}" class="nav-link
+                            {{ $materialUsageActive ? 'active' : '' }}">
+
+                        <i class="nav-icon fas fa-clipboard-list"></i>
+
+                        <p>
+                            ITEM&nbsp;&nbsp;USAGE
+                        </p>
+
+
+
+                    </a>
+
+                </li>
 
                 {{-- ===================================================== --}}
                 {{-- INVENTORY --}}

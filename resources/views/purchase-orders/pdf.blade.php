@@ -10,6 +10,10 @@
 
     <style>
 
+        /* =========================================================
+           PAGE SETUP
+           ========================================================= */
+
         @page {
             margin: 25px 30px 50px 30px;
         }
@@ -35,7 +39,7 @@
 
 
         /* =========================================================
-           REPEATING HEADER
+           REPEATING HEADER CELLS
            ========================================================= */
 
         .po-header-cell {
@@ -44,10 +48,15 @@
         }
 
 
+        /* =========================================================
+           COMPANY HEADING IMAGE
+           ========================================================= */
+
         .heading-img {
             width: 100%;
             height: auto;
             display: block;
+
             margin: 0 0 5px 0;
         }
 
@@ -61,7 +70,6 @@
             text-decoration: underline;
 
             font-size: 16px;
-
             line-height: 18px;
 
             margin-top: 8px;
@@ -76,16 +84,15 @@
         .info-table {
             width: 100%;
             border-collapse: collapse;
+
             margin-bottom: 12px;
         }
 
         .info-table td {
             border: none;
-
             padding: 0;
 
             font-size: 11px;
-
             line-height: 15px;
 
             vertical-align: top;
@@ -93,7 +100,7 @@
 
 
         /* =========================================================
-           ITEMS TABLE HEADER
+           ITEM TABLE HEADER
            ========================================================= */
 
         .items-header th {
@@ -102,19 +109,19 @@
             padding: 5px;
 
             font-size: 10px;
-
             line-height: 13px;
 
             background: #f0f0f0;
 
-            text-align: left;
+            text-align: center;
+            vertical-align: middle;
 
             font-weight: bold;
         }
 
 
         /* =========================================================
-           ITEMS
+           ITEM TABLE BODY
            ========================================================= */
 
         .item-row td {
@@ -123,56 +130,24 @@
             padding: 5px;
 
             font-size: 10px;
-
             line-height: 13px;
-        }
 
-
-        .number {
-            text-align: right;
-        }
-
-
-        /* =========================================================
-           COLUMN WIDTHS
-           ========================================================= */
-
-        .col-no {
-            width: 4%;
+            /*
+             * Center all item data
+             */
             text-align: center;
-        }
+            vertical-align: middle;
 
-        .col-model {
-            width: 12%;
-        }
-
-        .col-code {
-            width: 15%;
-        }
-
-        .col-name {
-            width: 20%;
-        }
-
-        .col-date {
-            width: 13%;
-        }
-
-        .col-qty {
-            width: 9%;
-        }
-
-        .col-unit {
-            width: 13%;
-        }
-
-        .col-total {
-            width: 14%;
+            /*
+             * Allow long item names to wrap
+             */
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
 
         /* =========================================================
-           DON'T SPLIT ROW
+           PREVENT ITEM ROW FROM SPLITTING
            ========================================================= */
 
         .item-row {
@@ -186,7 +161,9 @@
 
         .footer-table {
             width: 100%;
+
             border-collapse: collapse;
+
             margin-top: 12px;
         }
 
@@ -211,6 +188,8 @@
             line-height: 16px;
 
             word-wrap: break-word;
+
+            white-space: normal;
         }
 
 
@@ -243,6 +222,7 @@
         }
 
     </style>
+
 </head>
 
 
@@ -250,11 +230,50 @@
 
 
     {{-- =============================================================
-         ONE TABLE
-         THE THEAD WILL REPEAT ON EVERY PAGE
+         PURCHASE ORDER TABLE
+
+         IMPORTANT:
+         The entire header is inside <thead>.
+         Dompdf repeats <thead> on every page.
          ============================================================= --}}
 
     <table class="po-table">
+
+
+        {{-- =========================================================
+             EXPLICIT COLUMN WIDTHS
+
+             Total = 100%
+
+             #             = 5%
+             Model Name    = 12%
+             Item Code     = 13%
+             Item Name     = 27%
+             Delivery Date = 13%
+             Order Qty     = 8%
+             Unit Price    = 10%
+             Total Price   = 12%
+             ========================================================= --}}
+
+        <colgroup>
+
+            <col style="width: 5%;">
+
+            <col style="width: 12%;">
+
+            <col style="width: 13%;">
+
+            <col style="width: 27%;">
+
+            <col style="width: 13%;">
+
+            <col style="width: 8%;">
+
+            <col style="width: 10%;">
+
+            <col style="width: 12%;">
+
+        </colgroup>
 
 
         {{-- =========================================================
@@ -264,7 +283,10 @@
         <thead>
 
 
-            {{-- COMPANY HEADING --}}
+            {{-- =====================================================
+                 COMPANY HEADING IMAGE
+                 ===================================================== --}}
+
             <tr>
 
                 <td
@@ -281,8 +303,9 @@
 
                     @else
 
-                        <p style="color:red;">
-                            Heading image not found at public/images/heading.jpg
+                        <p style="color: red;">
+                            Heading image not found at
+                            public/images/heading.jpg
                         </p>
 
                     @endif
@@ -292,7 +315,10 @@
             </tr>
 
 
-            {{-- PURCHASE ORDER TITLE --}}
+            {{-- =====================================================
+                 PURCHASE ORDER TITLE
+                 ===================================================== --}}
+
             <tr>
 
                 <td
@@ -309,7 +335,10 @@
             </tr>
 
 
-            {{-- SUPPLIER / PO INFORMATION --}}
+            {{-- =====================================================
+                 SUPPLIER / PO INFORMATION
+                 ===================================================== --}}
+
             <tr>
 
                 <td
@@ -321,7 +350,11 @@
 
                         <tr>
 
-                            {{-- LEFT --}}
+
+                            {{-- =====================================
+                                 SUPPLIER
+                                 ===================================== --}}
+
                             <td style="width: 50%;">
 
                                 <strong>
@@ -341,7 +374,10 @@
                             </td>
 
 
-                            {{-- RIGHT --}}
+                            {{-- =====================================
+                                 PO INFORMATION
+                                 ===================================== --}}
+
                             <td
                                 style="
                                     width: 50%;
@@ -378,42 +414,59 @@
 
 
             {{-- =====================================================
-                 ITEMS COLUMN HEADER
+                 ITEM COLUMN HEADERS
                  ===================================================== --}}
 
             <tr class="items-header">
 
-                <th class="col-no">
-                    Sl. NO.
+
+                {{-- # --}}
+                <th>
+                    SL NO
                 </th>
 
-                <th class="col-model">
+
+                {{-- MODEL NAME --}}
+                <th>
                     Model Name
                 </th>
 
-                <th class="col-code">
+
+                {{-- ITEM CODE --}}
+                <th>
                     Item Code
                 </th>
 
-                <th class="col-name">
+
+                {{-- ITEM NAME --}}
+                <th>
                     Item Name
                 </th>
 
-                <th class="col-date">
+
+                {{-- DELIVERY DATE --}}
+                <th>
                     Delivery Date
                 </th>
 
-                <th class="col-qty">
+
+                {{-- ORDER QTY --}}
+                <th>
                     Order Qty
                 </th>
 
-                <th class="col-unit">
+
+                {{-- UNIT PRICE --}}
+                <th>
                     Unit Price
                 </th>
 
-                <th class="col-total">
+
+                {{-- TOTAL PRICE --}}
+                <th>
                     Total Price
                 </th>
+
 
             </tr>
 
@@ -430,6 +483,7 @@
 
             @foreach ($purchaseOrder->items as $poItem)
 
+
                 @php
 
                     $lineTotal =
@@ -443,50 +497,85 @@
                 <tr class="item-row">
 
 
-                    {{-- NUMBER --}}
-                    <td class="col-no">
+                    {{-- =============================================
+                         #
+                         ============================================= --}}
+
+                    <td>
+
                         {{ $loop->iteration }}
+
                     </td>
 
 
-                    {{-- MODEL --}}
-                    <td class="col-model">
+                    {{-- =============================================
+                         MODEL NAME
+                         ============================================= --}}
+
+                    <td>
+
                         {{ $poItem->productModel->model_code ?? '-' }}
+
                     </td>
 
 
-                    {{-- ITEM CODE --}}
-                    <td class="col-code">
+                    {{-- =============================================
+                         ITEM CODE
+                         ============================================= --}}
+
+                    <td>
+
                         {{ $poItem->item->item_code ?? '-' }}
+
                     </td>
 
 
-                    {{-- ITEM NAME --}}
-                    <td class="col-name">
+                    {{-- =============================================
+                         ITEM NAME
+                         ============================================= --}}
+
+                    <td>
+
                         {{ $poItem->item->item_name ?? '-' }}
+
                     </td>
 
 
-                    {{-- DELIVERY DATE --}}
-                    <td class="col-date">
+                    {{-- =============================================
+                         DELIVERY DATE
+                         ============================================= --}}
+
+                    <td>
+
                         {{ $purchaseOrder->expected_delivery_date
                             ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
                             : '-'
                         }}
+
                     </td>
 
 
-                    {{-- QUANTITY --}}
-                    <td class="col-qty number">
-                        {{ number_format($poItem->ordered_quantity, 0) }}
+                    {{-- =============================================
+                         ORDER QUANTITY
+                         ============================================= --}}
+
+                    <td>
+
+                        {{ number_format(
+                            $poItem->ordered_quantity,
+                            0
+                        ) }}
+
                     </td>
 
 
-                    {{-- UNIT PRICE --}}
-                    <td class="col-unit number">
+                    {{-- =============================================
+                         UNIT PRICE
+                         ============================================= --}}
+
+                    <td>
 
                         $
-
                         {{ number_format(
                             $poItem->unit_price ?? 0,
                             2
@@ -495,11 +584,13 @@
                     </td>
 
 
-                    {{-- TOTAL --}}
-                    <td class="col-total number">
+                    {{-- =============================================
+                         TOTAL PRICE
+                         ============================================= --}}
+
+                    <td>
 
                         $
-
                         {{ number_format(
                             $lineTotal,
                             2
@@ -528,17 +619,23 @@
 
         <tr>
 
+
+            {{-- TOTAL QUANTITY --}}
             <td style="width: 50%;">
 
                 <strong>
                     Total Quantity:
                 </strong>
 
-                {{ number_format($totalQty, 0) }}
+                {{ number_format(
+                    $totalQty,
+                    0
+                ) }}
 
             </td>
 
 
+            {{-- TOTAL PRICE --}}
             <td
                 style="
                     width: 50%;
@@ -552,9 +649,13 @@
 
                 $
 
-                {{ number_format($totalPrice, 4) }}
+                {{ number_format(
+                    $totalPrice,
+                    4
+                ) }}
 
             </td>
+
 
         </tr>
 
@@ -562,7 +663,7 @@
 
 
     {{-- =============================================================
-         TOTAL IN WORDS
+         TOTAL PRICE IN WORDS
          ============================================================= --}}
 
     <p class="amount-in-words">

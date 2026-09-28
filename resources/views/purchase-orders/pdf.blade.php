@@ -9,7 +9,7 @@
     <style>
 
         @page {
-            margin: 25px 30px 50px 30px;
+            margin: 25px 30px 120px 30px;
         }
 
         body {
@@ -114,24 +114,6 @@
         .summary-cell {
             border: none;
             padding: 0;
-        }
-
-        .signature-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 60px;
-        }
-
-        .signature-table td {
-            border: none;
-            padding: 0;
-        }
-
-        .signature-table td.signature-line {
-            border-top: 1px solid #000;
-            padding-top: 4px;
-            text-align: center;
-            font-size: 11px;
         }
 
     </style>
@@ -273,14 +255,6 @@
                         {{ $totalPriceInWords }}
                     </p>
 
-                    <table class="signature-table">
-                        <tr>
-                            <td style="width: 65%;"></td>
-                            <td style="width: 35%;" class="signature-line">
-                                Authorized Signature
-                            </td>
-                        </tr>
-                    </table>
 
                 </td>
             </tr>
@@ -310,6 +284,22 @@
             $y = $pdf->get_height() - 30;
 
             $pdf->page_text($x, $y, $text, $font, $size, array(0, 0, 0));
+
+            /* Signature: last page only, fixed at bottom */
+            $pdf->page_script('
+                if ($PAGE_NUM == $PAGE_COUNT) {
+                    $font = $fontMetrics->getFont("Helvetica", "normal");
+                    $size = 11;
+                    $label = "Authorized Signature";
+                    $lineWidth = 180;
+                    $x2 = $pdf->get_width() - 30;
+                    $x1 = $x2 - $lineWidth;
+                    $lineY = $pdf->get_height() - 80;
+                    $pdf->line($x1, $lineY, $x2, $lineY, array(0, 0, 0), 0.8);
+                    $tw = $fontMetrics->getTextWidth($label, $font, $size);
+                    $pdf->text($x1 + ($lineWidth - $tw) / 2, $lineY + 4, $label, $font, $size, array(0, 0, 0));
+                }
+            ');
 
         }
 

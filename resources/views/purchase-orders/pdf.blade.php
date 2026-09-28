@@ -384,7 +384,7 @@
             <tr class="items-header">
 
                 <th class="col-no">
-                    #
+                    Sl. NO.
                 </th>
 
                 <th class="col-model">
@@ -489,7 +489,7 @@
 
                         {{ number_format(
                             $poItem->unit_price ?? 0,
-                            4
+                            2
                         ) }}
 
                     </td>
@@ -502,7 +502,7 @@
 
                         {{ number_format(
                             $lineTotal,
-                            4
+                            2
                         ) }}
 
                     </td>

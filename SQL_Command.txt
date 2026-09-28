@@ -251,3 +251,39 @@ ADD COLUMN product_model_id BIGINT UNSIGNED NULL
 AFTER item_id;
 
 
+****************
+1. Find items with no active preferred supplier
+
+SELECT i.id, i.item_code
+FROM items i
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM item_suppliers x
+    WHERE x.item_id = i.id
+      AND x.is_preferred = 1
+      AND x.status = 1
+);
+
+2. See what supplier rows those 4 items have
+
+SELECT id, item_id, supplier_id, unit_price, is_preferred, status
+FROM item_suppliers
+WHERE item_id IN (98, 82, 85, 93)
+ORDER BY item_id, id;
+
+3. Mark the lowest-id row of each item as preferred and active
+
+Run query 2 first and check that the lowest-id row is the supplier you want. Then:
+
+
+UPDATE item_suppliers
+SET is_preferred = 1,
+    status = 1
+WHERE id IN (
+    SELECT id FROM (
+        SELECT MIN(id) AS id
+        FROM item_suppliers
+        WHERE item_id IN (98, 82, 85, 93)
+        GROUP BY item_id
+    ) AS t
+);

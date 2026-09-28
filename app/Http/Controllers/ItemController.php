@@ -1100,7 +1100,21 @@ class ItemController extends Controller
 
         return view('items.quick-edit', compact('productModels'));
     }
+    /**
+     * Supplier row used for the unit price:
+     * preferred -> default supplier -> first available.
+     */
+    private function resolvePriceSupplier(Item $item)
+    {
+        $suppliers = $item->suppliers->sortBy(fn($s) => $s->pivot->id);
 
+        // Same rule as ReportingController: preferred + active, lowest id first
+        return $suppliers->first(fn($s) => $s->pivot->is_preferred && $s->pivot->status)
+            ?? ($item->default_supplier_id
+                ? $suppliers->firstWhere('id', $item->default_supplier_id)
+                : null)
+            ?? $suppliers->first();
+    }
     /**
      * JSON: items of a Product Model (same filter as items.index).
      */
@@ -1140,34 +1154,42 @@ class ItemController extends Controller
             'unit_price' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        // Unit price is stored per supplier in item_suppliers,
-        // so we save it against the item's default supplier.
-        if (
-            $request->filled('unit_price')
-            && !$item->default_supplier_id
-        ) {
+        $item->load('suppliers');
+
+        $priceSupplier = $this->resolvePriceSupplier($item);
+        $supplierId = $priceSupplier->id ?? $item->default_supplier_id;
+
+        if ($request->filled('unit_price') && !$supplierId) {
             return response()->json([
                 'message' => 'Unit price cannot be saved.',
                 'errors' => [
-                    'unit_price' => ['This item has no default supplier. Set one in the full Edit Item page first.'],
+                    'unit_price' => ['This item has no supplier. Add one in the Suppliers Item page first.'],
                 ],
             ], 422);
         }
 
-        DB::transaction(function () use ($item, $validated) {
+        $hasActivePreferred = $item->suppliers->contains(
+            fn($s) => $s->pivot->is_preferred && $s->pivot->status
+        );
+
+        DB::transaction(function () use ($item, $validated, $supplierId, $hasActivePreferred) {
 
             $item->update([
                 'item_code' => $validated['item_code'],
                 'item_name' => $validated['item_name'],
             ]);
 
-            if ($item->default_supplier_id) {
-                // Updates the pivot row if it exists, creates it if not
-                $item->suppliers()->syncWithoutDetaching([
-                    $item->default_supplier_id => [
-                        'unit_price' => $validated['unit_price'] ?? null,
-                    ],
-                ]);
+            if ($supplierId) {
+                $pivot = ['unit_price' => $validated['unit_price'] ?? null];
+
+                // No active preferred supplier yet: make this one preferred
+                // so the Reporting page shows the same price.
+                if (!$hasActivePreferred) {
+                    $pivot['is_preferred'] = 1;
+                    $pivot['status'] = 1;
+                }
+
+                $item->suppliers()->syncWithoutDetaching([$supplierId => $pivot]);
             }
         });
 
@@ -1181,17 +1203,15 @@ class ItemController extends Controller
 
     private function quickEditRow(Item $item): array
     {
-        $supplierRow = $item->default_supplier_id
-            ? $item->suppliers->firstWhere('id', $item->default_supplier_id)
-            : null;
+        $priceSupplier = $this->resolvePriceSupplier($item);
 
         return [
             'id' => $item->id,
             'item_code' => $item->item_code,
             'item_name' => $item->item_name,
-            'supplier' => $item->defaultSupplier->name ?? null,
-            'has_supplier' => (bool) $item->default_supplier_id,
-            'unit_price' => $supplierRow?->pivot->unit_price,
+            'supplier' => $priceSupplier->name ?? ($item->defaultSupplier->name ?? null),
+            'has_supplier' => (bool) ($priceSupplier || $item->default_supplier_id),
+            'unit_price' => $priceSupplier?->pivot->unit_price,
             'update_url' => route('items.quick-update', $item),
         ];
     }

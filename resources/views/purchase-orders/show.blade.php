@@ -279,7 +279,7 @@
                         &&
                         $purchaseOrder->status === 'draft'
                     )
-                    <a href="{{ route('purchase-orders.items.create', $purchaseOrder) }}" class="btn btn-primary btn-sm">
+                    <a href="{{ route('purchase-orders.items.create-upload', $purchaseOrder) }}" class="btn btn-primary btn-sm">
 
                         <i class="fas fa-plus"></i>
                         Add Item

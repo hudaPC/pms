@@ -17,6 +17,7 @@ class PurchaseOrderItem extends Model
         'unit_price',
         'received_quantity',
         'planned_order_date',
+        'revision',
         'remarks',
     ];
 

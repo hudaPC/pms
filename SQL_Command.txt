@@ -287,3 +287,19 @@ WHERE id IN (
         GROUP BY item_id
     ) AS t
 );
+*******************************
+SELECT pm.model_code, pmi.id, i.item_code, pmi.revision
+FROM product_model_items pmi
+JOIN items i ON i.id = pmi.item_id
+JOIN product_models pm ON pm.id = pmi.product_model_id
+WHERE i.item_code IN ('M0026A-M004', 'M0026A-M013', 'M0026A-M017', 'PP3222')
+ORDER BY i.item_code, pm.model_code;
+
+UPDATE product_model_items
+SET revision = '0'
+WHERE id IN (67, 68, 70);
+
+*****************************
+
+http://127.0.0.1:8000/purchase-orders/7/items/create-upload
+

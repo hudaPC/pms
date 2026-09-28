@@ -193,8 +193,8 @@ Route::middleware(['auth'])->group(function () {
             'createPurchaseOrder'
         ]
     )->name(
-            'supplier-invoices.create-purchase-order'
-        );
+        'supplier-invoices.create-purchase-order'
+    );
 
     Route::resource(
         'supplier-invoices',
@@ -234,8 +234,8 @@ Route::middleware(['auth'])->group(function () {
         '/supplier-invoices/{supplierInvoice}/product-models/{productModel}/items',
         [SupplierInvoiceItemController::class, 'itemsByProductModel']
     )->name(
-            'supplier-invoices.product-model-items'
-        );
+        'supplier-invoices.product-model-items'
+    );
     Route::post(
         '/supplier-invoices/{supplierInvoice}/items',
         [SupplierInvoiceItemController::class, 'store']
@@ -278,8 +278,8 @@ Route::middleware(['auth'])->group(function () {
         '/stock-adjustments/product-models/{productModel}/items',
         [StockAdjustmentController::class, 'itemsByProductModel']
     )->name(
-            'stock-adjustments.product-model-items'
-        );
+        'stock-adjustments.product-model-items'
+    );
 
     Route::get(
         '/stock-adjustments',
@@ -390,19 +390,19 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->name('suppliers.destroy');
 
 
-// Quick Edit (must come BEFORE routes using /items/{item})
-Route::get('/items/quick-edit', [ItemController::class, 'quickEdit'])
-    ->name('items.quick-edit');
+    // Quick Edit (must come BEFORE routes using /items/{item})
+    Route::get('/items/quick-edit', [ItemController::class, 'quickEdit'])
+        ->name('items.quick-edit');
 
-Route::get('/items/quick-edit/list', [ItemController::class, 'quickEditList'])
-    ->name('items.quick-edit.list');
+    Route::get('/items/quick-edit/list', [ItemController::class, 'quickEditList'])
+        ->name('items.quick-edit.list');
 
-Route::put('/items/{item}/quick-update', [ItemController::class, 'quickUpdate'])
-    ->name('items.quick-update');
+    Route::put('/items/{item}/quick-update', [ItemController::class, 'quickUpdate'])
+        ->name('items.quick-update');
 
-// Items - create/edit/delete (admin only)
-Route::get('/items/create', [ItemController::class, 'create'])
-    ->name('items.create');
+    // Items - create/edit/delete (admin only)
+    Route::get('/items/create', [ItemController::class, 'create'])
+        ->name('items.create');
 
 
     // Items - create/edit/delete (admin only)
@@ -632,6 +632,16 @@ Route::get('/items/create', [ItemController::class, 'create'])
         [PurchaseOrderItemController::class, 'destroy']
     )->name('purchase-orders.items.destroy');
 
+    // Excel upload
+    Route::get(
+        'purchase-orders/{purchaseOrder}/items/create-upload',
+        [PurchaseOrderItemController::class, 'createWithUpload']
+    )
+        ->name('purchase-orders.items.create-upload');
+
+
+
+
     Route::post(
         '/purchase-orders/{purchaseOrder}/confirm',
         [PurchaseOrderController::class, 'confirm']
@@ -640,7 +650,7 @@ Route::get('/items/create', [ItemController::class, 'create'])
         '/purchase-orders/{purchaseOrder}/cancel',
         [PurchaseOrderController::class, 'cancel']
     )->name('purchase-orders.cancel');
-    
+
     //PDF generation route for purchase orders
     Route::get(
         '/purchase-orders/{purchaseOrder}/pdf',
@@ -775,5 +785,4 @@ Route::get('/items/create', [ItemController::class, 'create'])
         ->name('reporting.po-tracking.items');
     Route::get('/reporting/po-tracking/item-history/{poItem}', [App\Http\Controllers\ReportingController::class, 'poItemHistory'])
         ->name('reporting.po-tracking.item-history');
-
 });

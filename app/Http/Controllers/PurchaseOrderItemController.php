@@ -277,7 +277,7 @@ class PurchaseOrderItemController extends Controller
 
                     $productionRequired +=
                         (
-                            (float) 
+                            (float)
                             $productionPlan->required_quantity
                         )
                         * $bomQuantity;
@@ -293,7 +293,7 @@ class PurchaseOrderItemController extends Controller
                 $productionShortage = max(
                     0,
                     $productionRequired
-                    - $inventoryPosition
+                        - $inventoryPosition
                 );
 
 
@@ -321,19 +321,20 @@ class PurchaseOrderItemController extends Controller
                 return [
 
                     'id' =>
-                        $item->id,
+                    $item->id,
 
 
                     'item_code' =>
-                        $item->item_code,
+                    $item->item_code,
 
 
                     'item_name' =>
-                        $item->item_name,
+                    $item->item_name,
 
+                    'revision' => $bomRow?->revision,
 
                     'unit_name' =>
-                        $item->unit?->name,
+                    $item->unit?->name,
 
 
                     /*
@@ -343,10 +344,10 @@ class PurchaseOrderItemController extends Controller
                     */
 
                     'unit_price' =>
-                        $priceSupplier?->pivot?->unit_price,
+                    $priceSupplier?->pivot?->unit_price,
 
                     'minimum_order_qty' =>
-                        $priceSupplier?->pivot?->minimum_order_qty,
+                    $priceSupplier?->pivot?->minimum_order_qty,
 
 
                     /*
@@ -356,11 +357,11 @@ class PurchaseOrderItemController extends Controller
                     */
 
                     'existing' =>
-                        in_array(
-                            (int) $item->id,
-                            $existingItemIds,
-                            true
-                        )
+                    in_array(
+                        (int) $item->id,
+                        $existingItemIds,
+                        true
+                    )
                         ? 1
                         : 0,
 
@@ -375,23 +376,23 @@ class PurchaseOrderItemController extends Controller
                     */
 
                     'current_stock' =>
-                        $currentStock,
+                    $currentStock,
 
 
                     'reorder_point' =>
-                        $reorderPoint,
+                    $reorderPoint,
 
 
                     'normal_order_qty' =>
-                        $normalOrderQty,
+                    $normalOrderQty,
 
 
                     'recommended_qty' =>
-                        $recommendedQty,
+                    $recommendedQty,
 
 
                     'order_type' =>
-                        $orderType,
+                    $orderType,
 
 
                     /*
@@ -405,27 +406,27 @@ class PurchaseOrderItemController extends Controller
                     */
 
                     'has_production_requirement' =>
-                        $hasProductionRequirement,
+                    $hasProductionRequirement,
 
 
                     'production_required' =>
-                        $productionRequired,
+                    $productionRequired,
 
 
                     'production_current_stock' =>
-                        $currentStock,
+                    $currentStock,
 
 
                     'production_on_order' =>
-                        $onOrder,
+                    $onOrder,
 
 
                     'production_inventory_position' =>
-                        $inventoryPosition,
+                    $inventoryPosition,
 
 
                     'production_shortage' =>
-                        $productionShortage,
+                    $productionShortage,
                 ];
             }
         );
@@ -546,22 +547,22 @@ class PurchaseOrderItemController extends Controller
 
             $planningInformation[$item->id] = [
                 'current_stock' =>
-                    (float) (
-                        $planning['current_stock']
-                        ?? $item->current_stock
-                    ),
+                (float) (
+                    $planning['current_stock']
+                    ?? $item->current_stock
+                ),
 
                 'on_order_quantity' =>
-                    (float) (
-                        $planning['on_order_quantity']
-                        ?? 0
-                    ),
+                (float) (
+                    $planning['on_order_quantity']
+                    ?? 0
+                ),
 
                 'inventory_position' =>
-                    (float) (
-                        $planning['inventory_position']
-                        ?? $item->current_stock
-                    ),
+                (float) (
+                    $planning['inventory_position']
+                    ?? $item->current_stock
+                ),
             ];
         }
 
@@ -655,22 +656,22 @@ class PurchaseOrderItemController extends Controller
     */
 
     public function store(
-    Request $request,
-    PurchaseOrder $purchaseOrder
-) {
-    abort_if(
-        $purchaseOrder->status !== 'draft',
-        403,
-        'Items can only be added to draft purchase orders.'
-    );
+        Request $request,
+        PurchaseOrder $purchaseOrder
+    ) {
+        abort_if(
+            $purchaseOrder->status !== 'draft',
+            403,
+            'Items can only be added to draft purchase orders.'
+        );
 
-    abort_if(
-        $purchaseOrder->source === 'supplier-invoice',
-        403,
-        'Items for a Supplier Invoice Purchase Order must come from the Supplier Invoice and cannot be added manually.'
-    );
+        abort_if(
+            $purchaseOrder->source === 'supplier-invoice',
+            403,
+            'Items for a Supplier Invoice Purchase Order must come from the Supplier Invoice and cannot be added manually.'
+        );
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Convert Empty Strings To Null Before Validation
     |--------------------------------------------------------------------------
@@ -680,17 +681,20 @@ class PurchaseOrderItemController extends Controller
     |
     */
 
-    $request->merge([
-        'unit_price' => collect($request->input('unit_price', []))
-            ->map(fn ($value) => $value === '' ? null : $value)
-            ->all(),
+        $request->merge([
+            'unit_price' => collect($request->input('unit_price', []))
+                ->map(fn($value) => $value === '' ? null : $value)
+                ->all(),
+            'revision' => collect($request->input('revision', []))
+                ->map(fn($value) => $value === '' ? null : $value)
+                ->all(),
 
-        'remarks' => collect($request->input('remarks', []))
-            ->map(fn ($value) => $value === '' ? null : $value)
-            ->all(),
-    ]);
+            'remarks' => collect($request->input('remarks', []))
+                ->map(fn($value) => $value === '' ? null : $value)
+                ->all(),
+        ]);
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Validation
     |--------------------------------------------------------------------------
@@ -699,116 +703,125 @@ class PurchaseOrderItemController extends Controller
     |
     */
 
-    $validated = $request->validate([
+        $validated = $request->validate([
 
-        'product_model_id'   => ['required', 'array', 'min:1'],
-        'product_model_id.*'  => ['required', 'exists:product_models,id'],
+            'product_model_id'   => ['required', 'array', 'min:1'],
+            'product_model_id.*'  => ['required', 'exists:product_models,id'],
 
-        'item_id'             => ['required', 'array'],
-        'item_id.*'           => ['required', 'exists:items,id'],
+            'item_id'             => ['required', 'array'],
+            'item_id.*'           => ['required', 'exists:items,id'],
 
-        'ordered_quantity'    => ['required', 'array'],
-        'ordered_quantity.*'  => ['required', 'numeric', 'min:0.001'],
+            'ordered_quantity'    => ['required', 'array'],
+            'ordered_quantity.*'  => ['required', 'numeric', 'min:0.001'],
 
-        'unit_price'          => ['array'],
-        'unit_price.*'        => ['nullable', 'numeric', 'min:0'],
+            'unit_price'          => ['array'],
+            'unit_price.*'        => ['nullable', 'numeric', 'min:0'],
 
-        'remarks'             => ['array'],
-        'remarks.*'           => ['nullable', 'string'],
+            'revision'   => ['array'],
+            'revision.*' => ['nullable', 'string', 'max:50'],
 
-    ]);
+            'remarks'             => ['array'],
+            'remarks.*'           => ['nullable', 'string'],
 
-    $rowsToInsert = [];
-    $errors = [];
-    $seenInThisSubmission = [];
-
-    foreach ($validated['item_id'] as $index => $itemId) {
-
-        $productModelId = $validated['product_model_id'][$index] ?? null;
-        $orderedQuantity = $validated['ordered_quantity'][$index] ?? null;
-        $unitPriceInput = $validated['unit_price'][$index] ?? null;
-        $remarks = $validated['remarks'][$index] ?? null;
-
-        $rowNumber = $index + 1;
-
-        $item = Item::query()
-            ->whereKey($itemId)
-            ->where('status', true)
-            ->first();
-
-        if (!$item) {
-            $errors["item_id.$index"] = "Row {$rowNumber}: The selected item is not active or does not exist.";
-            continue;
-        }
-
-        if ((int) $item->product_model_id !== (int) $productModelId) {
-            $errors["item_id.$index"] = "Row {$rowNumber}: The selected item does not belong to the selected Product Model.";
-            continue;
-        }
-
-        $duplicateKey = $productModelId . '-' . $itemId;
-
-        if (isset($seenInThisSubmission[$duplicateKey])) {
-            $errors["item_id.$index"] = "Row {$rowNumber}: This item was selected more than once on this page. Please remove the duplicate row.";
-            continue;
-        }
-
-        $seenInThisSubmission[$duplicateKey] = true;
-
-        $alreadyExists = PurchaseOrderItem::query()
-            ->where('purchase_order_id', $purchaseOrder->id)
-            ->where('product_model_id', $productModelId)
-            ->where('item_id', $itemId)
-            ->exists();
-
-        if ($alreadyExists) {
-            $errors["item_id.$index"] = "Row {$rowNumber}: This item has already been added for the selected Product Model.";
-            continue;
-        }
-
-        $supplierItem = $item->suppliers()
-            ->where('suppliers.id', $purchaseOrder->supplier_id)
-            ->where('item_suppliers.status', true)
-            ->first();
-
-        $supplierUnitPrice = $supplierItem?->pivot?->unit_price;
-
-        $unitPrice = $supplierUnitPrice !== null
-            ? (float) $supplierUnitPrice
-            : ($unitPriceInput !== null ? (float) $unitPriceInput : null);
-
-        $rowsToInsert[] = [
-            'purchase_order_id'  => $purchaseOrder->id,
-            'product_model_id'   => $productModelId,
-            'item_id'            => $itemId,
-            'ordered_quantity'   => $orderedQuantity,
-            'unit_price'         => $unitPrice,
-            'received_quantity'  => 0,
-            'planned_order_date' => null,
-            'remarks'            => $remarks,
-            'created_at'         => now(),
-            'updated_at'         => now(),
-        ];
-    }
-
-    if (!empty($errors)) {
-        return back()->withInput()->withErrors($errors);
-    }
-
-    if (empty($rowsToInsert)) {
-        return back()->withInput()->withErrors([
-            'item_id' => 'Please add at least one valid item.',
         ]);
+
+        $rowsToInsert = [];
+        $errors = [];
+        $seenInThisSubmission = [];
+
+        foreach ($validated['item_id'] as $index => $itemId) {
+
+            $productModelId = $validated['product_model_id'][$index] ?? null;
+            $orderedQuantity = $validated['ordered_quantity'][$index] ?? null;
+            $unitPriceInput = $validated['unit_price'][$index] ?? null;
+            $remarks = $validated['remarks'][$index] ?? null;
+            $revision = $validated['revision'][$index] ?? null;
+            $rowNumber = $index + 1;
+
+            $item = Item::query()
+                ->whereKey($itemId)
+                ->where('status', true)
+                ->first();
+
+            if (!$item) {
+                $errors["item_id.$index"] = "Row {$rowNumber}: The selected item is not active or does not exist.";
+                continue;
+            }
+
+            $belongsToModel = DB::table('product_model_items')
+                ->where('product_model_id', $productModelId)
+                ->where('item_id', $itemId)
+                ->exists();
+
+            if (!$belongsToModel) {
+                $errors["item_id.$index"] = "Row {$rowNumber}: The selected item does not belong to the selected Product Model.";
+                continue;
+            }
+
+            $duplicateKey = $productModelId . '-' . $itemId;
+
+            if (isset($seenInThisSubmission[$duplicateKey])) {
+                $errors["item_id.$index"] = "Row {$rowNumber}: This item was selected more than once on this page. Please remove the duplicate row.";
+                continue;
+            }
+
+            $seenInThisSubmission[$duplicateKey] = true;
+
+            $alreadyExists = PurchaseOrderItem::query()
+                ->where('purchase_order_id', $purchaseOrder->id)
+                ->where('product_model_id', $productModelId)
+                ->where('item_id', $itemId)
+                ->exists();
+
+            if ($alreadyExists) {
+                $errors["item_id.$index"] = "Row {$rowNumber}: This item has already been added for the selected Product Model.";
+                continue;
+            }
+
+            $supplierItem = $item->suppliers()
+                ->where('suppliers.id', $purchaseOrder->supplier_id)
+                ->where('item_suppliers.status', true)
+                ->first();
+
+            $supplierUnitPrice = $supplierItem?->pivot?->unit_price;
+
+            $unitPrice = $supplierUnitPrice !== null
+                ? (float) $supplierUnitPrice
+                : ($unitPriceInput !== null ? (float) $unitPriceInput : null);
+
+            $rowsToInsert[] = [
+                'purchase_order_id'  => $purchaseOrder->id,
+                'product_model_id'   => $productModelId,
+                'item_id'            => $itemId,
+                'ordered_quantity'   => $orderedQuantity,
+                'unit_price'         => $unitPrice,
+                'received_quantity'  => 0,
+                'planned_order_date' => null,
+                'revision' => $revision,
+                'remarks'            => $remarks,
+                'created_at'         => now(),
+                'updated_at'         => now(),
+            ];
+        }
+
+        if (!empty($errors)) {
+            return back()->withInput()->withErrors($errors);
+        }
+
+        if (empty($rowsToInsert)) {
+            return back()->withInput()->withErrors([
+                'item_id' => 'Please add at least one valid item.',
+            ]);
+        }
+
+        DB::transaction(function () use ($rowsToInsert) {
+            PurchaseOrderItem::insert($rowsToInsert);
+        });
+
+        return redirect()
+            ->route('purchase-orders.show', $purchaseOrder)
+            ->with('success', count($rowsToInsert) . ' item(s) added successfully.');
     }
-
-    DB::transaction(function () use ($rowsToInsert) {
-        PurchaseOrderItem::insert($rowsToInsert);
-    });
-
-    return redirect()
-        ->route('purchase-orders.show', $purchaseOrder)
-        ->with('success', count($rowsToInsert) . ' item(s) added successfully.');
-}
 
 
     public function edit(
@@ -1019,7 +1032,7 @@ class PurchaseOrderItemController extends Controller
                 ->withErrors([
 
                     'ordered_quantity' =>
-                        'Ordered quantity cannot be less than the already received quantity of '
+                    'Ordered quantity cannot be less than the already received quantity of '
                         . number_format(
                             $receivedQuantity,
                             3
@@ -1038,13 +1051,13 @@ class PurchaseOrderItemController extends Controller
         $purchaseOrderItem->update([
 
             'ordered_quantity' =>
-                $validated['ordered_quantity'],
+            $validated['ordered_quantity'],
 
             'unit_price' =>
-                $validated['unit_price'] ?? null,
+            $validated['unit_price'] ?? null,
 
             'remarks' =>
-                $validated['remarks'] ?? null,
+            $validated['remarks'] ?? null,
 
         ]);
 
@@ -1150,5 +1163,22 @@ class PurchaseOrderItemController extends Controller
                 'success',
                 'Purchase order item deleted successfully.'
             );
+    }
+
+    public function createWithUpload(PurchaseOrder $purchaseOrder)
+    {
+        abort_if($purchaseOrder->status !== 'draft', 403, 'Items can only be added to draft purchase orders.');
+        abort_if($purchaseOrder->source === 'supplier-invoice', 403, 'Items for a Supplier Invoice Purchase Order cannot be added manually.');
+
+        $purchaseOrder->load('supplier');
+
+        $productModels = DB::table('product_models')->orderBy('model_code')->get();
+
+        $existingItems = $purchaseOrder->items()->with('item')->get();
+
+        return view(
+            'purchase-orders.items.create-upload',
+            compact('purchaseOrder', 'productModels', 'existingItems')
+        );
     }
 }

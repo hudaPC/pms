@@ -649,18 +649,20 @@ class PurchaseOrderController extends Controller
 
 
     public function show(PurchaseOrder $purchaseOrder)
-    {
-        $purchaseOrder->load([
-            'supplier',
-            'items.item.unit',
-            'goodsReceipts.items',
-        ]);
+{
+    $purchaseOrder->load([
+        'supplier',
+        'items.item.unit',
+        'items.productModel',
+        'goodsReceipts.items',
+        'supplierInvoices',
+    ]);
 
-        return view(
-            'purchase-orders.show',
-            compact('purchaseOrder')
-        );
-    }
+    return view(
+        'purchase-orders.show',
+        compact('purchaseOrder')
+    );
+}
     public function pdf(PurchaseOrder $purchaseOrder)
     {
         $purchaseOrder->load([

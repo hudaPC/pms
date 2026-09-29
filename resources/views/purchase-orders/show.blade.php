@@ -60,11 +60,24 @@
 
                 @endif
 
+                {{-- Create Supplier Invoice From This PO --}}
+                @if ($purchaseOrder->status === 'confirmed' && $purchaseOrder->supplierInvoices->isEmpty())
+
+                    <a href="{{ route('supplier-invoices.create', ['purchase_order' => $purchaseOrder->id]) }}"
+                        class="btn btn-info">
+
+                        <i class="fas fa-file-invoice-dollar mr-1"></i>
+                        Create Supplier Invoice
+
+                    </a>
+
+                @endif
 
                 {{-- Receive Goods --}}
                 @if (in_array($purchaseOrder->status, ['confirmed', 'partially_received']))
 
-                    @php
+
+                  @php
 
                         $hasOutstandingItems = $purchaseOrder->items->contains(function ($item) {
                             return (float) $item->received_quantity < (float) $item->ordered_quantity;

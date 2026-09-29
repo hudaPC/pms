@@ -193,8 +193,8 @@ Route::middleware(['auth'])->group(function () {
             'createPurchaseOrder'
         ]
     )->name(
-        'supplier-invoices.create-purchase-order'
-    );
+            'supplier-invoices.create-purchase-order'
+        );
 
     Route::resource(
         'supplier-invoices',
@@ -234,8 +234,8 @@ Route::middleware(['auth'])->group(function () {
         '/supplier-invoices/{supplierInvoice}/product-models/{productModel}/items',
         [SupplierInvoiceItemController::class, 'itemsByProductModel']
     )->name(
-        'supplier-invoices.product-model-items'
-    );
+            'supplier-invoices.product-model-items'
+        );
     Route::post(
         '/supplier-invoices/{supplierInvoice}/items',
         [SupplierInvoiceItemController::class, 'store']
@@ -260,6 +260,22 @@ Route::middleware(['auth'])->group(function () {
     )->name('supplier-invoices.items.destroy');
 
 
+    // INVOICE UPLOAD
+    Route::get(
+        'supplier-invoices/{supplierInvoice}/items/create-upload',
+        [SupplierInvoiceItemController::class, 'createWithUpload']
+    )
+        ->name('supplier-invoices.items.create-upload');
+
+    Route::post(
+        'supplier-invoices/{supplierInvoice}/items/bulk-store',
+        [SupplierInvoiceItemController::class, 'storeBulk']
+    )
+        ->name('supplier-invoices.items.bulk-store');
+
+
+
+
 
     //INVENTORY ROUTES
     Route::get(
@@ -278,8 +294,8 @@ Route::middleware(['auth'])->group(function () {
         '/stock-adjustments/product-models/{productModel}/items',
         [StockAdjustmentController::class, 'itemsByProductModel']
     )->name(
-        'stock-adjustments.product-model-items'
-    );
+            'stock-adjustments.product-model-items'
+        );
 
     Route::get(
         '/stock-adjustments',

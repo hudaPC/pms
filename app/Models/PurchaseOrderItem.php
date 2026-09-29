@@ -61,4 +61,5 @@ class PurchaseOrderItem extends Model
     {
         return $this->belongsTo(ProductModel::class);
     }
+
 }

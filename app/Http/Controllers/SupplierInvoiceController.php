@@ -49,36 +49,40 @@ class SupplierInvoiceController extends Controller
             ->orderBy('name')
             ->get();
 
-        /*
-    |--------------------------------------------------------------------------
-    | Optional Preselected Supplier
-    |--------------------------------------------------------------------------
-    |
-    | Used when Supplier Invoice creation starts from
-    | Production Requirements.
-    |
-    | Normal Supplier Invoice creation still works without it.
-    |
-    */
-
         $selectedSupplierId = null;
 
         if (request()->filled('supplier')) {
-
             $selectedSupplierId = Supplier::where('status', true)
                 ->where('id', request('supplier'))
                 ->value('id');
         }
+
         $selectedProductionPlanId = null;
 
         if (request()->filled('production_plan')) {
+            $selectedProductionPlanId = \App\Models\ProductionPlan::where(
+                'id',
+                request('production_plan')
+            )->value('id');
+        }
 
-            $selectedProductionPlanId =
-                \App\Models\ProductionPlan::where(
-                    'id',
-                    request('production_plan')
-                )
-                ->value('id');
+        /*
+        |--------------------------------------------------------------------------
+        | Optional: Creating Invoice From An Existing Confirmed Purchase Order
+        |--------------------------------------------------------------------------
+        */
+
+        $purchaseOrder = null;
+
+        if (request()->filled('purchase_order')) {
+
+            $purchaseOrder = PurchaseOrder::where('status', 'confirmed')
+                ->with('supplier')
+                ->find(request('purchase_order'));
+
+            if ($purchaseOrder) {
+                $selectedSupplierId = $purchaseOrder->supplier_id;
+            }
         }
 
         return view(
@@ -86,7 +90,8 @@ class SupplierInvoiceController extends Controller
             compact(
                 'suppliers',
                 'selectedSupplierId',
-                'selectedProductionPlanId'
+                'selectedProductionPlanId',
+                'purchaseOrder'
             )
         );
     }
@@ -203,7 +208,7 @@ class SupplierInvoiceController extends Controller
                 ->withErrors([
 
                     'purchase_order' =>
-                    'Only a confirmed Supplier Invoice can create a Purchase Order.',
+                        'Only a confirmed Supplier Invoice can create a Purchase Order.',
 
                 ]);
         }
@@ -263,10 +268,10 @@ class SupplierInvoiceController extends Controller
             ->with(
                 'success',
                 'Purchase Order '
-                    . $purchaseOrder->po_number
-                    . ' created successfully from Supplier Invoice '
-                    . $supplierInvoice->invoice_number
-                    . '.'
+                . $purchaseOrder->po_number
+                . ' created successfully from Supplier Invoice '
+                . $supplierInvoice->invoice_number
+                . '.'
             );
     }
 
@@ -289,12 +294,18 @@ class SupplierInvoiceController extends Controller
                 'exists:suppliers,id',
             ],
 
+            'purchase_order_id' => [
+                'nullable',
+                'exists:purchase_orders,id',
+            ],
+
             'production_plan_id' => [
                 'nullable',
                 'exists:production_plans,id',
             ],
             'po_creation_mode' => [
-                'required',
+                'required_without:purchase_order_id',
+                'nullable',
                 'in:manual,automatic',
             ],
             'requested_po_number' => [
@@ -383,7 +394,7 @@ class SupplierInvoiceController extends Controller
                 ->withErrors([
 
                     'invoice_number' =>
-                    'This invoice number already exists for the selected supplier.',
+                        'This invoice number already exists for the selected supplier.',
 
                 ]);
         }
@@ -399,56 +410,107 @@ class SupplierInvoiceController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $supplierInvoice = SupplierInvoice::create([
+        $purchaseOrder = !empty($validated['purchase_order_id'])
+    ? PurchaseOrder::with('items')->find($validated['purchase_order_id'])
+    : null;
 
-            'invoice_number' =>
-            $validated['invoice_number'],
+$supplierInvoice = SupplierInvoice::create([
 
-            'supplier_id' =>
-            $supplier->id,
-            'production_plan_id' =>
-            $validated['production_plan_id'] ?? null,
+    'invoice_number' =>
+    $validated['invoice_number'],
 
-            'purchase_order_id' =>
-            null,
-            'po_creation_mode' =>
-            $validated['po_creation_mode'],
+    'supplier_id' =>
+    $supplier->id,
+    'production_plan_id' =>
+    $validated['production_plan_id'] ?? null,
 
-            'invoice_date' =>
-            $validated['invoice_date'],
-            'requested_po_number' =>
-            $validated['requested_po_number'] ?? null,
+    'purchase_order_id' =>
+    $purchaseOrder->id ?? null,
 
-            'requested_delivery_date' =>
-            $validated['requested_delivery_date'] ?? null,
-            'due_date' =>
-            $validated['due_date'] ?? null,
+    'po_creation_mode' =>
+    $validated['po_creation_mode'] ?? 'manual',
 
-            'subtotal' =>
-            0,
+    'invoice_date' =>
+    $validated['invoice_date'],
+    'requested_po_number' =>
+    $validated['requested_po_number'] ?? null,
 
-            'tax_amount' =>
-            $validated['tax_amount'] ?? 0,
+    'requested_delivery_date' =>
+    $validated['requested_delivery_date'] ?? null,
+    'due_date' =>
+    $validated['due_date'] ?? null,
 
-            'discount_amount' =>
-            $validated['discount_amount'] ?? 0,
+    'subtotal' =>
+    0,
 
-            'total_amount' =>
-            0,
+    'tax_amount' =>
+    $validated['tax_amount'] ?? 0,
 
-            'paid_amount' =>
-            0,
+    'discount_amount' =>
+    $validated['discount_amount'] ?? 0,
 
-            'balance_amount' =>
-            0,
+    'total_amount' =>
+    0,
 
-            'status' =>
-            'draft',
+    'paid_amount' =>
+    0,
 
-            'remarks' =>
-            $validated['remarks'] ?? null,
+    'balance_amount' =>
+    0,
 
+    'status' =>
+    'draft',
+
+    'remarks' =>
+    $validated['remarks'] ?? null,
+
+]);
+
+/*
+|--------------------------------------------------------------------------
+| Copy Items From The Purchase Order (If Created From One)
+|--------------------------------------------------------------------------
+*/
+
+if ($purchaseOrder) {
+
+    $rowsToInsert = [];
+
+    foreach ($purchaseOrder->items as $poItem) {
+
+        $rowsToInsert[] = [
+            'supplier_invoice_id'    => $supplierInvoice->id,
+            'product_model_id'       => $poItem->product_model_id,
+            'item_id'                => $poItem->item_id,
+            'purchase_order_item_id' => $poItem->id,
+            'quantity'               => $poItem->ordered_quantity,
+            'unit_price'             => $poItem->unit_price ?? 0,
+            'line_total'             => (float) $poItem->ordered_quantity * (float) ($poItem->unit_price ?? 0),
+            'remarks'                => $poItem->remarks,
+            'created_at'             => now(),
+            'updated_at'             => now(),
+        ];
+    }
+
+    if (!empty($rowsToInsert)) {
+
+        \App\Models\SupplierInvoiceItem::insert($rowsToInsert);
+
+        $subtotal = (float) $supplierInvoice->items()->sum('line_total');
+
+        $totalAmount = max(0, $subtotal
+            + (float) $supplierInvoice->tax_amount
+            - (float) $supplierInvoice->discount_amount);
+
+        $balanceAmount = max(0, $totalAmount - (float) $supplierInvoice->paid_amount);
+
+        $supplierInvoice->update([
+            'subtotal'       => $subtotal,
+            'total_amount'   => $totalAmount,
+            'balance_amount' => $balanceAmount,
         ]);
+    }
+}
 
 
         /*
@@ -591,16 +653,16 @@ class SupplierInvoiceController extends Controller
                 'supplier_id',
                 $validated['supplier_id']
             )
-            ->where(
-                'invoice_number',
-                $validated['invoice_number']
-            )
-            ->where(
-                'id',
-                '!=',
-                $supplierInvoice->id
-            )
-            ->exists();
+                ->where(
+                    'invoice_number',
+                    $validated['invoice_number']
+                )
+                ->where(
+                    'id',
+                    '!=',
+                    $supplierInvoice->id
+                )
+                ->exists();
 
 
         if ($invoiceExists) {
@@ -610,7 +672,7 @@ class SupplierInvoiceController extends Controller
                 ->withErrors([
 
                     'invoice_number' =>
-                    'This invoice number already exists for the selected supplier.',
+                        'This invoice number already exists for the selected supplier.',
 
                 ]);
         }
@@ -630,8 +692,8 @@ class SupplierInvoiceController extends Controller
 
         $hasItems =
             $supplierInvoice
-            ->items()
-            ->exists();
+                ->items()
+                ->exists();
 
 
         if (
@@ -646,7 +708,7 @@ class SupplierInvoiceController extends Controller
                 ->withErrors([
 
                     'supplier_id' =>
-                    'The supplier cannot be changed because invoice items have already been added.',
+                        'The supplier cannot be changed because invoice items have already been added.',
 
                 ]);
         }
@@ -682,8 +744,8 @@ class SupplierInvoiceController extends Controller
             max(
                 0,
                 $subtotal
-                    + $taxAmount
-                    - $discountAmount
+                + $taxAmount
+                - $discountAmount
             );
 
 
@@ -697,7 +759,7 @@ class SupplierInvoiceController extends Controller
             max(
                 0,
                 $totalAmount
-                    - (float) $supplierInvoice->paid_amount
+                - (float) $supplierInvoice->paid_amount
             );
 
 
@@ -718,35 +780,35 @@ class SupplierInvoiceController extends Controller
         $supplierInvoice->update([
 
             'supplier_id' =>
-            $validated['supplier_id'],
+                $validated['supplier_id'],
 
             'invoice_number' =>
-            $validated['invoice_number'],
+                $validated['invoice_number'],
 
             'invoice_date' =>
-            $validated['invoice_date'],
+                $validated['invoice_date'],
 
             'due_date' =>
-            $validated['due_date']
+                $validated['due_date']
                 ?? null,
 
             'subtotal' =>
-            $subtotal,
+                $subtotal,
 
             'tax_amount' =>
-            $taxAmount,
+                $taxAmount,
 
             'discount_amount' =>
-            $discountAmount,
+                $discountAmount,
 
             'total_amount' =>
-            $totalAmount,
+                $totalAmount,
 
             'balance_amount' =>
-            $balanceAmount,
+                $balanceAmount,
 
             'remarks' =>
-            $validated['remarks']
+                $validated['remarks']
                 ?? null,
 
         ]);
@@ -783,117 +845,117 @@ class SupplierInvoiceController extends Controller
         );
     }
     public function confirm(SupplierInvoice $supplierInvoice)
-{
-    /*
-    |--------------------------------------------------------------------------
-    | Only Draft Invoice Can Be Confirmed
-    |--------------------------------------------------------------------------
-    */
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | Only Draft Invoice Can Be Confirmed
+        |--------------------------------------------------------------------------
+        */
 
-    abort_if(
-        $supplierInvoice->status !== 'draft',
-        403,
-        'Only draft supplier invoices can be confirmed.'
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Load Invoice Items
-    |--------------------------------------------------------------------------
-    */
-
-    $supplierInvoice->load('items');
+        abort_if(
+            $supplierInvoice->status !== 'draft',
+            403,
+            'Only draft supplier invoices can be confirmed.'
+        );
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Must Have At Least One Item
-    |--------------------------------------------------------------------------
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | Load Invoice Items
+        |--------------------------------------------------------------------------
+        */
 
-    if ($supplierInvoice->items->isEmpty()) {
-
-        return back()
-            ->withErrors([
-                'confirm' =>
-                    'Supplier invoice cannot be confirmed because it has no items.',
-            ]);
-    }
+        $supplierInvoice->load('items');
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Total Must Be Greater Than Zero
-    |--------------------------------------------------------------------------
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | Must Have At Least One Item
+        |--------------------------------------------------------------------------
+        */
 
-    if ((float) $supplierInvoice->total_amount <= 0) {
+        if ($supplierInvoice->items->isEmpty()) {
 
-        return back()
-            ->withErrors([
-                'confirm' =>
-                    'Supplier invoice total must be greater than zero before confirmation.',
-            ]);
-    }
+            return back()
+                ->withErrors([
+                    'confirm' =>
+                        'Supplier invoice cannot be confirmed because it has no items.',
+                ]);
+        }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Calculate Balance
-    |--------------------------------------------------------------------------
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | Total Must Be Greater Than Zero
+        |--------------------------------------------------------------------------
+        */
 
-    $balanceAmount = max(
-        0,
-        (float) $supplierInvoice->total_amount
+        if ((float) $supplierInvoice->total_amount <= 0) {
+
+            return back()
+                ->withErrors([
+                    'confirm' =>
+                        'Supplier invoice total must be greater than zero before confirmation.',
+                ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Calculate Balance
+        |--------------------------------------------------------------------------
+        */
+
+        $balanceAmount = max(
+            0,
+            (float) $supplierInvoice->total_amount
             - (float) $supplierInvoice->paid_amount
-    );
+        );
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Confirm Supplier Invoice
-    |--------------------------------------------------------------------------
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | Confirm Supplier Invoice
+        |--------------------------------------------------------------------------
+        */
 
-    $supplierInvoice->update([
+        $supplierInvoice->update([
 
-        'balance_amount' =>
-            $balanceAmount,
+            'balance_amount' =>
+                $balanceAmount,
 
-        'status' =>
-            $balanceAmount > 0
+            'status' =>
+                $balanceAmount > 0
                 ? 'unpaid'
                 : 'paid',
 
-    ]);
+        ]);
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Redirect To Supplier Invoice
-    |--------------------------------------------------------------------------
-    |
-    | Purchase Order is created manually after confirmation.
-    | User enters:
-    |
-    | - PO Number
-    | - Order Date
-    | - Expected Delivery Date
-    |
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | Redirect To Supplier Invoice
+        |--------------------------------------------------------------------------
+        |
+        | Purchase Order is created manually after confirmation.
+        | User enters:
+        |
+        | - PO Number
+        | - Order Date
+        | - Expected Delivery Date
+        |
+        */
 
-    return redirect()
-        ->route(
-            'supplier-invoices.show',
-            $supplierInvoice
-        )
-        ->with(
-            'success',
-            'Supplier invoice confirmed successfully. You can now enter the PO Number, Order Date, and Expected Delivery Date to create the Purchase Order.'
-        );
-}
+        return redirect()
+            ->route(
+                'supplier-invoices.show',
+                $supplierInvoice
+            )
+            ->with(
+                'success',
+                'Supplier invoice confirmed successfully. You can now enter the PO Number, Order Date, and Expected Delivery Date to create the Purchase Order.'
+            );
+    }
 
 
     public function cancel(
@@ -933,11 +995,11 @@ class SupplierInvoiceController extends Controller
 
             $invoice =
                 SupplierInvoice::query()
-                ->whereKey(
-                    $supplierInvoice->id
-                )
-                ->lockForUpdate()
-                ->firstOrFail();
+                    ->whereKey(
+                        $supplierInvoice->id
+                    )
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
 
             /*
@@ -951,7 +1013,7 @@ class SupplierInvoiceController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages([
 
                     'cancellation_reason' =>
-                    'This supplier invoice has already been cancelled.',
+                        'This supplier invoice has already been cancelled.',
 
                 ]);
             }
@@ -972,7 +1034,7 @@ class SupplierInvoiceController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages([
 
                     'cancellation_reason' =>
-                    'A draft supplier invoice cannot be cancelled. '
+                        'A draft supplier invoice cannot be cancelled. '
                         . 'Use the normal draft edit/delete workflow instead.',
 
                 ]);
@@ -998,11 +1060,11 @@ class SupplierInvoiceController extends Controller
 
                 $linkedPurchaseOrder =
                     PurchaseOrder::query()
-                    ->whereKey(
-                        $invoice->purchase_order_id
-                    )
-                    ->lockForUpdate()
-                    ->first();
+                        ->whereKey(
+                            $invoice->purchase_order_id
+                        )
+                        ->lockForUpdate()
+                        ->first();
 
 
                 if (
@@ -1022,7 +1084,7 @@ class SupplierInvoiceController extends Controller
                         throw \Illuminate\Validation\ValidationException::withMessages([
 
                             'cancellation_reason' =>
-                            'This Supplier Invoice is linked to Draft Purchase Order '
+                                'This Supplier Invoice is linked to Draft Purchase Order '
                                 . $linkedPurchaseOrder->po_number
                                 . '. Cancel the Purchase Order first, then cancel this Supplier Invoice.',
 
@@ -1039,7 +1101,7 @@ class SupplierInvoiceController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages([
 
                         'cancellation_reason' =>
-                        'This Supplier Invoice cannot be cancelled because linked Purchase Order '
+                            'This Supplier Invoice cannot be cancelled because linked Purchase Order '
                             . $linkedPurchaseOrder->po_number
                             . ' is already '
                             . str_replace(
@@ -1073,12 +1135,12 @@ class SupplierInvoiceController extends Controller
 
             $hasActivePayments =
                 $invoice
-                ->payments()
-                ->where(
-                    'status',
-                    'active'
-                )
-                ->exists();
+                    ->payments()
+                    ->where(
+                        'status',
+                        'active'
+                    )
+                    ->exists();
 
 
             /*
@@ -1105,7 +1167,7 @@ class SupplierInvoiceController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages([
 
                     'cancellation_reason' =>
-                    'This supplier invoice cannot be cancelled because '
+                        'This supplier invoice cannot be cancelled because '
                         . number_format(
                             $activePaymentAmount,
                             4
@@ -1141,7 +1203,7 @@ class SupplierInvoiceController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages([
 
                     'cancellation_reason' =>
-                    'This supplier invoice cannot be cancelled from its current status.',
+                        'This supplier invoice cannot be cancelled from its current status.',
 
                 ]);
             }
@@ -1165,13 +1227,13 @@ class SupplierInvoiceController extends Controller
             $invoice->update([
 
                 'status' =>
-                'cancelled',
+                    'cancelled',
 
                 'cancelled_at' =>
-                now(),
+                    now(),
 
                 'cancellation_reason' =>
-                $validated['cancellation_reason'],
+                    $validated['cancellation_reason'],
 
             ]);
         });
@@ -1245,7 +1307,7 @@ class SupplierInvoiceController extends Controller
         $supplierInvoice->update([
 
             'due_date' =>
-            $validated['due_date']
+                $validated['due_date']
                 ?? null,
 
         ]);
@@ -1268,219 +1330,214 @@ class SupplierInvoiceController extends Controller
             );
     }
 
-   private function generatePurchaseOrderFromInvoice(
-    SupplierInvoice $supplierInvoice,
-    string $poNumber,
-    string $orderDate,
-    string $expectedDeliveryDate
-): PurchaseOrder {
+    private function generatePurchaseOrderFromInvoice(
+        SupplierInvoice $supplierInvoice,
+        string $poNumber,
+        string $orderDate,
+        string $expectedDeliveryDate
+    ): PurchaseOrder {
 
-    return DB::transaction(function () use (
-        $supplierInvoice,
-        $poNumber,
-        $orderDate,
-        $expectedDeliveryDate
-    ) {
+        return DB::transaction(function () use ($supplierInvoice, $poNumber, $orderDate, $expectedDeliveryDate) {
 
-        /*
-        |--------------------------------------------------------------------------
-        | Lock Supplier Invoice
-        |--------------------------------------------------------------------------
-        */
+            /*
+            |--------------------------------------------------------------------------
+            | Lock Supplier Invoice
+            |--------------------------------------------------------------------------
+            */
 
-        $lockedInvoice = SupplierInvoice::where(
-            'id',
-            $supplierInvoice->id
-        )
-            ->lockForUpdate()
-            ->firstOrFail();
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Prevent Duplicate Purchase Order
-        |--------------------------------------------------------------------------
-        */
-
-        if ($lockedInvoice->purchase_order_id) {
-
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'purchase_order' =>
-                    'A Purchase Order has already been created from this Supplier Invoice.',
-            ]);
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Invoice Must Be Confirmed
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            in_array(
-                $lockedInvoice->status,
-                [
-                    'draft',
-                    'cancelled',
-                ],
-                true
+            $lockedInvoice = SupplierInvoice::where(
+                'id',
+                $supplierInvoice->id
             )
-        ) {
-
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'purchase_order' =>
-                    'Only a confirmed Supplier Invoice can create a Purchase Order.',
-            ]);
-        }
+                ->lockForUpdate()
+                ->firstOrFail();
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Prevent Duplicate PO Number
-        |--------------------------------------------------------------------------
-        */
+            /*
+            |--------------------------------------------------------------------------
+            | Prevent Duplicate Purchase Order
+            |--------------------------------------------------------------------------
+            */
 
-        if (
-            PurchaseOrder::where(
-                'po_number',
-                $poNumber
-            )->exists()
-        ) {
+            if ($lockedInvoice->purchase_order_id) {
 
-            throw \Illuminate\Validation\ValidationException::withMessages([
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'purchase_order' =>
+                        'A Purchase Order has already been created from this Supplier Invoice.',
+                ]);
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Invoice Must Be Confirmed
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                in_array(
+                    $lockedInvoice->status,
+                    [
+                        'draft',
+                        'cancelled',
+                    ],
+                    true
+                )
+            ) {
+
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'purchase_order' =>
+                        'Only a confirmed Supplier Invoice can create a Purchase Order.',
+                ]);
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Prevent Duplicate PO Number
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                PurchaseOrder::where(
+                    'po_number',
+                    $poNumber
+                )->exists()
+            ) {
+
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'po_number' =>
+                        'This Purchase Order number already exists.',
+                ]);
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Load Invoice Items
+            |--------------------------------------------------------------------------
+            */
+
+            $invoiceItems = $lockedInvoice
+                ->items()
+                ->get();
+
+
+            if ($invoiceItems->isEmpty()) {
+
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'purchase_order' =>
+                        'The Supplier Invoice has no items.',
+                ]);
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Purchase Order
+            |--------------------------------------------------------------------------
+            */
+
+            $purchaseOrder = PurchaseOrder::create([
+
                 'po_number' =>
-                    'This Purchase Order number already exists.',
-            ]);
-        }
+                    $poNumber,
 
+                'supplier_id' =>
+                    $lockedInvoice->supplier_id,
 
-        /*
-        |--------------------------------------------------------------------------
-        | Load Invoice Items
-        |--------------------------------------------------------------------------
-        */
+                'source' =>
+                    'supplier-invoice',
 
-        $invoiceItems = $lockedInvoice
-            ->items()
-            ->get();
-
-
-        if ($invoiceItems->isEmpty()) {
-
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'purchase_order' =>
-                    'The Supplier Invoice has no items.',
-            ]);
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Create Purchase Order
-        |--------------------------------------------------------------------------
-        */
-
-        $purchaseOrder = PurchaseOrder::create([
-
-            'po_number' =>
-                $poNumber,
-
-            'supplier_id' =>
-                $lockedInvoice->supplier_id,
-
-            'source' =>
-                'supplier-invoice',
-
-            'production_plan_id' =>
-                null,
-
-            'order_date' =>
-                $orderDate,
-
-            'expected_delivery_date' =>
-                $expectedDeliveryDate,
-
-            'status' =>
-                'draft',
-
-            'remarks' =>
-                'Created from Supplier Invoice '
-                    . $lockedInvoice->invoice_number
-                    . '.',
-
-        ]);
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Create Purchase Order Items
-        |--------------------------------------------------------------------------
-        */
-
-        foreach ($invoiceItems as $invoiceItem) {
-
-            $purchaseOrderItem = PurchaseOrderItem::create([
-
-                'purchase_order_id' =>
-                    $purchaseOrder->id,
-
-                'product_model_id' =>
-                    $invoiceItem->product_model_id,
-
-                'item_id' =>
-                    $invoiceItem->item_id,
-
-                'ordered_quantity' =>
-                    $invoiceItem->quantity,
-
-                'unit_price' =>
-                    $invoiceItem->unit_price,
-
-                'received_quantity' =>
-                    0,
-
-                'planned_order_date' =>
+                'production_plan_id' =>
                     null,
 
+                'order_date' =>
+                    $orderDate,
+
+                'expected_delivery_date' =>
+                    $expectedDeliveryDate,
+
+                'status' =>
+                    'draft',
+
                 'remarks' =>
-                    $invoiceItem->remarks,
+                    'Created from Supplier Invoice '
+                    . $lockedInvoice->invoice_number
+                    . '.',
 
             ]);
 
 
             /*
             |--------------------------------------------------------------------------
-            | Link Invoice Item To PO Item
+            | Create Purchase Order Items
             |--------------------------------------------------------------------------
             */
 
-            $invoiceItem->update([
+            foreach ($invoiceItems as $invoiceItem) {
 
-                'purchase_order_item_id' =>
-                    $purchaseOrderItem->id,
+                $purchaseOrderItem = PurchaseOrderItem::create([
+
+                    'purchase_order_id' =>
+                        $purchaseOrder->id,
+
+                    'product_model_id' =>
+                        $invoiceItem->product_model_id,
+
+                    'item_id' =>
+                        $invoiceItem->item_id,
+
+                    'ordered_quantity' =>
+                        $invoiceItem->quantity,
+
+                    'unit_price' =>
+                        $invoiceItem->unit_price,
+
+                    'received_quantity' =>
+                        0,
+
+                    'planned_order_date' =>
+                        null,
+
+                    'remarks' =>
+                        $invoiceItem->remarks,
+
+                ]);
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Link Invoice Item To PO Item
+                |--------------------------------------------------------------------------
+                */
+
+                $invoiceItem->update([
+
+                    'purchase_order_item_id' =>
+                        $purchaseOrderItem->id,
+
+                ]);
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Link Supplier Invoice To Purchase Order
+            |--------------------------------------------------------------------------
+            */
+
+            $lockedInvoice->update([
+
+                'purchase_order_id' =>
+                    $purchaseOrder->id,
 
             ]);
-        }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Link Supplier Invoice To Purchase Order
-        |--------------------------------------------------------------------------
-        */
-
-        $lockedInvoice->update([
-
-            'purchase_order_id' =>
-                $purchaseOrder->id,
-
-        ]);
-
-
-        return $purchaseOrder;
-    });
-}
+            return $purchaseOrder;
+        });
+    }
     /*
     |--------------------------------------------------------------------------
     | Generate Next Purchase Order Number
@@ -1505,8 +1562,8 @@ class SupplierInvoiceController extends Controller
                 'like',
                 $datePrefix . '%'
             )
-            ->orderByDesc('po_number')
-            ->first();
+                ->orderByDesc('po_number')
+                ->first();
 
         if ($lastPurchaseOrder) {
 

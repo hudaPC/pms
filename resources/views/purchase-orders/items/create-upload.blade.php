@@ -86,10 +86,10 @@
                             Upload Excel
                         </button>
 
-                        <button type="button" class="btn btn-sm btn-success" id="addRowBtn">
-                            <i class="fas fa-plus mr-1"></i>
-                            Add Row
-                        </button>
+                        <!-- <button type="button" class="btn btn-sm btn-success" id="addRowBtn">
+                                                    <i class="fas fa-plus mr-1"></i>
+                                                    Add Row
+                                                </button> -->
 
                         <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" class="d-none">
                     </div>
@@ -134,7 +134,12 @@
                 </div>
             </div>
 
-            <div class="text-right mt-3 mb-4">
+            <div class="d-flex justify-content-between mt-3 mb-4">
+                <button type="button" class="btn btn-success" id="addRowBtn">
+                    <i class="fas fa-plus mr-1"></i>
+                    Add Row
+                </button>
+ 
                 <button type="submit" class="btn btn-primary" id="saveItemsBtn">
                     <i class="fas fa-save mr-1"></i>
                     Save All Items
@@ -165,6 +170,7 @@
                     <i class="fas fa-exclamation-triangle mr-1"></i>
                     Already added / duplicated.
                 </small>
+                <small class="form-text text-warning excel-mismatch-warning" style="display:none;"></small>
             </td>
             <td>
                 <input type="number" step="0.001" min="0.001" name="ordered_quantity[]"
@@ -172,6 +178,7 @@
             </td>
             <td>
                 <input type="number" step="0.0001" min="0" name="unit_price[]" class="form-control unit-price-input">
+                <small class="form-text text-warning price-mismatch-warning" style="display:none;"></small>
             </td>
             <td>
                 <input type="text" name="revision[]" maxlength="50" class="form-control revision-input">
@@ -353,6 +360,89 @@
                     $moqHelp.text('No supplier MOQ configured.');
                 }
             }
+            function checkPriceMismatch($row) {
+
+                const $itemSelect = $row.find('.item-select');
+                const option = $itemSelect.find('option:selected');
+                const $warning = $row.find('.price-mismatch-warning');
+                const $priceInput = $row.find('.unit-price-input');
+
+                if (!option.val()) {
+                    $warning.hide();
+                    return;
+                }
+
+                const systemPrice = option.data('price');
+                const enteredPriceRaw = $priceInput.val();
+
+                // No system price on record, or box is empty - nothing to compare.
+                if (systemPrice === '' || systemPrice === undefined || enteredPriceRaw === '') {
+                    $warning.hide();
+                    return;
+                }
+
+                const enteredPrice = Number(enteredPriceRaw);
+
+                if (isNaN(enteredPrice)) {
+                    $warning.hide();
+                    return;
+                }
+
+                if (Math.abs(enteredPrice - Number(systemPrice)) > 0.0001) {
+                    $warning.html(
+                        '<i class="fas fa-exclamation-triangle mr-1"></i>Price differs from system (System: ' +
+                        Number(systemPrice).toFixed(4) + ')'
+                    );
+                    $warning.show();
+                } else {
+                    $warning.hide();
+                }
+            }
+
+            function checkExcelMismatch($row) {
+
+                const $itemSelect = $row.find('.item-select');
+                const option = $itemSelect.find('option:selected');
+                const $warning = $row.find('.excel-mismatch-warning');
+
+                const excelName = $row.data('excelName');
+                const excelRevision = $row.data('excelRevision');
+
+                // Only manually added rows have no Excel data attached - skip those.
+                if (excelName === undefined && excelRevision === undefined) {
+                    $warning.hide();
+                    return;
+                }
+
+                if (!option.val()) {
+                    $warning.hide();
+                    return;
+                }
+
+                // option text looks like "CODE - Item Name", so strip the code part.
+                const systemName = option.text().split(' - ').slice(1).join(' - ').trim();
+                const systemPrice = option.data('price');
+                const systemRevision = (option[0].dataset.revision || '').trim();
+
+                const mismatches = [];
+
+                if (excelName && systemName && excelName.trim().toLowerCase() !== systemName.toLowerCase()) {
+                    mismatches.push('Item Name differs (Excel: "' + excelName + '", System: "' + systemName + '")');
+                }
+
+
+
+                if (excelRevision && excelRevision.trim().toLowerCase() !== systemRevision.toLowerCase()) {
+                    mismatches.push('Revision differs (Excel: "' + excelRevision + '", System: "' + systemRevision + '")');
+                }
+
+                if (mismatches.length) {
+                    $warning.html('<i class="fas fa-exclamation-triangle mr-1"></i>' + mismatches.join('<br>'));
+                    $warning.show();
+                } else {
+                    $warning.hide();
+                }
+            }
 
             function checkForDuplicates() {
 
@@ -402,6 +492,13 @@
                 const $row = $(this).closest('tr');
                 applyItemInfo($row);
                 checkForDuplicates();
+                checkExcelMismatch($row);
+                checkPriceMismatch($row);
+            });
+
+            $(tableBody).on('input', '.unit-price-input', function () {
+                const $row = $(this).closest('tr');
+                checkPriceMismatch($row);
             });
 
             $(tableBody).on('click', '.remove-row-btn', function () {
@@ -458,6 +555,7 @@
             const HEADER_MAP = {
                 productmodel: 'model', productmodelcode: 'model', modelcode: 'model', model: 'model',
                 itemcode: 'code',
+                itemname: 'name',
                 orderedqty: 'qty', orderqty: 'qty', qty: 'qty', quantity: 'qty', orderedquantity: 'qty',
                 unitprice: 'price', price: 'price',
                 revision: 'revision', rev: 'revision',
@@ -640,6 +738,13 @@
                     }
 
                     $row.find('.remarks-input').val(str(r.remarks));
+
+                    // Save the raw Excel values on the row so we can compare them to the system
+                    $row.data('excelName', str(r.name));
+                    $row.data('excelPrice', price);
+                    $row.data('excelRevision', revision);
+                    checkExcelMismatch($row);
+                    checkPriceMismatch($row);
 
                     added++;
                 });

@@ -299,6 +299,10 @@ UPDATE product_model_items
 SET revision = '0'
 WHERE id IN (67, 68, 70);
 
+UPDATE product_model_items
+SET revision = '0'
+WHERE id=71;
+
 *****************************
 
 http://127.0.0.1:8000/purchase-orders/7/items/create-upload

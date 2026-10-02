@@ -310,12 +310,13 @@
                 }
                 $ratioStr = sprintf("%.6F", $ratio);
 
-                /* Last page only, full page width (left margin to right margin) */
+                /* Last page only. Side margin is 10 (left and right). Change 10 to adjust. */
                 $pdf->page_script('
                     if ($PAGE_NUM == $PAGE_COUNT) {
-                        $imgW = $pdf->get_width() - 60;
+                        $sideMargin = 10;
+                        $imgW = $pdf->get_width() - ($sideMargin * 2);
                         $imgH = $imgW * ' . $ratioStr . ';
-                        $x = 30;
+                        $x = $sideMargin;
                         $y = $pdf->get_height() - 40 - $imgH;
                         $pdf->image("' . $footerPath . '", $x, $y, $imgW, $imgH);
                     }

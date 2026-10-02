@@ -179,14 +179,15 @@
                 </td>
                 
             </tr>
-            
-{{-- ASSEMBLE ACCESSORIES LABEL --}}
+
+            {{-- ASSEMBLE ACCESSORIES LABEL --}}
             <tr>
                 <td colspan="8" class="po-header-cell"
                     style="text-align: left; font-size: 11px; font-weight: bold; padding: 0 0 4px 0;">
                     ASSEMBLE ACCESSORIES FOR LENS
                 </td>
             </tr>
+
             {{-- ITEM COLUMN HEADERS --}}
             <tr class="items-header">
                 <th style="width: 5%;">SL NO</th>
@@ -274,7 +275,7 @@
 
 
 
-    {{-- PAGE NUMBER --}}
+    {{-- PAGE NUMBER + FOOTER IMAGE --}}
     <script type="text/php">
 
         if (isset($pdf)) {
@@ -293,24 +294,34 @@
 
             $pdf->page_text($x, $y, $text, $font, $size, array(0, 0, 0));
 
-            /* Signature: last page only, fixed at bottom */
-            /*To adjust the gap between "Confirmed By:" and the line, change - 45. A larger number gives a bigger gap. */
-           
-            $pdf->page_script('
-                if ($PAGE_NUM == $PAGE_COUNT) {
-                    $font = $fontMetrics->getFont("Helvetica", "normal");
-                    $size = 11;
-                    $label = "Authorized Signature";
-                    $topLabel = "Confirmed By:";
-                    $lineWidth = 180;
-                    $x2 = $pdf->get_width() - 30;
-                    $x1 = $x2 - $lineWidth;
-                    $lineY = $pdf->get_height() - 80;
-                    $pdf->text($x1, $lineY - 60, $topLabel, $font, $size, array(0, 0, 0));
-                    $pdf->line($x1, $lineY, $x2, $lineY, array(0, 0, 0), 0.8);
-                    $pdf->text($x1, $lineY + 4, $label, $font, $size, array(0, 0, 0));
+            /* Footer image: uses footer.jpg if it exists, otherwise footer.png */
+            $footerJpg = "{{ str_replace('\\', '/', public_path('images/footer.jpg')) }}";
+            $footerPng = "{{ str_replace('\\', '/', public_path('images/footer.png')) }}";
+
+            $footerPath = file_exists($footerJpg) ? $footerJpg : $footerPng;
+
+            if (file_exists($footerPath)) {
+
+                /* height / width ratio of the real image, so it is never stretched */
+                $ratio = 0.25;
+                $imgInfo = @getimagesize($footerPath);
+                if ($imgInfo && $imgInfo[0] > 0) {
+                    $ratio = $imgInfo[1] / $imgInfo[0];
                 }
-            ');
+                $ratioStr = sprintf("%.6F", $ratio);
+
+                /* Last page only, full page width (left margin to right margin) */
+                $pdf->page_script('
+                    if ($PAGE_NUM == $PAGE_COUNT) {
+                        $imgW = $pdf->get_width() - 60;
+                        $imgH = $imgW * ' . $ratioStr . ';
+                        $x = 30;
+                        $y = $pdf->get_height() - 40 - $imgH;
+                        $pdf->image("' . $footerPath . '", $x, $y, $imgW, $imgH);
+                    }
+                ');
+
+            }
 
         }
 

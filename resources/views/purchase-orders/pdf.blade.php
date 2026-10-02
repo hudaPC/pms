@@ -168,17 +168,25 @@
                                 <br>
                                 <strong>Date:</strong>
                                 {{ $purchaseOrder->order_date
-    ? $purchaseOrder->order_date->format('d-M-Y')
-    : '-'
+                                  ? $purchaseOrder->order_date->format('d-M-Y') : '-'
                                 }}
                             </td>
 
                         </tr>
+                       
                     </table>
 
                 </td>
+                
             </tr>
-
+            
+{{-- ASSEMBLE ACCESSORIES LABEL --}}
+            <tr>
+                <td colspan="8" class="po-header-cell"
+                    style="text-align: left; font-size: 11px; font-weight: bold; padding: 0 0 4px 0;">
+                    ASSEMBLE ACCESSORIES FOR LENS
+                </td>
+            </tr>
             {{-- ITEM COLUMN HEADERS --}}
             <tr class="items-header">
                 <th style="width: 5%;">SL NO</th>

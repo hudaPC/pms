@@ -165,6 +165,36 @@
                             </div>
 
                         </div>
+                                                {{-- Product Model --}}
+                        <div class="col-md-4">
+
+                            <div class="form-group">
+
+                                <label>
+                                    Product Model
+                                </label>
+
+                                <select name="product_model_id" class="form-control">
+
+                                    <option value="">
+                                        All Product Models
+                                    </option>
+
+                                    @foreach ($productModels as $productModel)
+                                        <option value="{{ $productModel->id }}"
+                                            @selected((string) request('product_model_id') === (string) $productModel->id)>
+                                            {{ $productModel->model_code }}
+                                            @if ($productModel->model_name)
+                                                - {{ $productModel->model_name }}
+                                            @endif
+                                        </option>
+                                    @endforeach
+
+                                </select>
+
+                            </div>
+
+                        </div>
 
 
                         {{-- Source --}}

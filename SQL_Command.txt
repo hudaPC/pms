@@ -310,10 +310,11 @@ http://127.0.0.1:8000/purchase-orders/7/items/create-upload
 UPDATE product_model_items
 SET revision = CASE revision
 WHEN '0' THEN '00'
+WHEN 'A' THEN '00'
 WHEN '1' THEN '01'
 WHEN '2' THEN '02'
 ELSE revision
 END
-WHERE revision IN ('0', '1', '2');
+WHERE revision IN ('0','A', '1', '2');
 ***************************************
 

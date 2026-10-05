@@ -166,6 +166,36 @@
                             </div>
 
                         </div>
+                        {{-- Product Model --}}
+                        <div class="col-md-4">
+
+                            <div class="form-group">
+
+                                <label>
+                                    Product Model
+                                </label>
+
+                                <select name="product_model_id" class="form-control">
+
+                                    <option value="">
+                                        All Product Models
+                                    </option>
+
+                                    @foreach ($productModels as $productModel)
+                                        <option value="{{ $productModel->id }}"
+                                            @selected((string) request('product_model_id') === (string) $productModel->id)>
+                                            {{ $productModel->model_code }}
+                                            @if ($productModel->model_name)
+                                                - {{ $productModel->model_name }}
+                                            @endif
+                                        </option>
+                                    @endforeach
+
+                                </select>
+
+                            </div>
+
+                        </div>
 
 
                         {{-- Source --}}
@@ -226,7 +256,8 @@
                             </div>
 
                         </div>
-
+                    </div>
+                    <div class="row">
 
                         {{-- Date From --}}
                         <div class="col-md-2">
@@ -243,6 +274,7 @@
                             </div>
 
                         </div>
+                       
 
 
                         {{-- Date To --}}
@@ -259,24 +291,31 @@
                             </div>
 
                         </div>
+                        {{-- Filter Button --}}
+                        <div class="col-md-2 mt-4">
+                            <div class="text-right">
+
+                                <a href="{{ route('material-usage.index') }}" class="btn btn-secondary">
+                                    <i class="fas fa-undo mr-1"></i>
+                                    Reset
+                                </a>
+
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search mr-1"></i>
+                                    Search
+                                </button>
+
+                            </div>
+
+                        </div>
+
+
+
 
                     </div>
 
 
-                    <div class="text-right">
-
-                        <a href="{{ route('material-usage.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-undo mr-1"></i>
-                            Reset
-                        </a>
-
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-search mr-1"></i>
-                            Search
-                        </button>
-
-                    </div>
-
+                    
                 </form>
 
             </div>

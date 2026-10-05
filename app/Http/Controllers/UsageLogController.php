@@ -23,13 +23,13 @@ class UsageLogController extends Controller
         |--------------------------------------------------------------------------
         */
 
-       $query = UsageLog::query()
-    ->with([
-        'item.unit',
-        'item.productModelItems.productModel',
-        'productModel',
-        'productionPlan.productModel',
-    ]);
+        $query = UsageLog::query()
+            ->with([
+                'item.unit',
+                'item.productModelItems.productModel',
+                'productModel',
+                'productionPlan.productModel',
+            ]);
 
 
         /*
@@ -101,7 +101,40 @@ class UsageLogController extends Controller
             );
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Product Model Filter
+        |--------------------------------------------------------------------------
+        */
 
+        if ($request->filled('product_model_id')) {
+
+            $productModelId = (int) $request->input('product_model_id');
+
+            $query->where(function ($modelQuery) use ($productModelId) {
+
+                // 1) Usage saved directly with this Product Model (Material Usage page)
+                $modelQuery->where('product_model_id', $productModelId)
+
+                    // 2) Usage that came from a Production Plan of this Product Model
+                    ->orWhereHas('productionPlan', function ($planQuery) use ($productModelId) {
+                        $planQuery->where('product_model_id', $productModelId);
+                    })
+
+                    // 3) Old records with no saved model: the table shows the model only
+                    //    when the item belongs to exactly one model, so filter the same way
+                    ->orWhere(function ($legacyQuery) use ($productModelId) {
+                        $legacyQuery->whereNull('product_model_id')
+                            ->whereNull('production_plan_id')
+                            ->whereHas('item', function ($itemQuery) use ($productModelId) {
+                                $itemQuery->has('productModelItems', '=', 1)
+                                    ->whereHas('productModelItems', function ($linkQuery) use ($productModelId) {
+                                        $linkQuery->where('product_model_id', $productModelId);
+                                    });
+                            });
+                    });
+            });
+        }
         /*
         |--------------------------------------------------------------------------
         | Date From
@@ -168,6 +201,15 @@ class UsageLogController extends Controller
                 'void'
             )->count();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Product Models For Filter Dropdown
+        |--------------------------------------------------------------------------
+        */
+
+        $productModels = ProductModel::query()
+            ->orderBy('model_code')
+            ->get();
 
         /*
         |--------------------------------------------------------------------------
@@ -185,7 +227,8 @@ class UsageLogController extends Controller
                 'usageLogs',
                 'totalUsageRecords',
                 'activeUsageRecords',
-                'voidedUsageRecords'
+                'voidedUsageRecords',
+                'productModels'
             )
         );
     }
@@ -301,366 +344,362 @@ class UsageLogController extends Controller
     /**
      * Store a manual Material Usage record.
      */
-    
-/**
- * Store multiple manual Material Usage records.
- */
-public function storeMaterialUsage(Request $request)
-{
-    /*
-    |--------------------------------------------------------------------------
-    | Validate Common Information + Material Rows
-    |--------------------------------------------------------------------------
-    */
 
-    $validated = $request->validate([
-
-        'usage_date' => [
-            'required',
-            'date',
-        ],
-
-        'reference' => [
-            'nullable',
-            'string',
-            'max:100',
-        ],
-
-        'remarks' => [
-            'nullable',
-            'string',
-        ],
-
-        'items' => [
-            'required',
-            'array',
-            'min:1',
-        ],
-
-        'items.*.product_model_id' => [
-            'required',
-            'integer',
-            'exists:product_models,id',
-        ],
-
-        'items.*.item_id' => [
-            'required',
-            'integer',
-            'exists:items,id',
-        ],
-
-        'items.*.quantity' => [
-            'required',
-            'numeric',
-            'min:0.001',
-            'decimal:0,3',
-        ],
-
-    ]);
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Prepare Material Rows
-    |--------------------------------------------------------------------------
-    */
-
-    $materialRows = array_values(
-        $validated['items']
-    );
-
-    $itemIds = collect($materialRows)
-        ->pluck('item_id')
-        ->unique()
-        ->sort()
-        ->values()
-        ->all();
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Save Everything In One Transaction
-    |--------------------------------------------------------------------------
-    */
-
-    DB::transaction(function () use (
-        $validated,
-        $materialRows,
-        $itemIds
-    ) {
-
+    /**
+     * Store multiple manual Material Usage records.
+     */
+    public function storeMaterialUsage(Request $request)
+    {
         /*
         |--------------------------------------------------------------------------
-        | Lock Selected Items
+        | Validate Common Information + Material Rows
         |--------------------------------------------------------------------------
         */
 
-        $items = Item::query()
-            ->whereIn('id', $itemIds)
-            ->where('status', true)
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get()
-            ->keyBy('id');
+        $validated = $request->validate([
+
+            'usage_date' => [
+                'required',
+                'date',
+            ],
+
+            'reference' => [
+                'nullable',
+                'string',
+                'max:100',
+            ],
+
+            'remarks' => [
+                'nullable',
+                'string',
+            ],
+
+            'items' => [
+                'required',
+                'array',
+                'min:1',
+            ],
+
+            'items.*.product_model_id' => [
+                'required',
+                'integer',
+                'exists:product_models,id',
+            ],
+
+            'items.*.item_id' => [
+                'required',
+                'integer',
+                'exists:items,id',
+            ],
+
+            'items.*.quantity' => [
+                'required',
+                'numeric',
+                'min:0.001',
+                'decimal:0,3',
+            ],
+
+        ]);
 
 
         /*
         |--------------------------------------------------------------------------
-        | Validate Product Model / BOM Relationship
+        | Prepare Material Rows
         |--------------------------------------------------------------------------
         */
 
-        $totalQuantities = [];
-
-        foreach ($materialRows as $index => $row) {
-
-            $itemId = (int) $row['item_id'];
-
-            $productModelId = (int) $row['product_model_id'];
-
-            $item = $items->get($itemId);
-
-
-            /*
-            | Ensure item exists and is active.
-            */
-
-            if (!$item) {
-
-                throw \Illuminate\Validation\ValidationException::withMessages([
-
-                    "items.$index.item_id" =>
-                        'Row ' . ($index + 1)
-                        . ': The selected item is inactive or unavailable.',
-
-                ]);
-
-            }
-
-
-            /*
-            | Verify that the item belongs to the selected Product Model.
-            */
-
-            $belongsToModel = $item
-                ->productModelItems()
-                ->where(
-                    'product_model_id',
-                    $productModelId
-                )
-                ->exists();
-
-
-            if (!$belongsToModel) {
-
-                throw \Illuminate\Validation\ValidationException::withMessages([
-
-                    "items.$index.item_id" =>
-                        'Row ' . ($index + 1)
-                        . ': The selected item does not belong to the selected Product Model.',
-
-                ]);
-
-            }
-
-
-            /*
-            | Convert quantity to thousandths.
-            |
-            | Example:
-            | 1.500 becomes 1500.
-            |
-            | This matches your decimal(15,3) quantity column.
-            */
-
-            $quantityInThousandths = (int) round(
-                (float) $row['quantity'] * 1000
-            );
-
-
-            /*
-            | Combine quantities if the same item appears in multiple rows.
-            */
-
-            $totalQuantities[$itemId] =
-                ($totalQuantities[$itemId] ?? 0)
-                + $quantityInThousandths;
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Check Available Stock
-        |--------------------------------------------------------------------------
-        */
-
-        foreach ($totalQuantities as $itemId => $quantityInThousandths) {
-
-            $item = $items->get($itemId);
-
-            $availableInThousandths = (int) round(
-                (float) $item->current_stock * 1000
-            );
-
-
-            if ($quantityInThousandths > $availableInThousandths) {
-
-                throw \Illuminate\Validation\ValidationException::withMessages([
-
-                    'items' =>
-                        'Insufficient stock for '
-                        . $item->item_code
-                        . ' - '
-                        . $item->item_name
-                        . '. Available: '
-                        . number_format(
-                            $availableInThousandths / 1000,
-                            3
-                        )
-                        . '. Total requested: '
-                        . number_format(
-                            $quantityInThousandths / 1000,
-                            3
-                        )
-                        . '.',
-
-                ]);
-
-            }
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Generate One Shared Issue Reference
-        |--------------------------------------------------------------------------
-        |
-        | Every item in this submission will share this reference.
-        |
-        | Your existing buildReference() method remains unchanged
-        | for the separate single-item workflow.
-        |
-        */
-
-        $reference = trim(
-            $validated['reference'] ?? ''
+        $materialRows = array_values(
+            $validated['items']
         );
 
+        $itemIds = collect($materialRows)
+            ->pluck('item_id')
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
 
-        if ($reference === '') {
 
-            $reference =
-                'ISSUE-'
-                . \Carbon\Carbon::parse(
-                    $validated['usage_date']
-                )->format('Ymd')
-                . '-'
-                . strtoupper(
-                    \Illuminate\Support\Str::random(10)
+        /*
+        |--------------------------------------------------------------------------
+        | Save Everything In One Transaction
+        |--------------------------------------------------------------------------
+        */
+
+        DB::transaction(function () use ($validated, $materialRows, $itemIds) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Lock Selected Items
+            |--------------------------------------------------------------------------
+            */
+
+            $items = Item::query()
+                ->whereIn('id', $itemIds)
+                ->where('status', true)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Validate Product Model / BOM Relationship
+            |--------------------------------------------------------------------------
+            */
+
+            $totalQuantities = [];
+
+            foreach ($materialRows as $index => $row) {
+
+                $itemId = (int) $row['item_id'];
+
+                $productModelId = (int) $row['product_model_id'];
+
+                $item = $items->get($itemId);
+
+
+                /*
+                | Ensure item exists and is active.
+                */
+
+                if (!$item) {
+
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+
+                        "items.$index.item_id" =>
+                            'Row ' . ($index + 1)
+                            . ': The selected item is inactive or unavailable.',
+
+                    ]);
+
+                }
+
+
+                /*
+                | Verify that the item belongs to the selected Product Model.
+                */
+
+                $belongsToModel = $item
+                    ->productModelItems()
+                    ->where(
+                        'product_model_id',
+                        $productModelId
+                    )
+                    ->exists();
+
+
+                if (!$belongsToModel) {
+
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+
+                        "items.$index.item_id" =>
+                            'Row ' . ($index + 1)
+                            . ': The selected item does not belong to the selected Product Model.',
+
+                    ]);
+
+                }
+
+
+                /*
+                | Convert quantity to thousandths.
+                |
+                | Example:
+                | 1.500 becomes 1500.
+                |
+                | This matches your decimal(15,3) quantity column.
+                */
+
+                $quantityInThousandths = (int) round(
+                    (float) $row['quantity'] * 1000
                 );
 
-        }
+
+                /*
+                | Combine quantities if the same item appears in multiple rows.
+                */
+
+                $totalQuantities[$itemId] =
+                    ($totalQuantities[$itemId] ?? 0)
+                    + $quantityInThousandths;
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Check Available Stock
+            |--------------------------------------------------------------------------
+            */
+
+            foreach ($totalQuantities as $itemId => $quantityInThousandths) {
+
+                $item = $items->get($itemId);
+
+                $availableInThousandths = (int) round(
+                    (float) $item->current_stock * 1000
+                );
+
+
+                if ($quantityInThousandths > $availableInThousandths) {
+
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+
+                        'items' =>
+                            'Insufficient stock for '
+                            . $item->item_code
+                            . ' - '
+                            . $item->item_name
+                            . '. Available: '
+                            . number_format(
+                                $availableInThousandths / 1000,
+                                3
+                            )
+                            . '. Total requested: '
+                            . number_format(
+                                $quantityInThousandths / 1000,
+                                3
+                            )
+                            . '.',
+
+                    ]);
+
+                }
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Generate One Shared Issue Reference
+            |--------------------------------------------------------------------------
+            |
+            | Every item in this submission will share this reference.
+            |
+            | Your existing buildReference() method remains unchanged
+            | for the separate single-item workflow.
+            |
+            */
+
+            $reference = trim(
+                $validated['reference'] ?? ''
+            );
+
+
+            if ($reference === '') {
+
+                $reference =
+                    'ISSUE-'
+                    . \Carbon\Carbon::parse(
+                        $validated['usage_date']
+                    )->format('Ymd')
+                    . '-'
+                    . strtoupper(
+                        \Illuminate\Support\Str::random(10)
+                    );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Usage Logs And Stock OUT Movements
+            |--------------------------------------------------------------------------
+            */
+
+            foreach ($materialRows as $row) {
+
+                /*
+                | Create one UsageLog for each material row.
+                */
+
+                $usageLog = UsageLog::create([
+
+                    'item_id' =>
+                        $row['item_id'],
+                    'product_model_id' =>
+                        $row['product_model_id'],
+
+                    'source' =>
+                        'manual',
+
+                    'production_plan_id' =>
+                        null,
+
+                    'usage_date' =>
+                        $validated['usage_date'],
+
+                    'quantity' =>
+                        $row['quantity'],
+
+                    'reference' =>
+                        $reference,
+
+                    'remarks' =>
+                        $validated['remarks'] ?? null,
+
+                    'status' =>
+                        'active',
+
+                ]);
+
+
+                /*
+                | Create the corresponding Stock OUT movement.
+                */
+
+                StockMovement::create([
+
+                    'item_id' =>
+                        $usageLog->item_id,
+
+                    'movement_date' =>
+                        $usageLog->usage_date,
+
+                    'movement_type' =>
+                        'usage',
+
+                    'direction' =>
+                        'out',
+
+                    'quantity' =>
+                        $usageLog->quantity,
+
+                    'source_type' =>
+                        'usage_log',
+
+                    'source_id' =>
+                        $usageLog->id,
+
+                    'reference' =>
+                        $usageLog->reference,
+
+                    'remarks' =>
+                        $usageLog->remarks,
+
+                ]);
+
+            }
+
+        }, 3);
 
 
         /*
         |--------------------------------------------------------------------------
-        | Create Usage Logs And Stock OUT Movements
+        | Redirect
         |--------------------------------------------------------------------------
         */
 
-        foreach ($materialRows as $row) {
-
-            /*
-            | Create one UsageLog for each material row.
-            */
-
-            $usageLog = UsageLog::create([
-
-                'item_id' =>
-                    $row['item_id'],
-                      'product_model_id' =>
-        $row['product_model_id'],
-
-                'source' =>
-                    'manual',
-
-                'production_plan_id' =>
-                    null,
-
-                'usage_date' =>
-                    $validated['usage_date'],
-
-                'quantity' =>
-                    $row['quantity'],
-
-                'reference' =>
-                    $reference,
-
-                'remarks' =>
-                    $validated['remarks'] ?? null,
-
-                'status' =>
-                    'active',
-
-            ]);
-
-
-            /*
-            | Create the corresponding Stock OUT movement.
-            */
-
-            StockMovement::create([
-
-                'item_id' =>
-                    $usageLog->item_id,
-
-                'movement_date' =>
-                    $usageLog->usage_date,
-
-                'movement_type' =>
-                    'usage',
-
-                'direction' =>
-                    'out',
-
-                'quantity' =>
-                    $usageLog->quantity,
-
-                'source_type' =>
-                    'usage_log',
-
-                'source_id' =>
-                    $usageLog->id,
-
-                'reference' =>
-                    $usageLog->reference,
-
-                'remarks' =>
-                    $usageLog->remarks,
-
-            ]);
-
-        }
-
-    }, 3);
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Redirect
-    |--------------------------------------------------------------------------
-    */
-
-    return redirect()
-        ->route('material-usage.index')
-        ->with(
-            'success',
-            count($materialRows)
-            . ' material item(s) issued successfully.'
-        );
-}
+        return redirect()
+            ->route('material-usage.index')
+            ->with(
+                'success',
+                count($materialRows)
+                . ' material item(s) issued successfully.'
+            );
+    }
 
     /**
      * Display usage logs for an item.

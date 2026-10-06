@@ -181,10 +181,18 @@
             </tr>
 
             {{-- ASSEMBLE ACCESSORIES LABEL --}}
+            @php
+                $firstItem = $purchaseOrder->items->first();
+                $categoryCode = $firstItem?->item?->category?->code;
+            @endphp
             <tr>
                 <td colspan="8" class="po-header-cell"
                     style="text-align: left; font-size: 11px; font-weight: bold; padding: 0 0 4px 0;">
-                    ASSEMBLE ACCESSORIES FOR LENS
+                    @if ($categoryCode === 'GM')
+                        GLASS MATERIAL FOR LENS
+                    @elseif ($categoryCode === 'AP')
+                        ASSEMBLE ACCESSORIES FOR LENS
+                    @endif
                 </td>
             </tr>
 

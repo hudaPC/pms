@@ -666,10 +666,9 @@ class PurchaseOrderController extends Controller
     public function pdf(PurchaseOrder $purchaseOrder)
     {
         $purchaseOrder->load([
-            'supplier',
-            'items.item',
-        ]);
-
+        'supplier',
+        'items.item.category',
+    ]);
         $totalQty = $purchaseOrder->items->sum('ordered_quantity');
 
         $totalPrice = $purchaseOrder->items->sum(function ($item) {

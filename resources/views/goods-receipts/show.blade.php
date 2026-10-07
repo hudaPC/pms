@@ -65,15 +65,19 @@
 
 
                     {{-- PO Number --}}
-                    <div class="col-md-3 mb-3">
+<div class="col-md-3 mb-3">
 
-                        <strong>PO Number</strong>
+    <strong>PO Number</strong>
 
-                        <div class="mt-1">
-                            {{ $goodsReceipt->purchaseOrder->po_number ?? '-' }}
-                        </div>
+    <div class="mt-1">
+        @forelse ($goodsReceipt->purchaseOrders as $po)
+            <span class="badge badge-light border">{{ $po->po_number }}</span>
+        @empty
+            {{ $goodsReceipt->purchaseOrder->po_number ?? '-' }}
+        @endforelse
+    </div>
 
-                    </div>
+</div>
 
 
                     {{-- Supplier --}}
@@ -143,27 +147,14 @@
                         <strong>PO Status</strong>
 
                         <div class="mt-1">
-
-                            @if ($goodsReceipt->purchaseOrder->status === 'confirmed')
-                                <span class="badge badge-primary">
-                                    Confirmed
-                                </span>
-                            @elseif($goodsReceipt->purchaseOrder->status === 'partially_received')
-                                <span class="badge badge-warning">
-                                    Partially Received
-                                </span>
-                            @elseif($goodsReceipt->purchaseOrder->status === 'received')
-                                <span class="badge badge-success">
-                                    Received
-                                </span>
-                            @else
-                                <span class="badge badge-secondary">
-
-                                    {{ ucfirst(str_replace('_', ' ', $goodsReceipt->purchaseOrder->status)) }}
-
-                                </span>
-                            @endif
-
+                            @foreach ($goodsReceipt->purchaseOrders as $po)
+                                <div>
+                                    <small>{{ $po->po_number }}:</small>
+                                    <span class="badge badge-{{ ['confirmed' => 'primary', 'partially_received' => 'warning', 'received' => 'success'][$po->status] ?? 'secondary' }}">
+                                        {{ ucfirst(str_replace('_', ' ', $po->status)) }}
+                                    </span>
+                                </div>
+                            @endforeach
                         </div>
 
                     </div>
@@ -185,8 +176,8 @@
 
         </div>
         {{-- ============================================================
-     GRN VOID INFORMATION / ACTION
-============================================================ --}}
+        GRN VOID INFORMATION / ACTION
+        ============================================================ --}}
 
         @if ($goodsReceipt->status === 'voided')
             <div class="alert alert-danger mb-4">
@@ -277,8 +268,7 @@
 
 
             {{-- Hidden Void Form --}}
-            <form id="voidGrnForm" action="{{ route('goods-receipts.void', $goodsReceipt) }}" method="POST"
-                class="d-none">
+            <form id="voidGrnForm" action="{{ route('goods-receipts.void', $goodsReceipt) }}" method="POST" class="d-none">
 
                 @csrf
 
@@ -288,8 +278,8 @@
         @endif
 
         {{-- ============================================================
-     PURCHASE RETURN
-============================================================ --}}
+        PURCHASE RETURN
+        ============================================================ --}}
 
         @if ($goodsReceipt->status === 'posted' && $goodsReceipt->items->isNotEmpty())
             <div class="card card-warning card-outline mb-4">
@@ -327,8 +317,7 @@
                         </div>
 
 
-                        <a href="{{ route('purchase-returns.create', $goodsReceipt) }}"
-                            class="btn btn-warning">
+                        <a href="{{ route('purchase-returns.create', $goodsReceipt) }}" class="btn btn-warning">
 
                             <i class="fas fa-undo-alt mr-1"></i>
 
@@ -344,6 +333,42 @@
         @endif
 
 
+        {{-- ============================================================
+        ADD ANOTHER PURCHASE ORDER
+        ============================================================ --}}
+        @if ($goodsReceipt->status === 'posted' && $availablePurchaseOrders->isNotEmpty())
+            <div class="card card-info card-outline mb-4">
+
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-plus-circle mr-2"></i>
+                        Add Another Purchase Order
+                    </h3>
+                </div>
+
+                <div class="card-body">
+                    <form action="{{ route('goods-receipts.purchase-orders.attach', $goodsReceipt) }}" method="POST"
+                        class="form-inline">
+                        @csrf
+
+                        <select name="purchase_order_id" class="form-control mr-2" required>
+                            <option value="">Select Purchase Order (same supplier)</option>
+                            @foreach ($availablePurchaseOrders as $availablePo)
+                                <option value="{{ $availablePo->id }}">
+                                    {{ $availablePo->po_number }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        <button type="submit" class="btn btn-info">
+                            <i class="fas fa-link mr-1"></i>
+                            Add to this GRN
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+        @endif
         {{-- Purchase Order Items --}}
 
         <div class="card shadow-sm mb-4">
@@ -366,10 +391,10 @@
                 @php
 
                     /*
-                |--------------------------------------------------------------------------
-                | PO Items Already Entered On This GRN
-                |--------------------------------------------------------------------------
-                */
+                    |--------------------------------------------------------------------------
+                    | PO Items Already Entered On This GRN
+                    |--------------------------------------------------------------------------
+                    */
 
                     $receivedPoItemIds = $goodsReceipt->items->pluck('purchase_order_item_id')->toArray();
 
@@ -385,12 +410,13 @@
                             <tr>
 
                                 <th>#</th>
+                                <th>PO Number</th>
 
-<th>Product Model</th>
+                                <th>Product Model</th>
 
-<th>Item Code</th>
+                                <th>Item Code</th>
 
-<th>Item Name</th>
+                                <th>Item Name</th>
 
                                 <th>Ordered Qty</th>
 
@@ -411,8 +437,7 @@
 
                         <tbody>
 
-                            @forelse($goodsReceipt->purchaseOrder->items
-                                    as $poItem)
+                           @forelse($goodsReceipt->purchaseOrders->flatMap->items as $poItem)
                                 @php
 
                                     $ordered = (float) $poItem->ordered_quantity;
@@ -430,15 +455,16 @@
                                     <td>
                                         {{ $loop->iteration }}
                                     </td>
+                                    <td>{{ $poItem->purchaseOrder->po_number ?? '-' }}</td>
                                     <td>
-    @if ($poItem->productModel)
-        <span class="badge badge-info">
-            {{ $poItem->productModel->model_code }}
-        </span>
-    @else
-        <span class="text-muted">Common</span>
-    @endif
-</td>
+                                        @if ($poItem->productModel)
+                                            <span class="badge badge-info">
+                                                {{ $poItem->productModel->model_code }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted">Common</span>
+                                        @endif
+                                    </td>
 
 
                                     <td>
@@ -495,8 +521,8 @@
 
                                         {{-- Already entered on this GRN --}}
                                         {{-- ============================================================
-     VOIDED GRN
-============================================================ --}}
+                                        VOIDED GRN
+                                        ============================================================ --}}
 
                                         @if ($goodsReceipt->status === 'voided')
                                             <span class="badge badge-danger">
@@ -508,8 +534,8 @@
 
 
                                             {{-- ============================================================
-     ALREADY ENTERED ON THIS GRN
-============================================================ --}}
+                                            ALREADY ENTERED ON THIS GRN
+                                            ============================================================ --}}
                                         @elseif($alreadyEnteredOnThisGrn)
                                             <span class="badge badge-success">
 
@@ -520,8 +546,8 @@
 
 
                                             {{-- ============================================================
-     STILL OUTSTANDING
-============================================================ --}}
+                                            STILL OUTSTANDING
+                                            ============================================================ --}}
                                         @elseif($outstanding > 0)
                                             <a href="{{ route('goods-receipts.items.create', [$goodsReceipt, $poItem]) }}"
                                                 class="btn btn-sm btn-primary">
@@ -533,8 +559,8 @@
 
 
                                             {{-- ============================================================
-     FULLY RECEIVED
-============================================================ --}}
+                                            FULLY RECEIVED
+                                            ============================================================ --}}
                                         @else
                                             <span class="badge badge-success">
                                                 Fully Received
@@ -550,7 +576,7 @@
 
                                 <tr>
 
-                                    <td colspan="9" class="text-center text-muted py-4">
+                                    <td colspan="10" class="text-center text-muted py-4">
 
                                         No Purchase Order items found.
 
@@ -596,21 +622,21 @@
 
                             <tr>
 
-    <th>#</th>
+                                <th>#</th>
 
-    <th>Product Model</th>
+                                <th>Product Model</th>
 
-    <th>Item Code</th>
+                                <th>Item Code</th>
 
-    <th>Item Name</th>
+                                <th>Item Name</th>
 
-    <th>Received Qty</th>
+                                <th>Received Qty</th>
 
-    <th>Unit</th>
+                                <th>Unit</th>
 
-    <th>Remarks</th>
+                                <th>Remarks</th>
 
-</tr>
+                            </tr>
 
                         </thead>
 
@@ -621,28 +647,28 @@
                                 <tr>
 
                                     <td>
-    {{ $loop->iteration }}
-</td>
+                                        {{ $loop->iteration }}
+                                    </td>
 
-<td>
-    @if ($receiptItem->purchaseOrderItem?->productModel)
+                                    <td>
+                                        @if ($receiptItem->purchaseOrderItem?->productModel)
 
-        <span class="badge badge-info">
-            {{ $receiptItem->purchaseOrderItem->productModel->model_code }}
-        </span>
+                                            <span class="badge badge-info">
+                                                {{ $receiptItem->purchaseOrderItem->productModel->model_code }}
+                                            </span>
 
-    @else
+                                        @else
 
-        <span class="text-muted">
-            Common
-        </span>
+                                            <span class="text-muted">
+                                                Common
+                                            </span>
 
-    @endif
-</td>
+                                        @endif
+                                    </td>
 
-<td>
-    {{ $receiptItem->item->item_code ?? '-' }}
-</td>
+                                    <td>
+                                        {{ $receiptItem->item->item_code ?? '-' }}
+                                    </td>
 
 
                                     <td>
@@ -705,7 +731,7 @@
     </div>
     @push('scripts')
         <script>
-            $(document).ready(function() {
+            $(document).ready(function () {
 
                 /*
                 |--------------------------------------------------------------------------
@@ -726,13 +752,13 @@
                     toastr.error(
                         @json($errors->first('void_reason')),
                         'GRN Reversal Blocked', {
-                            closeButton: true,
-                            progressBar: true,
-                            timeOut: 10000,
-                            extendedTimeOut: 3000,
-                            positionClass: 'toast-top-right',
-                            preventDuplicates: true
-                        }
+                        closeButton: true,
+                        progressBar: true,
+                        timeOut: 10000,
+                        extendedTimeOut: 3000,
+                        positionClass: 'toast-top-right',
+                        preventDuplicates: true
+                    }
                     );
                 @endif
 
@@ -742,205 +768,205 @@
                 | Void GRN Button
                 |--------------------------------------------------------------------------
                 */
-$('#btnVoidGrn').on('click', function() {
+                $('#btnVoidGrn').on('click', function () {
 
-    Swal.fire({
+                    Swal.fire({
 
-        title: 'Void Goods Receipt?',
+                        title: 'Void Goods Receipt?',
 
-        html: `
-            <div class="text-left">
+                        html: `
+                    <div class="text-left">
 
-                <p class="mb-2">
-                    You are about to void
-                    <strong>{{ $goodsReceipt->grn_number }}</strong>.
-                </p>
+                        <p class="mb-2">
+                            You are about to void
+                            <strong>{{ $goodsReceipt->grn_number }}</strong>.
+                        </p>
 
-                <p class="text-danger mb-3">
-                    This will reverse the received stock
-                    and restore the PO outstanding quantity.
-                </p>
+                        <p class="text-danger mb-3">
+                            This will reverse the received stock
+                            and restore the PO outstanding quantity.
+                        </p>
 
-                <div class="form-group mb-3">
+                        <div class="form-group mb-3">
 
-                    <label for="swalVoidReason">
-                        Void Reason
-                    </label>
+                            <label for="swalVoidReason">
+                                Void Reason
+                            </label>
 
-                    <select
-                        id="swalVoidReason"
-                        class="form-control"
-                    >
-                        <option value="">
-                            Select void reason
-                        </option>
+                            <select
+                                id="swalVoidReason"
+                                class="form-control"
+                            >
+                                <option value="">
+                                    Select void reason
+                                </option>
 
-                        <option value="Wrong quantity received">
-                            Wrong quantity received
-                        </option>
+                                <option value="Wrong quantity received">
+                                    Wrong quantity received
+                                </option>
 
-                        <option value="Wrong item received">
-                            Wrong item received
-                        </option>
+                                <option value="Wrong item received">
+                                    Wrong item received
+                                </option>
 
-                        <option value="Duplicate goods receipt">
-                            Duplicate goods receipt
-                        </option>
+                                <option value="Duplicate goods receipt">
+                                    Duplicate goods receipt
+                                </option>
 
-                        <option value="Supplier delivery rejected">
-                            Supplier delivery rejected
-                        </option>
+                                <option value="Supplier delivery rejected">
+                                    Supplier delivery rejected
+                                </option>
 
-                        <option value="Data entry mistake">
-                            Data entry mistake
-                        </option>
+                                <option value="Data entry mistake">
+                                    Data entry mistake
+                                </option>
 
-                        <option value="Other">
-                            Other
-                        </option>
+                                <option value="Other">
+                                    Other
+                                </option>
 
-                    </select>
+                            </select>
 
-                </div>
+                        </div>
 
-                <div
-                    id="otherVoidReasonWrapper"
-                    class="form-group mb-0"
-                    style="display: none;"
-                >
+                        <div
+                            id="otherVoidReasonWrapper"
+                            class="form-group mb-0"
+                            style="display: none;"
+                        >
 
-                    <label for="otherVoidReason">
-                        Specify Other Reason
-                        <span class="text-danger">*</span>
-                    </label>
+                            <label for="otherVoidReason">
+                                Specify Other Reason
+                                <span class="text-danger">*</span>
+                            </label>
 
-                    <textarea
-                        id="otherVoidReason"
-                        class="form-control"
-                        rows="3"
-                        maxlength="1000"
-                        placeholder="Enter the reason for voiding this Goods Receipt..."
-                    ></textarea>
+                            <textarea
+                                id="otherVoidReason"
+                                class="form-control"
+                                rows="3"
+                                maxlength="1000"
+                                placeholder="Enter the reason for voiding this Goods Receipt..."
+                            ></textarea>
 
-                    <small class="text-muted">
-                        Maximum 1000 characters.
-                    </small>
+                            <small class="text-muted">
+                                Maximum 1000 characters.
+                            </small>
 
-                </div>
+                        </div>
 
-            </div>
-        `,
+                    </div>
+                `,
 
-        showCancelButton: true,
+                        showCancelButton: true,
 
-        confirmButtonText: 'Void GRN',
+                        confirmButtonText: 'Void GRN',
 
-        confirmButtonColor: '#dc3545',
+                        confirmButtonColor: '#dc3545',
 
-        cancelButtonText: 'Cancel',
+                        cancelButtonText: 'Cancel',
 
-        focusConfirm: false,
+                        focusConfirm: false,
 
-        didOpen: function() {
+                        didOpen: function () {
 
-            const reasonSelect =
-                document.getElementById(
-                    'swalVoidReason'
-                );
+                            const reasonSelect =
+                                document.getElementById(
+                                    'swalVoidReason'
+                                );
 
-            const otherWrapper =
-                document.getElementById(
-                    'otherVoidReasonWrapper'
-                );
+                            const otherWrapper =
+                                document.getElementById(
+                                    'otherVoidReasonWrapper'
+                                );
 
-            const otherInput =
-                document.getElementById(
-                    'otherVoidReason'
-                );
+                            const otherInput =
+                                document.getElementById(
+                                    'otherVoidReason'
+                                );
 
-            reasonSelect.addEventListener(
-                'change',
-                function() {
+                            reasonSelect.addEventListener(
+                                'change',
+                                function () {
 
-                    if (this.value === 'Other') {
+                                    if (this.value === 'Other') {
 
-                        otherWrapper.style.display =
-                            'block';
+                                        otherWrapper.style.display =
+                                            'block';
 
-                        setTimeout(function() {
-                            otherInput.focus();
-                        }, 100);
+                                        setTimeout(function () {
+                                            otherInput.focus();
+                                        }, 100);
 
-                    } else {
+                                    } else {
 
-                        otherWrapper.style.display =
-                            'none';
+                                        otherWrapper.style.display =
+                                            'none';
 
-                        otherInput.value = '';
+                                        otherInput.value = '';
 
-                    }
+                                    }
 
-                }
-            );
+                                }
+                            );
 
-        },
+                        },
 
-        preConfirm: function() {
+                        preConfirm: function () {
 
-            const reason =
-                document.getElementById(
-                    'swalVoidReason'
-                ).value;
+                            const reason =
+                                document.getElementById(
+                                    'swalVoidReason'
+                                ).value;
 
-            const otherReason =
-                document.getElementById(
-                    'otherVoidReason'
-                ).value.trim();
+                            const otherReason =
+                                document.getElementById(
+                                    'otherVoidReason'
+                                ).value.trim();
 
-            if (!reason) {
+                            if (!reason) {
 
-                Swal.showValidationMessage(
-                    'Please select a void reason.'
-                );
+                                Swal.showValidationMessage(
+                                    'Please select a void reason.'
+                                );
 
-                return false;
-            }
+                                return false;
+                            }
 
-            if (
-                reason === 'Other' &&
-                !otherReason
-            ) {
+                            if (
+                                reason === 'Other' &&
+                                !otherReason
+                            ) {
 
-                Swal.showValidationMessage(
-                    'Please specify the other reason.'
-                );
+                                Swal.showValidationMessage(
+                                    'Please specify the other reason.'
+                                );
 
-                return false;
-            }
+                                return false;
+                            }
 
-            if (reason === 'Other') {
+                            if (reason === 'Other') {
 
-                return otherReason;
+                                return otherReason;
 
-            }
+                            }
 
-            return reason;
+                            return reason;
 
-        }
+                        }
 
-    }).then(function(result) {
+                    }).then(function (result) {
 
-        if (!result.isConfirmed) {
-            return;
-        }
+                        if (!result.isConfirmed) {
+                            return;
+                        }
 
-        submitVoidGrn(
-            result.value
-        );
+                        submitVoidGrn(
+                            result.value
+                        );
 
-    });
+                    });
 
-});
+                });
 
 
                 /*

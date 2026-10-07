@@ -699,7 +699,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
         [GoodsReceiptController::class, 'void']
     )->name('goods-receipts.void');
 
-
+    Route::post(
+        'goods-receipts/{goodsReceipt}/purchase-orders',
+        [GoodsReceiptController::class, 'attachPurchaseOrder']
+    )->name('goods-receipts.purchase-orders.attach');
 
     // Manual Purchase Order Product model Items
     Route::get(

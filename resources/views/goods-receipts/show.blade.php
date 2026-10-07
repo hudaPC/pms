@@ -411,19 +411,12 @@
 
                                 <th>#</th>
                                 <th>PO Number</th>
-
                                 <th>Product Model</th>
-
                                 <th>Item Code</th>
-
                                 <th>Item Name</th>
-
                                 <th>Ordered Qty</th>
-
                                 <th>Previously Received</th>
-
                                 <th>Outstanding</th>
-
                                 <th>Unit</th>
 
                                 <th width="130">
@@ -624,6 +617,7 @@
 
                                 <th>#</th>
 
+                                <th>PO Number</th>
                                 <th>Product Model</th>
 
                                 <th>Item Code</th>
@@ -649,6 +643,7 @@
                                     <td>
                                         {{ $loop->iteration }}
                                     </td>
+                                    <td>{{ $receiptItem->purchaseOrderItem->purchaseOrder->po_number ?? '-' }}</td>
 
                                     <td>
                                         @if ($receiptItem->purchaseOrderItem?->productModel)
@@ -709,7 +704,7 @@
 
                                 <tr>
 
-                                    <td colspan="7" class="text-center text-muted py-4">
+                                    <td colspan="8" class="text-center text-muted py-4">
 
                                         No received quantities have been entered yet.
 

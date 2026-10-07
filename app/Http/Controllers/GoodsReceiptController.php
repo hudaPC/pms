@@ -327,7 +327,7 @@ class GoodsReceiptController extends Controller
             'purchaseOrders.items.productModel',
             'items.item.unit',
             'items.purchaseOrderItem.productModel',
-            'items.purchaseOrderItem.purchaseOrder',
+            'items.purchaseOrderItem.purchaseOrder:id,po_number',
         ]);
 
         // POs that can still be added to this GRN (same supplier, not already added)

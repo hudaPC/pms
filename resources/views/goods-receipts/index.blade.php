@@ -149,7 +149,7 @@
                                                             {{ $purchaseOrder->order_date
                                     ? $purchaseOrder->order_date->format('d-M-Y')
                                     : '-'
-                                                                                                                        }}
+                                                                                                                                                    }}
 
                                                         </td>
 
@@ -160,7 +160,7 @@
                                                             {{ $purchaseOrder->expected_delivery_date
                                     ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
                                     : '-'
-                                                                                                                        }}
+                                                                                                                                                    }}
 
                                                         </td>
 
@@ -354,10 +354,7 @@
 
                         <tbody>
 
-                            @forelse (
-                                                        $goodsReceipts
-                                                        as $goodsReceipt
-                                                    )
+                            @forelse ($goodsReceipts as $goodsReceipt)
 
                                                     <tr>
 
@@ -365,7 +362,7 @@
 
                                                             {{ $goodsReceipts->firstItem()
                                     + $loop->index
-                                                                                                                        }}
+                                                                                                                                                    }}
 
                                                         </td>
 
@@ -388,7 +385,7 @@
                                                             {{ $goodsReceipt
                                     ->purchaseOrder
                                     ->po_number ?? '-'
-                                                                                                                        }}
+                                                                                                                                                    }}
 
                                                         </td>
 
@@ -400,7 +397,7 @@
                                     ->purchaseOrder
                                     ->supplier
                                     ->name ?? '-'
-                                                                                                                        }}
+                                                                                                                                                    }}
 
                                                         </td>
 
@@ -413,7 +410,7 @@
                                         ->receipt_date
                                         ->format('d-M-Y')
                                     : '-'
-                                                                                                                        }}
+                                                                                                                                                    }}
 
                                                         </td>
 
@@ -424,7 +421,7 @@
                                                             {{ $goodsReceipt
                                     ->supplier_reference
                                     ?? '-'
-                                                                                                                        }}
+                                                                                                                                                    }}
 
                                                         </td>
 
@@ -447,7 +444,7 @@
                                                         {{-- Total Price --}}
                                                         <td class="text-right">
                                                             <strong class="text-primary">
-                                                                {{ number_format((float) ($goodsReceipt->total_price ?? 0), 3) }}
+                                                                $ {{ number_format((float) ($goodsReceipt->total_price ?? 0), 3) }}
                                                             </strong>
                                                         </td>
 

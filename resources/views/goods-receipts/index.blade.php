@@ -447,9 +447,6 @@
                                                                 $ {{ number_format((float) ($goodsReceipt->total_price ?? 0), 3) }}
                                                             </strong>
                                                         </td>
-
-
-
                                                         {{-- Action --}}
                                                         <td>
 

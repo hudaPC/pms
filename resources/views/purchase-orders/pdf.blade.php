@@ -168,16 +168,12 @@
                                 <br>
                                 <strong>Date:</strong>
                                 {{ $purchaseOrder->order_date
-                                  ? $purchaseOrder->order_date->format('d-M-Y') : '-'
+    ? $purchaseOrder->order_date->format('d-M-Y') : '-'
                                 }}
                             </td>
-
                         </tr>
-                       
                     </table>
-
                 </td>
-                
             </tr>
 
             {{-- ASSEMBLE ACCESSORIES LABEL --}}
@@ -207,10 +203,7 @@
                 <th style="width: 10%;">Unit Price</th>
                 <th style="width: 12%;">Total Price</th>
             </tr>
-
         </thead>
-
-
         <tbody>
 
             @foreach ($purchaseOrder->items as $poItem)
@@ -223,24 +216,22 @@
                     <tr class="item-row">
 
                         <td style="width: 5%;">{{ $loop->iteration }}</td>
-
                         <td style="width: 12%;">{{ $poItem->productModel->model_code ?? '-' }}</td>
-
-                        <td style="width: 13%;">{{ $poItem->item->item_code ?? '-' }}</td>
-
+                        <td style="width: 13%;">
+                            {{ $categoryCode === 'GM'
+                ? str_replace('-GM', '', $poItem->item->item_code ?? '-')
+                : ($poItem->item->item_code ?? '-')
+                                    }}
+                        </td>
                         <td style="width: 27%;">{{ $poItem->item->item_name ?? '-' }}</td>
-
                         <td style="width: 13%;">
                             {{ $purchaseOrder->expected_delivery_date
                 ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
                 : '-'
-                                        }}
+                                    }}
                         </td>
-
                         <td style="width: 8%;">{{ number_format($poItem->ordered_quantity, 0) }}</td>
-
                         <td style="width: 10%;">$ {{ number_format($poItem->unit_price ?? 0, 2) }}</td>
-
                         <td style="width: 12%;">$ {{ number_format($lineTotal, 2) }}</td>
 
                     </tr>
@@ -289,19 +280,12 @@
         if (isset($pdf)) {
 
             $font = $fontMetrics->getFont("Helvetica", "normal");
-
             $text = "Page {PAGE_NUM} of {PAGE_COUNT}";
-
             $size = 9;
-
             $width = $fontMetrics->getTextWidth($text, $font, $size);
-
             $x = $pdf->get_width() - $width - 25;
-
             $y = $pdf->get_height() - 30;
-
             $pdf->page_text($x, $y, $text, $font, $size, array(0, 0, 0));
-
             /* Footer image: uses footer.jpg if it exists, otherwise footer.png */
             $footerJpg = "{{ str_replace('\\', '/', public_path('images/footer.jpg')) }}";
             $footerPng = "{{ str_replace('\\', '/', public_path('images/footer.png')) }}";

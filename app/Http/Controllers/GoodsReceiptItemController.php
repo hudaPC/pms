@@ -57,8 +57,9 @@ class GoodsReceiptItemController extends Controller
         */
 
         abort_if(
-            $purchaseOrderItem->purchase_order_id
-            !== $goodsReceipt->purchase_order_id,
+            !$goodsReceipt->purchaseOrders()
+                ->where('purchase_orders.id', $purchaseOrderItem->purchase_order_id)
+                ->exists(),
             404
         );
 
@@ -96,7 +97,7 @@ class GoodsReceiptItemController extends Controller
                 )
                 ->withErrors([
                     'received_quantity' =>
-                        'This Purchase Order item has already been fully received.',
+                    'This Purchase Order item has already been fully received.',
                 ]);
         }
 
@@ -191,8 +192,9 @@ class GoodsReceiptItemController extends Controller
             */
 
             if (
-                $lockedPoItem->purchase_order_id
-                !== $goodsReceipt->purchase_order_id
+                !$goodsReceipt->purchaseOrders()
+                    ->where('purchase_orders.id', $lockedPoItem->purchase_order_id)
+                    ->exists()
             ) {
 
                 abort(404);
@@ -205,8 +207,8 @@ class GoodsReceiptItemController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            $purchaseOrder = $goodsReceipt
-                ->purchaseOrder()
+            $purchaseOrder = \App\Models\PurchaseOrder::query()
+                ->whereKey($lockedPoItem->purchase_order_id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -265,7 +267,7 @@ class GoodsReceiptItemController extends Controller
 
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'received_quantity' =>
-                        'This Purchase Order item has already been fully received.',
+                    'This Purchase Order item has already been fully received.',
                 ]);
             }
 
@@ -274,7 +276,7 @@ class GoodsReceiptItemController extends Controller
 
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'received_quantity' =>
-                        'Received quantity cannot exceed the outstanding quantity of '
+                    'Received quantity cannot exceed the outstanding quantity of '
                         . number_format($outstandingQuantity, 3)
                         . '.',
                 ]);
@@ -302,7 +304,7 @@ class GoodsReceiptItemController extends Controller
 
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'received_quantity' =>
-                        'This item has already been entered on this Goods Receipt.',
+                    'This item has already been entered on this Goods Receipt.',
                 ]);
             }
 
@@ -316,19 +318,19 @@ class GoodsReceiptItemController extends Controller
             $goodsReceiptItem = GoodsReceiptItem::create([
 
                 'goods_receipt_id' =>
-                    $goodsReceipt->id,
+                $goodsReceipt->id,
 
                 'purchase_order_item_id' =>
-                    $lockedPoItem->id,
+                $lockedPoItem->id,
 
                 'item_id' =>
-                    $lockedPoItem->item_id,
+                $lockedPoItem->item_id,
 
                 'received_quantity' =>
-                    $newReceiptQuantity,
+                $newReceiptQuantity,
 
                 'remarks' =>
-                    $validated['remarks'] ?? null,
+                $validated['remarks'] ?? null,
 
             ]);
 
@@ -358,31 +360,31 @@ class GoodsReceiptItemController extends Controller
             StockMovement::create([
 
                 'item_id' =>
-                    $lockedPoItem->item_id,
+                $lockedPoItem->item_id,
 
                 'movement_type' =>
-                    'purchase_receipt',
+                'purchase_receipt',
 
                 'direction' =>
-                    'in',
+                'in',
 
                 'quantity' =>
-                    $newReceiptQuantity,
+                $newReceiptQuantity,
 
                 'source_type' =>
-                    'goods_receipt_item',
+                'goods_receipt_item',
 
                 'source_id' =>
-                    $goodsReceiptItem->id,
+                $goodsReceiptItem->id,
 
                 'movement_date' =>
-                    $goodsReceipt->receipt_date,
+                $goodsReceipt->receipt_date,
 
                 'reference' =>
-                    $goodsReceipt->grn_number,
+                $goodsReceipt->grn_number,
 
                 'remarks' =>
-                    $validated['remarks'] ?? null,
+                $validated['remarks'] ?? null,
 
             ]);
 
@@ -428,7 +430,6 @@ class GoodsReceiptItemController extends Controller
 
                 $purchaseOrder->status =
                     'received';
-
             } elseif ($hasAnyReceived) {
 
                 $purchaseOrder->status =

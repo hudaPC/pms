@@ -61,5 +61,10 @@ class PurchaseOrderItem extends Model
     {
         return $this->belongsTo(ProductModel::class);
     }
+    public function productModelItem()
+{
+    return $this->hasOne(ProductModelItem::class, 'item_id', 'item_id')
+        ->where('product_model_id', $this->product_model_id);
+}
 
 }

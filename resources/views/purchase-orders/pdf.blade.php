@@ -197,8 +197,9 @@
                 <th style="width: 5%;">SL NO</th>
                 <th style="width: 14%;">Model Name</th>
                 <th style="width: 13%;">Item Code</th>
-                <th style="width: 25%;">Item Name</th>
-                <th style="width: 13%;">Delivery Date</th>
+                <th style="width: 5%;">Ver</th>
+                <th style="width: 23%;">Item Name</th>
+                <th style="width: 11%;">Del. Date</th>
                 <th style="width: 10%;">Order Qty</th>
                 <th style="width: 9%;">Unit Price</th>
                 <th style="width: 11%;">Total Price</th>
@@ -223,8 +224,9 @@
                 : ($poItem->item->item_code ?? '-')
                                     }}
                         </td>
-                        <td style="width: 27%;">{{ $poItem->item->item_name ?? '-' }}</td>
-                        <td style="width: 13%;">
+                        <td style="width: 5%;">{{ $poItem->productModelItem->revision ?? '-' }}</td>
+                        <td style="width: 23%;">{{ $poItem->item->item_name ?? '-' }}</td>
+                        <td style="width: 11%;">
                             {{ $purchaseOrder->expected_delivery_date
                 ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
                 : '-'

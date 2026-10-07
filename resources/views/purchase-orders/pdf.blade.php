@@ -182,7 +182,7 @@
                 $categoryCode = $firstItem?->item?->category?->code;
             @endphp
             <tr>
-                <td colspan="8" class="po-header-cell"
+                <td colspan="9" class="po-header-cell"
                     style="text-align: left; font-size: 11px; font-weight: bold; padding: 0 0 4px 0;">
                     @if ($categoryCode === 'GM')
                         GLASS MATERIAL FOR LENS
@@ -243,7 +243,7 @@
 
             {{-- SUMMARY ROW: totals + words + signature (stays with the repeated header) --}}
             <tr class="summary-row">
-                <td colspan="8" class="summary-cell">
+                <td colspan="9" class="summary-cell">
 
                     <table class="footer-table">
                         <tr>

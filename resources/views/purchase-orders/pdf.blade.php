@@ -168,7 +168,7 @@
                                 <br>
                                 <strong>Date:</strong>
                                 {{ $purchaseOrder->order_date
-    ? $purchaseOrder->order_date->format('d-M-Y') : '-'
+                                     ? $purchaseOrder->order_date->format('d-M-Y') : '-'
                                 }}
                             </td>
                         </tr>
@@ -195,13 +195,13 @@
             {{-- ITEM COLUMN HEADERS --}}
             <tr class="items-header">
                 <th style="width: 5%;">SL NO</th>
-                <th style="width: 12%;">Model Name</th>
+                <th style="width: 14%;">Model Name</th>
                 <th style="width: 13%;">Item Code</th>
-                <th style="width: 27%;">Item Name</th>
+                <th style="width: 25%;">Item Name</th>
                 <th style="width: 13%;">Delivery Date</th>
-                <th style="width: 8%;">Order Qty</th>
-                <th style="width: 10%;">Unit Price</th>
-                <th style="width: 12%;">Total Price</th>
+                <th style="width: 10%;">Order Qty</th>
+                <th style="width: 9%;">Unit Price</th>
+                <th style="width: 11%;">Total Price</th>
             </tr>
         </thead>
         <tbody>

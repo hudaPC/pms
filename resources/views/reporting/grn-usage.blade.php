@@ -23,9 +23,21 @@
             </a>
         </div>
         @php
-            $holdingDays = \Carbon\Carbon::parse($goodsReceipt->receipt_date)
-                ->startOfDay()
-                ->diffInDays(now()->startOfDay());
+            $receiptDate = \Carbon\Carbon::parse($goodsReceipt->receipt_date)->startOfDay();
+            $diff = $receiptDate->diff(now()->startOfDay());
+
+            $holdingMonths = $diff->y * 12 + $diff->m;
+            $holdingDays = $diff->d;
+            $holdingTotalDays = (int) $receiptDate->diffInDays(now()->startOfDay());
+
+            $holdingParts = [];
+            if ($holdingMonths > 0) {
+                $holdingParts[] = $holdingMonths . ' ' . \Illuminate\Support\Str::plural('Month', $holdingMonths);
+            }
+            if ($holdingDays > 0 || $holdingMonths == 0) {
+                $holdingParts[] = $holdingDays . ' ' . \Illuminate\Support\Str::plural('day', $holdingDays);
+            }
+            $holdingLabel = implode(' ', $holdingParts);
         @endphp
 
         <div class="card card-primary card-outline">
@@ -53,21 +65,31 @@
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $r['line']->purchaseOrderItem->purchaseOrder->po_number ?? '-' }}</td>
                                     <td><strong>{{ $r['line']->item->item_code ?? '-' }}</strong></td>
-                                    <td>{{ $r['line']->item->item_name ?? '-' }}</td>
+                                    <td>
+                                        {{ $r['line']->item->item_name ?? '-' }}
+                                        @if ($r['line']->purchaseOrderItem?->productModel)
+                                            <span class="badge badge-info ml-1">
+                                                {{ $r['line']->purchaseOrderItem->productModel->model_code }}
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td class="text-right">{{ number_format($r['received'], 3) }}</td>
                                     <td class="text-right text-danger">{{ number_format($r['used'], 3) }}</td>
                                     <td class="text-right">{{ number_format($r['returned'], 3) }}</td>
                                     <td class="text-right">
                                         <strong class="text-success">{{ number_format($r['remaining'], 3) }}</strong>
                                     </td>
-                                    <td class="text-right">{{ $holdingDays }}
-                                        {{ \Illuminate\Support\Str::plural('day', $holdingDays) }}</td>
+                                    <td class="text-right" title="{{ $holdingTotalDays }} days total">{{ $holdingLabel }}
+                                    </td>
+
+
+
                                     <td>
                                         @forelse ($r['by_model'] as $model => $qty)
                                             <span class="badge badge-info">{{ $model }}:
                                                 {{ number_format($qty, 3) }}</span>
                                         @empty
-                                            <span class="text-muted">-</span>
+                                            <span class="text-muted small">Not used yet</span>
                                         @endforelse
                                     </td>
                                 </tr>

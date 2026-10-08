@@ -88,7 +88,11 @@
 
                     <div class="mt-1">
 
-                        {{ $goodsReceipt->purchaseOrder->po_number ?? '-' }}
+                        @forelse ($goodsReceipt->purchaseOrders as $po)
+                            <span class="badge badge-light border">{{ $po->po_number }}</span>
+                        @empty
+                            {{ $goodsReceipt->purchaseOrder->po_number ?? '-' }}
+                        @endforelse
 
                     </div>
 
@@ -375,6 +379,7 @@
                                     <th width="50">
                                         #
                                     </th>
+                                    <th>PO Number</th>
 
                                     <th>
                                         Item Code
@@ -443,6 +448,7 @@
                                             {{ $loop->iteration }}
 
                                         </td>
+                                        <td>{{ $receiptItem->purchaseOrderItem->purchaseOrder->po_number ?? '-' }}</td>
 
 
                                         <td>

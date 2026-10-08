@@ -144,24 +144,31 @@
 
                                 <td>
 
-                                    @if($purchaseReturn->purchaseOrder)
+                                    @php
+                                        $returnPurchaseOrders = $purchaseReturn->items
+                                            ->map(fn ($line) => $line->purchaseOrderItem?->purchaseOrder)
+                                            ->filter()
+                                            ->unique('id');
+                                    @endphp
 
-                                        <a
-                                            href="{{ route(
-                                                'purchase-orders.show',
-                                                $purchaseReturn->purchaseOrder
-                                            ) }}"
-                                        >
+                                    @forelse($returnPurchaseOrders as $po)
 
-                                            {{ $purchaseReturn->purchaseOrder->po_number }}
-
+                                        <a href="{{ route('purchase-orders.show', $po) }}">
+                                            {{ $po->po_number }}
                                         </a>
+                                        @if(!$loop->last), @endif
 
-                                    @else
+                                    @empty
 
-                                        -
+                                        @if($purchaseReturn->purchaseOrder)
+                                            <a href="{{ route('purchase-orders.show', $purchaseReturn->purchaseOrder) }}">
+                                                {{ $purchaseReturn->purchaseOrder->po_number }}
+                                            </a>
+                                        @else
+                                            -
+                                        @endif
 
-                                    @endif
+                                    @endforelse
 
                                 </td>
 

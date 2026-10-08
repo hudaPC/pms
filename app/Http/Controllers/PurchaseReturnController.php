@@ -26,7 +26,7 @@ class PurchaseReturnController extends Controller
                 'supplier',
                 'purchaseOrder',
                 'goodsReceipt',
-                'items',
+                'items.purchaseOrderItem.purchaseOrder',
             ])
                 ->orderByDesc('return_date')
                 ->orderByDesc('id')
@@ -57,7 +57,7 @@ class PurchaseReturnController extends Controller
             'goodsReceipt',
             'items.item.unit',
             'items.goodsReceiptItem',
-            'items.purchaseOrderItem',
+            'items.purchaseOrderItem.purchaseOrder',
         ]);
 
 
@@ -100,8 +100,9 @@ class PurchaseReturnController extends Controller
 
         $goodsReceipt->load([
             'purchaseOrder.supplier',
+            'purchaseOrders',
             'items.item.unit',
-            'items.purchaseOrderItem',
+            'items.purchaseOrderItem.purchaseOrder',
         ]);
 
 
@@ -432,6 +433,29 @@ class PurchaseReturnController extends Controller
                     }
 
 
+
+
+
+
+
+                    // Work out which PO the returned lines belong to
+                    $selectedReceiptItemIds = collect($validated['items'])
+                        ->filter(fn($row) => isset($row['return_quantity'])
+                            && $row['return_quantity'] !== ''
+                            && (float) $row['return_quantity'] > 0)
+                        ->pluck('goods_receipt_item_id');
+
+                    $returnPoIds = $lockedGoodsReceipt->items()
+                        ->whereIn('id', $selectedReceiptItemIds)
+                        ->with('purchaseOrderItem')
+                        ->get()
+                        ->pluck('purchaseOrderItem.purchase_order_id')
+                        ->unique();
+
+                    // One PO: use it. Mixed POs: fall back to the GRN's first PO.
+                    $headerPurchaseOrderId = $returnPoIds->count() === 1
+                        ? $returnPoIds->first()
+                        : $lockedGoodsReceipt->purchase_order_id;
                     /*
                     |--------------------------------------------------------------------------
                     | Create Return Header
@@ -450,8 +474,7 @@ class PurchaseReturnController extends Controller
                                     ->supplier_id,
 
                             'purchase_order_id' =>
-                                $lockedGoodsReceipt
-                                    ->purchase_order_id,
+                                $headerPurchaseOrderId,
 
                             'goods_receipt_id' =>
                                 $lockedGoodsReceipt->id,

@@ -318,3 +318,4 @@ END
 WHERE revision IN ('0','A', '1', '2');
 ***************************************
 
+SELECT * FROM stock_movements ORDER BY id DESC LIMIT 1;

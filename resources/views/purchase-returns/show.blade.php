@@ -40,8 +40,8 @@
 
 
         {{-- ============================================================
-         RETURN INFORMATION
-    ============================================================ --}}
+        RETURN INFORMATION
+        ============================================================ --}}
         <div class="card card-danger card-outline mb-4">
 
             <div class="card-header">
@@ -142,15 +142,19 @@
 
                         <div class="mt-1">
 
-                            @if ($purchaseReturn->purchaseOrder)
-                                <a href="{{ route('purchase-orders.show', $purchaseReturn->purchaseOrder) }}">
+                            @php
+                                $returnPurchaseOrders = $purchaseReturn->items
+                                    ->map(fn($line) => $line->purchaseOrderItem?->purchaseOrder)
+                                    ->filter()
+                                    ->unique('id');
+                            @endphp
 
-                                    {{ $purchaseReturn->purchaseOrder->po_number }}
-
-                                </a>
-                            @else
-                                -
-                            @endif
+                            @forelse ($returnPurchaseOrders as $po)
+                                <a href="{{ route('purchase-orders.show', $po) }}">{{ $po->po_number }}</a>@if (!$loop->last),
+                                @endif
+                            @empty
+                                {{ $purchaseReturn->purchaseOrder->po_number ?? '-' }}
+                            @endforelse
 
                         </div>
 
@@ -217,8 +221,8 @@
 
 
         {{-- ============================================================
-         RETURN ITEMS
-    ============================================================ --}}
+        RETURN ITEMS
+        ============================================================ --}}
         <div class="card shadow-sm mb-4">
 
             <div class="card-header">
@@ -247,6 +251,7 @@
                                 <th>
                                     #
                                 </th>
+                                <th>PO Number</th>
 
                                 <th>
                                     Item Code
@@ -289,6 +294,7 @@
                                     <td>
                                         {{ $loop->iteration }}
                                     </td>
+                                    <td>{{ $item->purchaseOrderItem->purchaseOrder->po_number ?? '-' }}</td>
 
 
                                     <td>
@@ -354,7 +360,7 @@
 
                                 <tr>
 
-                                    <td colspan="8" class="text-center text-muted py-4">
+                                    <td colspan="9" class="text-center text-muted py-4">
 
                                         No return items found.
 
@@ -375,8 +381,8 @@
 
 
         {{-- ============================================================
-         TOTAL
-    ============================================================ --}}
+        TOTAL
+        ============================================================ --}}
         <div class="row justify-content-end">
 
             <div class="col-md-4">
@@ -422,11 +428,11 @@
 
 
         {{-- ============================================================
-         POSTING INFORMATION
-    ============================================================ --}}
+        POSTING INFORMATION
+        ============================================================ --}}
         {{-- ============================================================
-     PURCHASE RETURN POSTING
-============================================================ --}}
+        PURCHASE RETURN POSTING
+        ============================================================ --}}
 
         @if ($purchaseReturn->status === 'draft')
 
@@ -585,8 +591,8 @@
 
 
             {{-- Hidden Cancellation Form --}}
-            <form id="cancelPurchaseReturnForm" action="{{ route('purchase-returns.cancel', $purchaseReturn) }}"
-                method="POST" style="display:none;">
+            <form id="cancelPurchaseReturnForm" action="{{ route('purchase-returns.cancel', $purchaseReturn) }}" method="POST"
+                style="display:none;">
 
                 @csrf
 
@@ -648,7 +654,7 @@
     </div>
     @push('scripts')
         <script>
-            $(document).ready(function() {
+            $(document).ready(function () {
 
                 /*
                 |--------------------------------------------------------------------------
@@ -661,13 +667,13 @@
                     toastr.error(
                         @json($errors->first('post')),
                         'Purchase Return Posting Blocked', {
-                            closeButton: true,
-                            progressBar: false,
-                            timeOut: 0,
-                            extendedTimeOut: 0,
-                            positionClass: 'toast-top-right',
-                            preventDuplicates: true
-                        }
+                        closeButton: true,
+                        progressBar: false,
+                        timeOut: 0,
+                        extendedTimeOut: 0,
+                        positionClass: 'toast-top-right',
+                        preventDuplicates: true
+                    }
                     );
                 @endif
 
@@ -683,13 +689,13 @@
                     toastr.error(
                         @json($errors->first('cancellation_reason')),
                         'Purchase Return Cancellation Blocked', {
-                            closeButton: true,
-                            progressBar: false,
-                            timeOut: 0,
-                            extendedTimeOut: 0,
-                            positionClass: 'toast-top-right',
-                            preventDuplicates: true
-                        }
+                        closeButton: true,
+                        progressBar: false,
+                        timeOut: 0,
+                        extendedTimeOut: 0,
+                        positionClass: 'toast-top-right',
+                        preventDuplicates: true
+                    }
                     );
                 @endif
 
@@ -702,7 +708,7 @@
 
                 $('#btnPostPurchaseReturn').on(
                     'click',
-                    function() {
+                    function () {
 
                         const button =
                             $(this);
@@ -714,38 +720,38 @@
 
                             html: `
 
-                    <div class="text-left">
+                            <div class="text-left">
 
-                        <p>
+                                <p>
 
-                            You are about to post
+                                    You are about to post
 
-                            <strong>
-                                {{ $purchaseReturn->return_number }}
-                            </strong>.
+                                    <strong>
+                                        {{ $purchaseReturn->return_number }}
+                                    </strong>.
 
-                        </p>
+                                </p>
 
-                        <p>
+                                <p>
 
-                            This will create Stock OUT transactions
-                            for the returned goods.
+                                    This will create Stock OUT transactions
+                                    for the returned goods.
 
-                        </p>
+                                </p>
 
-                        <p class="text-danger mb-0">
+                                <p class="text-danger mb-0">
 
-                            <strong>
+                                    <strong>
 
-                                This action will reduce the current inventory.
+                                        This action will reduce the current inventory.
 
-                            </strong>
+                                    </strong>
 
-                        </p>
+                                </p>
 
-                    </div>
+                            </div>
 
-                `,
+                        `,
 
                             icon: 'warning',
 
@@ -763,7 +769,7 @@
 
                             focusConfirm: false
 
-                        }).then(function(result) {
+                        }).then(function (result) {
 
                             /*
                             |--------------------------------------------------------------------------
@@ -819,7 +825,7 @@
 
                 $('#btnCancelPurchaseReturn').on(
                     'click',
-                    function() {
+                    function () {
 
                         const button =
                             $(this);
@@ -831,107 +837,107 @@
 
                             html: `
 
-                    <div class="text-left">
+                            <div class="text-left">
 
-                        <p>
+                                <p>
 
-                            You are about to cancel
+                                    You are about to cancel
 
-                            <strong>
-                                {{ $purchaseReturn->return_number }}
-                            </strong>.
+                                    <strong>
+                                        {{ $purchaseReturn->return_number }}
+                                    </strong>.
 
-                        </p>
+                                </p>
 
-                        <p class="text-danger">
+                                <p class="text-danger">
 
-                            This will reverse the Stock OUT transaction
-                            and restore the returned quantity to inventory.
+                                    This will reverse the Stock OUT transaction
+                                    and restore the returned quantity to inventory.
 
-                        </p>
-
-
-                        <label class="font-weight-bold">
-
-                            Cancellation Reason
-
-                            <span class="text-danger">
-                                *
-                            </span>
-
-                        </label>
+                                </p>
 
 
-                        <select
-                            id="swalPurchaseReturnCancelReason"
-                            class="form-control"
-                        >
+                                <label class="font-weight-bold">
 
-                            <option value="">
-                                -- Select Reason --
-                            </option>
+                                    Cancellation Reason
 
-                            <option value="Return entered incorrectly">
-                                Return entered incorrectly
-                            </option>
+                                    <span class="text-danger">
+                                        *
+                                    </span>
 
-                            <option value="Wrong return quantity">
-                                Wrong return quantity
-                            </option>
-
-                            <option value="Wrong item returned">
-                                Wrong item returned
-                            </option>
-
-                            <option value="Supplier accepted goods">
-                                Supplier accepted goods
-                            </option>
-
-                            <option value="Return shipment cancelled">
-                                Return shipment cancelled
-                            </option>
-
-                            <option value="Data entry mistake">
-                                Data entry mistake
-                            </option>
-
-                            <option value="Other">
-                                Other
-                            </option>
-
-                        </select>
+                                </label>
 
 
-                        <div
-                            id="otherPurchaseReturnCancelReasonWrapper"
-                            class="mt-3"
-                            style="display:none;"
-                        >
+                                <select
+                                    id="swalPurchaseReturnCancelReason"
+                                    class="form-control"
+                                >
 
-                            <label class="font-weight-bold">
+                                    <option value="">
+                                        -- Select Reason --
+                                    </option>
 
-                                Other Reason
+                                    <option value="Return entered incorrectly">
+                                        Return entered incorrectly
+                                    </option>
 
-                                <span class="text-danger">
-                                    *
-                                </span>
+                                    <option value="Wrong return quantity">
+                                        Wrong return quantity
+                                    </option>
 
-                            </label>
+                                    <option value="Wrong item returned">
+                                        Wrong item returned
+                                    </option>
+
+                                    <option value="Supplier accepted goods">
+                                        Supplier accepted goods
+                                    </option>
+
+                                    <option value="Return shipment cancelled">
+                                        Return shipment cancelled
+                                    </option>
+
+                                    <option value="Data entry mistake">
+                                        Data entry mistake
+                                    </option>
+
+                                    <option value="Other">
+                                        Other
+                                    </option>
+
+                                </select>
 
 
-                            <textarea
-                                id="swalOtherPurchaseReturnCancelReason"
-                                class="form-control"
-                                rows="3"
-                                maxlength="1000"
-                                placeholder="Enter cancellation reason..."
-                            ></textarea>
+                                <div
+                                    id="otherPurchaseReturnCancelReasonWrapper"
+                                    class="mt-3"
+                                    style="display:none;"
+                                >
 
-                        </div>
+                                    <label class="font-weight-bold">
 
-                    </div>
+                                        Other Reason
 
-                `,
+                                        <span class="text-danger">
+                                            *
+                                        </span>
+
+                                    </label>
+
+
+                                    <textarea
+                                        id="swalOtherPurchaseReturnCancelReason"
+                                        class="form-control"
+                                        rows="3"
+                                        maxlength="1000"
+                                        placeholder="Enter cancellation reason..."
+                                    ></textarea>
+
+                                </div>
+
+                            </div>
+
+                        `,
 
                             icon: 'warning',
 
@@ -980,7 +986,7 @@
 
                                 reasonSelect.addEventListener(
                                     'change',
-                                    function() {
+                                    function () {
 
                                         if (
                                             this.value ===
@@ -1077,7 +1083,7 @@
 
                             }
 
-                        }).then(function(result) {
+                        }).then(function (result) {
 
                             /*
                             |--------------------------------------------------------------------------

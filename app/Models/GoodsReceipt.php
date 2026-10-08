@@ -22,7 +22,9 @@ class GoodsReceipt extends Model
         'void_reason',
     ];
 
-
+protected $casts = [
+    'receipt_date' => 'date',
+];
 
 
     public function purchaseOrder(): BelongsTo

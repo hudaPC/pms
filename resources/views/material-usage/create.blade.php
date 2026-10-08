@@ -111,11 +111,14 @@
                         <table class="table table-bordered table-hover" id="materialItemsTable">
                             <thead class="thead-light">
                                 <tr>
-                                    <th style="width: 55px;" class="text-center">#</th>
-                                    <th style="min-width: 220px;">Product Model <span class="text-danger">*</span></th>
-                                    <th style="min-width: 300px;">Item <span class="text-danger">*</span></th>
-                                    <th style="min-width: 140px;">Available Stock</th>
-                                    <th style="min-width: 160px;">Issue Quantity <span class="text-danger">*</span></th>
+                                    <th style="width: 45px;" class="text-center">#</th>
+                                    <th style="width: 15%; min-width: 150px;">Product Model <span
+                                            class="text-danger">*</span></th>
+                                    <th style="width: 30%; min-width: 220px;">Item <span class="text-danger">*</span></th>
+                                    <th style="width: 25%; min-width: 220px;">Goods Receipt (GRN) <span
+                                            class="text-danger">*</span></th>
+                                    <th style="width: 110px;">Available Stock</th>
+                                    <th style="width: 120px;">Issue Quantity <span class="text-danger">*</span></th>
                                     <th style="width: 75px;" class="text-center">Action</th>
                                 </tr>
                             </thead>
@@ -147,7 +150,24 @@
         </form>
     </div>
 
-
+<style>
+    #materialItemsTable {
+        table-layout: fixed;
+    }
+    #materialItemsTable td {
+        overflow: hidden;
+    }
+    #materialItemsTable .select2-container {
+        max-width: 100%;
+    }
+    #materialItemsTable .select2-selection__rendered,
+    #materialItemsTable .grn-select,
+    #materialItemsTable .product-model-select {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+</style>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
 
@@ -171,6 +191,11 @@
             const itemsUrlTemplate = @json(route('material-usage.product-model-items', [
                 'productModel' => '__PRODUCT_MODEL_ID__',
             ]));
+            const grnUrlTemplate = @json(route('material-usage.item-goods-receipts', [
+                'item' => '__ITEM_ID__',
+            ]));
+
+            const grnCache = {};   // itemId => GRN list
 
             // ------------------------------------------------------------------
             // Elements & state
@@ -304,23 +329,31 @@
                 const quantityInput = row.find('.quantity-input');
                 const feedback = row.find('.quantity-feedback');
                 const selectedOption = row.find('.item-select option:selected');
+                const grnOption = row.find('.grn-select option:selected');
                 const quantity = parseFloat(quantityInput.val());
 
-                // Nothing to check yet (no item selected or no quantity typed)
                 if (!selectedOption.val() || isNaN(quantity)) {
                     quantityInput.removeClass('is-invalid');
                     feedback.text('');
                     return true;
                 }
 
-                const stock = Number(selectedOption.attr('data-current-stock') || 0);
                 const unit = selectedOption.attr('data-unit') || '';
+                let limit, limitLabel;
 
-                if (quantity > stock) {
+                if (grnOption.val()) {
+                    limit = Number(grnOption.attr('data-available') || 0);
+                    limitLabel = 'the quantity left on the selected GRN';
+                } else {
+                    limit = Number(selectedOption.attr('data-current-stock') || 0);
+                    limitLabel = 'available stock';
+                }
+
+                if (quantity > limit) {
                     quantityInput.addClass('is-invalid');
                     feedback.text(
-                        'Issue quantity (' + formatStock(quantity) + ') cannot be greater than available stock (' +
-                        formatStock(stock) + ' ' + unit + ').'
+                        'Issue quantity (' + formatStock(quantity) + ') cannot be greater than ' +
+                        limitLabel + ' (' + formatStock(limit) + ' ' + unit + ').'
                     );
                     return false;
                 }
@@ -388,6 +421,84 @@
                         if (status !== 'abort') {
                             onError();
                         }
+                    }
+                });
+            }
+
+            function resetGrnSelect(row, text) {
+                row.data('noGrn', false);
+                const grnSelect = row.find('.grn-select');
+                grnSelect.empty().append($('<option>', { value: '', text: text }));
+                grnSelect.prop('disabled', true);
+            }
+
+            function fillGrnSelect(row, list) {
+                row.data('noGrn', list.length === 0);
+                const grnSelect = row.find('.grn-select');
+                grnSelect.empty();
+
+                if (list.length === 0) {
+                    grnSelect.append($('<option>', { value: '', text: 'No GRN with stock available' }));
+                    grnSelect.prop('disabled', true);
+                    validateQuantity(row);
+                    return;
+                }
+
+                grnSelect.append($('<option>', { value: '', text: '-- Select GRN --' }));
+
+                list.forEach(function (g) {
+                    const option = $('<option>', {
+                        value: g.goods_receipt_item_id,
+                        text: g.grn_number + ' (' + g.po_number + ') - ' + formatStock(g.available) + ' left'
+                    });
+                    option.attr('data-available', g.available);
+                    grnSelect.append(option);
+                });
+
+                grnSelect.prop('disabled', false);
+
+                const pending = row.data('pendingGrn');
+                if (pending) {
+                    grnSelect.val(String(pending));
+                    row.removeData('pendingGrn');
+                } else if (list.length === 1) {
+                    grnSelect.val(String(list[0].goods_receipt_item_id));   // only one choice
+                }
+
+                validateQuantity(row);
+            }
+
+            function loadGoodsReceipts(row) {
+                const itemId = row.find('.item-select').val();
+
+                if (!itemId) {
+                    resetGrnSelect(row, '-- Select Item First --');
+                    validateQuantity(row);
+                    return;
+                }
+
+                if (grnCache[itemId]) {
+                    fillGrnSelect(row, grnCache[itemId]);
+                    return;
+                }
+
+                resetGrnSelect(row, 'Loading GRNs...');
+
+                $.ajax({
+                    url: grnUrlTemplate.replace('__ITEM_ID__', encodeURIComponent(itemId)),
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (response) {
+                        grnCache[itemId] = response.goods_receipts || [];
+                        // Ignore stale answers (row removed or item changed)
+                        if (!row.closest('body').length ||
+                            String(row.find('.item-select').val()) !== String(itemId)) {
+                            return;
+                        }
+                        fillGrnSelect(row, grnCache[itemId]);
+                    },
+                    error: function () {
+                        resetGrnSelect(row, 'Unable to load GRNs');
                     }
                 });
             }
@@ -561,6 +672,16 @@
                 itemSelect.attr('name', 'items[' + index + '][item_id]');
                 itemSelect.append($('<option>', { value: '', text: '-- Select Product Model First --' }));
                 itemCell.append(itemSelect);
+                // Goods Receipt
+                const grnCell = $('<td>', { class: 'align-middle' });
+                const grnSelect = $('<select>', {
+                    class: 'form-control grn-select no-select2',
+                    required: true,
+                    disabled: true
+                });
+                grnSelect.attr('name', 'items[' + index + '][goods_receipt_item_id]');
+                grnSelect.append($('<option>', { value: '', text: '-- Select Item First --' }));
+                grnCell.append(grnSelect);
 
                 // Available stock
                 const stockCell = $('<td>', { class: 'align-middle' });
@@ -594,7 +715,11 @@
                 removeButton.append($('<i>', { class: 'fas fa-trash' }));
                 actionCell.append(removeButton);
 
-                row.append(numberCell, modelCell, itemCell, stockCell, quantityCell, actionCell);
+                row.append(numberCell, modelCell, itemCell, grnCell, stockCell, quantityCell, actionCell);
+
+                if (options.goodsReceiptItemId) {
+                    row.data('pendingGrn', options.goodsReceiptItemId);
+                }
 
                 // Insert (after a given row, or at the end)
                 if (options.after && options.after.length) {
@@ -616,6 +741,11 @@
 
                 itemSelect.on('change', function () {
                     showCurrentStock(row);
+                    loadGoodsReceipts(row);
+                });
+
+                grnSelect.on('change', function () {
+                    validateQuantity(row);
                 });
 
                 removeButton.on('click', function () {
@@ -705,6 +835,21 @@
 
             $('#materialUsageForm').on('submit', function (e) {
 
+                // Drop rows whose item has no GRN stock (nothing can be issued from them)
+                materialItemsBody.children('tr').filter(function () {
+                    return $(this).data('noGrn') === true;
+                }).each(function () {
+                    destroyRow($(this));
+                });
+                updateRowNumbers();
+                updateRowCount();
+
+                if (materialItemsBody.children('tr').length === 0) {
+                    e.preventDefault();
+                    alert('None of the selected items has stock on a Goods Receipt, so there is nothing to issue.');
+                    return;
+                }
+
                 let hasError = false;
 
                 materialItemsBody.children('tr').each(function () {
@@ -732,6 +877,7 @@
                     addMaterialRow({
                         productModelId: item.product_model_id || '',
                         itemId: item.item_id || '',
+                        goodsReceiptItemId: item.goods_receipt_item_id || '',
                         quantity: item.quantity ?? ''
                     });
                 });

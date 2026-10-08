@@ -15,6 +15,7 @@ class UsageLog extends Model
         'product_model_id',
         'source',
         'production_plan_id',
+        'goods_receipt_item_id',   // <-- must be here
         'usage_date',
         'quantity',
         'reference',
@@ -53,6 +54,12 @@ class UsageLog extends Model
     {
         return $this->belongsTo(ProductionPlan::class);
     }
+
+    public function goodsReceiptItem(): BelongsTo
+    {
+        return $this->belongsTo(GoodsReceiptItem::class);
+    }
+
 
 
     /*

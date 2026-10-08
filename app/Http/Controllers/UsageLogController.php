@@ -8,6 +8,7 @@ use App\Models\ProductModel;
 use App\Models\UsageLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\GoodsReceiptItem;
 
 class UsageLogController extends Controller
 {
@@ -341,10 +342,45 @@ class UsageLogController extends Controller
             'items' => $items,
         ]);
     }
-    /**
-     * Store a manual Material Usage record.
-     */
 
+
+
+    /**
+     * AJAX: GRNs that still have quantity left for one item.
+     */
+    public function materialUsageGoodsReceipts(Item $item)
+    {
+        $currentStock = (float) $item->current_stock;
+
+        $goodsReceipts = GoodsReceiptItem::query()
+            ->where('item_id', $item->id)
+            ->whereHas('goodsReceipt', fn($q) => $q->where('status', 'posted'))
+            ->with(['goodsReceipt', 'purchaseOrderItem.purchaseOrder'])
+            ->get()
+            ->map(function ($line) use ($currentStock) {
+
+                $remaining = $line->remainingQuantity();
+
+                return [
+                    'goods_receipt_item_id' => $line->id,
+                    'grn_number' => $line->goodsReceipt->grn_number,
+                    'po_number' => $line->purchaseOrderItem->purchaseOrder->po_number ?? '-',
+                    'receipt_date' => optional($line->goodsReceipt->receipt_date)->format('Y-m-d'),
+                    'received' => (float) $line->received_quantity,
+                    'remaining' => round($remaining, 3),
+                    // Old unassigned usage may already have consumed stock,
+                    // so never allow more than the item's current stock.
+                    'available' => round(min($remaining, $currentStock), 3),
+                ];
+            })
+            ->filter(fn($row) => $row['available'] > 0)
+            ->sortBy('receipt_date')
+            ->values();
+
+        return response()->json([
+            'goods_receipts' => $goodsReceipts,
+        ]);
+    }
     /**
      * Store multiple manual Material Usage records.
      */
@@ -397,6 +433,11 @@ class UsageLogController extends Controller
                 'numeric',
                 'min:0.001',
                 'decimal:0,3',
+            ],
+            'items.*.goods_receipt_item_id' => [
+                'nullable',
+                'integer',
+                'exists:goods_receipt_items,id',
             ],
 
         ]);
@@ -570,6 +611,77 @@ class UsageLogController extends Controller
 
             }
 
+            /*
+|--------------------------------------------------------------------------
+| Check GRN Remaining Quantity
+|--------------------------------------------------------------------------
+*/
+
+            $grnRequested = [];
+
+            foreach ($materialRows as $row) {
+
+                if (empty($row['goods_receipt_item_id'])) {
+                    continue;
+                }
+
+                $lineId = (int) $row['goods_receipt_item_id'];
+
+                $grnRequested[$lineId] =
+                    ($grnRequested[$lineId] ?? 0)
+                    + (int) round((float) $row['quantity'] * 1000);
+            }
+
+            if (!empty($grnRequested)) {
+
+                $grnLines = GoodsReceiptItem::query()
+                    ->whereIn('id', array_keys($grnRequested))
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->with('goodsReceipt')
+                    ->get()
+                    ->keyBy('id');
+
+                // The GRN line must belong to the selected item
+                foreach ($materialRows as $index => $row) {
+
+                    if (empty($row['goods_receipt_item_id'])) {
+                        continue;
+                    }
+
+                    $line = $grnLines->get((int) $row['goods_receipt_item_id']);
+
+                    if (
+                        !$line
+                        || (int) $line->item_id !== (int) $row['item_id']
+                        || $line->goodsReceipt->status !== 'posted'
+                    ) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            "items.$index.goods_receipt_item_id" =>
+                                'Row ' . ($index + 1)
+                                . ': The selected Goods Receipt is not valid for this item.',
+                        ]);
+                    }
+                }
+
+                // Total requested from each GRN line must not exceed what is left
+                foreach ($grnRequested as $lineId => $requestedThousandths) {
+
+                    $line = $grnLines->get($lineId);
+
+                    $remainingThousandths = (int) round($line->remainingQuantity() * 1000);
+
+                    if ($requestedThousandths > $remainingThousandths) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'items' =>
+                                'Goods Receipt ' . $line->goodsReceipt->grn_number
+                                . ' has only ' . number_format($remainingThousandths / 1000, 3)
+                                . ' left for this item. Total requested: '
+                                . number_format($requestedThousandths / 1000, 3) . '.',
+                        ]);
+                    }
+                }
+            }
 
             /*
             |--------------------------------------------------------------------------
@@ -627,6 +739,8 @@ class UsageLogController extends Controller
 
                     'production_plan_id' =>
                         null,
+                        'goods_receipt_item_id' =>
+    $row['goods_receipt_item_id'] ?? null,
 
                     'usage_date' =>
                         $validated['usage_date'],
@@ -981,6 +1095,8 @@ class UsageLogController extends Controller
 
                 'production_plan_id' =>
                     null,
+                'goods_receipt_item_id' =>
+                    $row['goods_receipt_item_id'] ?? null,
 
                 'usage_date' =>
                     $validated['usage_date'],
@@ -1286,6 +1402,29 @@ class UsageLogController extends Controller
                         . '.',
 
                 ]);
+        }
+
+        // GRN-linked usage cannot exceed what is left on its GRN line
+        if ($usageLog->goods_receipt_item_id) {
+
+            $grnLine = GoodsReceiptItem::with('goodsReceipt')
+                ->find($usageLog->goods_receipt_item_id);
+
+            if ($grnLine) {
+
+                $availableOnGrn = $grnLine->remainingQuantity() + $oldUsageQuantity;
+
+                if ($newUsageQuantity > ($availableOnGrn + 0.000001)) {
+                    return back()
+                        ->withInput()
+                        ->withErrors([
+                            'quantity' =>
+                                'Usage quantity cannot exceed the quantity left on Goods Receipt '
+                                . $grnLine->goodsReceipt->grn_number
+                                . ': ' . number_format($availableOnGrn, 3) . '.',
+                        ]);
+                }
+            }
         }
 
 

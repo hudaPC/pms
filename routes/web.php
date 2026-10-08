@@ -121,6 +121,16 @@ Route::middleware(['auth'])->group(function () {
         '/material-usage/product-models/{productModel}/items',
         [UsageLogController::class, 'materialUsageItems']
     )->name('material-usage.product-model-items');
+
+    Route::get(
+        'material-usage/items/{item}/goods-receipts',
+        [UsageLogController::class, 'materialUsageGoodsReceipts']
+    )->name('material-usage.item-goods-receipts');
+
+
+
+
+
     /*
     |--------------------------------------------------------------------------
     | Item Master (available to admin AND user)
@@ -703,6 +713,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
         'goods-receipts/{goodsReceipt}/purchase-orders',
         [GoodsReceiptController::class, 'attachPurchaseOrder']
     )->name('goods-receipts.purchase-orders.attach');
+    
+    Route::get(
+        'goods-receipts/{goodsReceipt}/usage',
+        [GoodsReceiptController::class, 'usageReport']
+    )->name('goods-receipts.usage');
+
+
 
     // Manual Purchase Order Product model Items
     Route::get(
@@ -804,4 +821,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->name('reporting.po-tracking.items');
     Route::get('/reporting/po-tracking/item-history/{poItem}', [App\Http\Controllers\ReportingController::class, 'poItemHistory'])
         ->name('reporting.po-tracking.item-history');
+
+
+            Route::get('/reporting/grn-usage', [GoodsReceiptController::class, 'usageIndex'])
+        ->name('reporting.grn-usage.index');
+
+    Route::get('/reporting/grn-usage/{goodsReceipt}', [GoodsReceiptController::class, 'usageReport'])
+        ->name('reporting.grn-usage.show');
+
+
 });

@@ -161,6 +161,8 @@ class PurchaseReturnController extends Controller
                             $receivedQuantity
                             -
                             $alreadyReturned
+                            -
+                            $receiptItem->activeUsedQuantity()
                         );
 
 
@@ -581,6 +583,8 @@ class PurchaseReturnController extends Controller
                                 $receivedQuantity
                                 -
                                 $alreadyReturned
+                                -
+                                $receiptItem->activeUsedQuantity()
                             );
 
 
@@ -929,6 +933,8 @@ class PurchaseReturnController extends Controller
                         $receivedQuantity
                         -
                         $alreadyReturned
+                        -
+                        $receiptItem->activeUsedQuantity()
                     );
 
 

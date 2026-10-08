@@ -21,13 +21,16 @@
 
             </div>
 
-            <a href="{{ route('goods-receipts.index') }}" class="btn btn-secondary">
+            <div>
+                <a href="{{ route('reporting.grn-usage.show', $goodsReceipt) }}" class="btn btn-info mr-1">
+                    <i class="fas fa-chart-bar mr-1"></i> Usage
+                </a>
 
-                <i class="fas fa-arrow-left mr-1"></i>
-
-                Back to Goods Receipts
-
-            </a>
+                <a href="{{ route('goods-receipts.index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left mr-1"></i>
+                    Back to Goods Receipts
+                </a>
+            </div>
 
         </div>
 
@@ -65,19 +68,19 @@
 
 
                     {{-- PO Number --}}
-<div class="col-md-3 mb-3">
+                    <div class="col-md-3 mb-3">
 
-    <strong>PO Number</strong>
+                        <strong>PO Number</strong>
 
-    <div class="mt-1">
-        @forelse ($goodsReceipt->purchaseOrders as $po)
-            <span class="badge badge-light border">{{ $po->po_number }}</span>
-        @empty
-            {{ $goodsReceipt->purchaseOrder->po_number ?? '-' }}
-        @endforelse
-    </div>
+                        <div class="mt-1">
+                            @forelse ($goodsReceipt->purchaseOrders as $po)
+                                <span class="badge badge-light border">{{ $po->po_number }}</span>
+                            @empty
+                                {{ $goodsReceipt->purchaseOrder->po_number ?? '-' }}
+                            @endforelse
+                        </div>
 
-</div>
+                    </div>
 
 
                     {{-- Supplier --}}
@@ -150,7 +153,8 @@
                             @foreach ($goodsReceipt->purchaseOrders as $po)
                                 <div>
                                     <small>{{ $po->po_number }}:</small>
-                                    <span class="badge badge-{{ ['confirmed' => 'primary', 'partially_received' => 'warning', 'received' => 'success'][$po->status] ?? 'secondary' }}">
+                                    <span
+                                        class="badge badge-{{ ['confirmed' => 'primary', 'partially_received' => 'warning', 'received' => 'success'][$po->status] ?? 'secondary' }}">
                                         {{ ucfirst(str_replace('_', ' ', $po->status)) }}
                                     </span>
                                 </div>
@@ -430,7 +434,7 @@
 
                         <tbody>
 
-                           @forelse($goodsReceipt->purchaseOrders->flatMap->items as $poItem)
+                            @forelse($goodsReceipt->purchaseOrders->flatMap->items as $poItem)
                                 @php
 
                                     $ordered = (float) $poItem->ordered_quantity;
@@ -770,87 +774,87 @@
                         title: 'Void Goods Receipt?',
 
                         html: `
-                    <div class="text-left">
+                            <div class="text-left">
 
-                        <p class="mb-2">
-                            You are about to void
-                            <strong>{{ $goodsReceipt->grn_number }}</strong>.
-                        </p>
+                                <p class="mb-2">
+                                    You are about to void
+                                    <strong>{{ $goodsReceipt->grn_number }}</strong>.
+                                </p>
 
-                        <p class="text-danger mb-3">
-                            This will reverse the received stock
-                            and restore the PO outstanding quantity.
-                        </p>
+                                <p class="text-danger mb-3">
+                                    This will reverse the received stock
+                                    and restore the PO outstanding quantity.
+                                </p>
 
-                        <div class="form-group mb-3">
+                                <div class="form-group mb-3">
 
-                            <label for="swalVoidReason">
-                                Void Reason
-                            </label>
+                                    <label for="swalVoidReason">
+                                        Void Reason
+                                    </label>
 
-                            <select
-                                id="swalVoidReason"
-                                class="form-control"
-                            >
-                                <option value="">
-                                    Select void reason
-                                </option>
+                                    <select
+                                        id="swalVoidReason"
+                                        class="form-control"
+                                    >
+                                        <option value="">
+                                            Select void reason
+                                        </option>
 
-                                <option value="Wrong quantity received">
-                                    Wrong quantity received
-                                </option>
+                                        <option value="Wrong quantity received">
+                                            Wrong quantity received
+                                        </option>
 
-                                <option value="Wrong item received">
-                                    Wrong item received
-                                </option>
+                                        <option value="Wrong item received">
+                                            Wrong item received
+                                        </option>
 
-                                <option value="Duplicate goods receipt">
-                                    Duplicate goods receipt
-                                </option>
+                                        <option value="Duplicate goods receipt">
+                                            Duplicate goods receipt
+                                        </option>
 
-                                <option value="Supplier delivery rejected">
-                                    Supplier delivery rejected
-                                </option>
+                                        <option value="Supplier delivery rejected">
+                                            Supplier delivery rejected
+                                        </option>
 
-                                <option value="Data entry mistake">
-                                    Data entry mistake
-                                </option>
+                                        <option value="Data entry mistake">
+                                            Data entry mistake
+                                        </option>
 
-                                <option value="Other">
-                                    Other
-                                </option>
+                                        <option value="Other">
+                                            Other
+                                        </option>
 
-                            </select>
+                                    </select>
 
-                        </div>
+                                </div>
 
-                        <div
-                            id="otherVoidReasonWrapper"
-                            class="form-group mb-0"
-                            style="display: none;"
-                        >
+                                <div
+                                    id="otherVoidReasonWrapper"
+                                    class="form-group mb-0"
+                                    style="display: none;"
+                                >
 
-                            <label for="otherVoidReason">
-                                Specify Other Reason
-                                <span class="text-danger">*</span>
-                            </label>
+                                    <label for="otherVoidReason">
+                                        Specify Other Reason
+                                        <span class="text-danger">*</span>
+                                    </label>
 
-                            <textarea
-                                id="otherVoidReason"
-                                class="form-control"
-                                rows="3"
-                                maxlength="1000"
-                                placeholder="Enter the reason for voiding this Goods Receipt..."
-                            ></textarea>
+                                    <textarea
+                                        id="otherVoidReason"
+                                        class="form-control"
+                                        rows="3"
+                                        maxlength="1000"
+                                        placeholder="Enter the reason for voiding this Goods Receipt..."
+                                    ></textarea>
 
-                            <small class="text-muted">
-                                Maximum 1000 characters.
-                            </small>
+                                    <small class="text-muted">
+                                        Maximum 1000 characters.
+                                    </small>
 
-                        </div>
+                                </div>
 
-                    </div>
-                `,
+                            </div>
+                        `,
 
                         showCancelButton: true,
 

@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 use App\Models\PurchaseReturn;
 use App\Models\GoodsReceiptItem;
 use App\Models\UsageLog;
+use App\Models\ProductModel;
+
 
 class GoodsReceiptController extends Controller
 {
@@ -675,6 +677,91 @@ class GoodsReceiptController extends Controller
             );
     }
 
+
+    public function modelUsage(Request $request)
+    {
+        $productModels = ProductModel::orderBy('model_code')->get();
+
+        $selected = null;
+        $rows = collect();
+        $unassigned = collect();
+        $bomWithoutUsage = collect();
+
+        if ($request->filled('product_model_id')) {
+
+            $selected = ProductModel::find($request->input('product_model_id'));
+
+            if ($selected) {
+
+                $base = UsageLog::query()
+                    ->where('status', 'active')
+                    ->where('product_model_id', $selected->id)
+                    ->when($request->filled('date_from'), fn($q) => $q->whereDate('usage_date', '>=', $request->input('date_from')))
+                    ->when($request->filled('date_to'), fn($q) => $q->whereDate('usage_date', '<=', $request->input('date_to')));
+
+                // Usage linked to a GRN, grouped per GRN line
+                $rows = (clone $base)
+                    ->whereNotNull('goods_receipt_item_id')
+                    ->with([
+                        'item.unit',
+                        'goodsReceiptItem.goodsReceipt',
+                        'goodsReceiptItem.purchaseOrderItem.purchaseOrder',
+                    ])
+                    ->get()
+                    ->groupBy('goods_receipt_item_id')
+                    ->map(function ($logs) {
+                        $line = $logs->first()->goodsReceiptItem;
+
+                        return [
+                            'item' => $logs->first()->item,
+                            'grn' => $line->goodsReceipt->grn_number,
+                            'grn_id' => $line->goodsReceipt->id,
+                            'po' => $line->purchaseOrderItem->purchaseOrder->po_number ?? '-',
+                            'received' => (float) $line->received_quantity,
+                            'by_model' => (float) $logs->sum('quantity'),
+                            'total_used' => $line->activeUsedQuantity(),
+                            'remaining' => $line->remainingQuantity(),
+                            'last_used' => $logs->max('usage_date'),
+                        ];
+                    })
+                    ->sortBy(fn($r) => ($r['item']->item_code ?? '') . $r['grn'])
+                    ->values();
+
+                // Older usage with no GRN
+                $unassigned = (clone $base)
+                    ->whereNull('goods_receipt_item_id')
+                    ->with('item.unit')
+                    ->get()
+                    ->groupBy('item_id')
+                    ->map(fn($logs) => [
+                        'item' => $logs->first()->item,
+                        'qty' => (float) $logs->sum('quantity'),
+                    ])
+                    ->values();
+
+                // Optional: BOM items of this model with no usage at all
+                if ($request->boolean('show_all')) {
+                    $usedItemIds = $rows->pluck('item.id')
+                        ->merge($unassigned->pluck('item.id'))
+                        ->filter()->unique();
+
+                    $bomWithoutUsage = $selected->modelItems()
+                        ->with('item.unit')
+                        ->get()
+                        ->filter(fn($m) => $m->item && !$usedItemIds->contains($m->item->id))
+                        ->values();
+                }
+            }
+        }
+
+        return view('reporting.model-grn-usage', compact(
+            'productModels',
+            'selected',
+            'rows',
+            'unassigned',
+            'bomWithoutUsage'
+        ));
+    }
 
     public function usageIndex()
     {

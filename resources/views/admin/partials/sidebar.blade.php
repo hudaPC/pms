@@ -730,6 +730,15 @@
                             </a>
                         </li>
 
+                        {{-- Model GRN Usage --}}
+                        <li class="nav-item">
+                            <a href="{{ route('reporting.model-grn-usage') }}" class="nav-link
+            {{ request()->is('reporting/model-grn-usage*') ? 'active' : '' }}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Model GRN Usage</p>
+                            </a>
+                        </li>
+
 
                     </ul>
 

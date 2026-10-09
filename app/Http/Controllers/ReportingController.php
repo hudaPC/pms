@@ -55,8 +55,17 @@ class ReportingController extends Controller
     }
     public function poTrackingIndex()
     {
-        $purchaseOrders = DB::table('purchase_orders')
-            ->orderByDesc('order_date')
+        $purchaseOrders = DB::table('purchase_orders as po')
+            ->select('po.*')
+            ->selectSub(function ($q) {
+                $q->from('goods_receipt_items as gri')
+                    ->join('goods_receipts as gr', 'gr.id', '=', 'gri.goods_receipt_id')
+                    ->join('purchase_order_items as poi', 'poi.id', '=', 'gri.purchase_order_item_id')
+                    ->whereColumn('poi.purchase_order_id', 'po.id')
+                    ->where('gr.status', 'posted')
+                    ->selectRaw('MAX(gr.receipt_date)');
+            }, 'last_receipt_date')
+            ->orderByDesc('po.order_date')
             ->get();
 
         return view('reporting.po-tracking', compact('purchaseOrders'));

@@ -68,8 +68,12 @@
                                     <option value="{{ $po->id }}">
 
                                         {{ $po->po_number }}
-                                        ({{ \Carbon\Carbon::parse($po->order_date)->format('d-M-Y') }})
-                                        - {{ ucfirst(str_replace('_', ' ', $po->status)) }}
+                                        | Issued: {{ \Carbon\Carbon::parse($po->order_date)->format('d-M-Y') }}
+                                        || {{ ucfirst(str_replace('_', ' ', $po->status)) }}
+                                        @if ($po->last_receipt_date)
+                                            || GRN Received:
+                                            {{ \Carbon\Carbon::parse($po->last_receipt_date)->format('d-M-Y') }}
+                                        @endif
 
                                     </option>
                                 @endforeach
@@ -129,7 +133,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
     </script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
 
             var purchaseOrderSelect =
                 $('#purchase_order_id');
@@ -148,20 +152,24 @@
 
                 var requests = [];
 
-                rows.each(function (rowData) {
+                rows.each(function(rowData) {
 
                     var url = '{{ route('reporting.po-tracking.item-history', ':poItemId') }}';
                     url = url.replace(':poItemId', rowData.po_item_id);
 
                     requests.push(
-                        $.ajax({ url: url, type: 'GET' })
+                        $.ajax({
+                            url: url,
+                            type: 'GET'
+                        })
                     );
 
                 });
 
-                $.when.apply($, requests).done(function () {
+                $.when.apply($, requests).done(function() {
 
-                    var responses = requests.length === 1 ? [arguments] : Array.prototype.slice.call(arguments);
+                    var responses = requests.length === 1 ? [arguments] : Array.prototype.slice.call(
+                        arguments);
 
                     var doc = new window.jspdf.jsPDF({
                         orientation: 'landscape',
@@ -228,7 +236,7 @@
                         doc.setTextColor(0, 0, 0);
                     }
 
-                    rows.each(function (d, i) {
+                    rows.each(function(d, i) {
 
                         ensureSpace(12);
 
@@ -237,10 +245,13 @@
                             startY: currentY,
                             head: [mainHead],
                             body: [
-                                [i + 1, d.model_code || '', d.item_code || '', d.item_name || '',
-                                d.supplier_name || '', d.ordered_quantity || 0, d.received_quantity || 0,
-                                d.pending_receipt || 0, d.issued_quantity || 0, d.returned_quantity || 0,
-                                d.balance_in_stock || 0
+                                [i + 1, d.model_code || '', d.item_code || '', d
+                                    .item_name || '',
+                                    d.supplier_name || '', d.ordered_quantity || 0, d
+                                    .received_quantity || 0,
+                                    d.pending_receipt || 0, d.issued_quantity || 0, d
+                                    .returned_quantity || 0,
+                                    d.balance_in_stock || 0
                                 ]
                             ],
                             styles: {
@@ -267,10 +278,11 @@
                         if (h) {
 
                             var receiptBody = (h.receipts && h.receipts.length > 0) ?
-                                h.receipts.map(function (r) {
-                                    return [r.grn_number || '', r.receipt_date || '', r.received_quantity || '', r.remarks || ''];
-                                }) :
-                                [
+                                h.receipts.map(function(r) {
+                                    return [r.grn_number || '', r.receipt_date || '', r
+                                        .received_quantity || '', r.remarks || ''
+                                    ];
+                                }) : [
                                     ['No receipts found', '', '', '']
                                 ];
 
@@ -281,10 +293,11 @@
                             );
 
                             var issueBody = (h.issues && h.issues.length > 0) ?
-                                h.issues.map(function (u) {
-                                    return [u.usage_date || '', u.quantity || '', u.reference || '', u.remarks || ''];
-                                }) :
-                                [
+                                h.issues.map(function(u) {
+                                    return [u.usage_date || '', u.quantity || '', u.reference ||
+                                        '', u.remarks || ''
+                                    ];
+                                }) : [
                                     ['No issues found', '', '', '']
                                 ];
 
@@ -295,10 +308,12 @@
                             );
 
                             var returnBody = (h.returns && h.returns.length > 0) ?
-                                h.returns.map(function (r) {
-                                    return [r.return_number || '', r.return_date || '', r.return_quantity || '', r.reason || '', r.remarks || ''];
-                                }) :
-                                [
+                                h.returns.map(function(r) {
+                                    return [r.return_number || '', r.return_date || '', r
+                                        .return_quantity || '', r.reason || '', r.remarks ||
+                                        ''
+                                    ];
+                                }) : [
                                     ['No returns found', '', '', '', '']
                                 ];
 
@@ -317,11 +332,12 @@
 
                     doc.save('PO_Tracking_Report.pdf');
 
-                }).fail(function () {
+                }).fail(function() {
                     toastr.error('Unable to load history for export.');
                 });
 
             }
+
             function exportExcelWithHistory(dt) {
 
                 //var rows = dt.rows({ page: 'current' }).data();
@@ -335,20 +351,24 @@
 
                 var requests = [];
 
-                rows.each(function (rowData) {
+                rows.each(function(rowData) {
 
                     var url = '{{ route('reporting.po-tracking.item-history', ':poItemId') }}';
                     url = url.replace(':poItemId', rowData.po_item_id);
 
                     requests.push(
-                        $.ajax({ url: url, type: 'GET' })
+                        $.ajax({
+                            url: url,
+                            type: 'GET'
+                        })
                     );
 
                 });
 
-                $.when.apply($, requests).done(function () {
+                $.when.apply($, requests).done(function() {
 
-                    var responses = requests.length === 1 ? [arguments] : Array.prototype.slice.call(arguments);
+                    var responses = requests.length === 1 ? [arguments] : Array.prototype.slice.call(
+                        arguments);
 
                     // aoa = "array of arrays" - each inner array is one Excel row
                     var aoa = [];
@@ -359,7 +379,7 @@
                         'Issued Qty', 'Returned Qty', 'Balance in Stock'
                     ]);
 
-                    rows.each(function (d, i) {
+                    rows.each(function(d, i) {
 
                         aoa.push([
                             i + 1,
@@ -384,8 +404,10 @@
                             aoa.push(['', 'GRN No', 'Receipt Date', 'Received Qty', 'Remarks']);
 
                             if (h.receipts && h.receipts.length > 0) {
-                                $.each(h.receipts, function (j, r) {
-                                    aoa.push(['', r.grn_number || '', r.receipt_date || '', r.received_quantity || '', r.remarks || '']);
+                                $.each(h.receipts, function(j, r) {
+                                    aoa.push(['', r.grn_number || '', r.receipt_date || '',
+                                        r.received_quantity || '', r.remarks || ''
+                                    ]);
                                 });
                             } else {
                                 aoa.push(['', 'No receipts found']);
@@ -396,8 +418,10 @@
                             aoa.push(['', 'Usage Date', 'Quantity', 'Reference', 'Remarks']);
 
                             if (h.issues && h.issues.length > 0) {
-                                $.each(h.issues, function (j, u) {
-                                    aoa.push(['', u.usage_date || '', u.quantity || '', u.reference || '', u.remarks || '']);
+                                $.each(h.issues, function(j, u) {
+                                    aoa.push(['', u.usage_date || '', u.quantity || '', u
+                                        .reference || '', u.remarks || ''
+                                    ]);
                                 });
                             } else {
                                 aoa.push(['', 'No issues found']);
@@ -405,11 +429,16 @@
 
                             // Return History
                             aoa.push(['', 'Return History']);
-                            aoa.push(['', 'Return No', 'Return Date', 'Return Qty', 'Reason', 'Remarks']);
+                            aoa.push(['', 'Return No', 'Return Date', 'Return Qty', 'Reason',
+                                'Remarks'
+                            ]);
 
                             if (h.returns && h.returns.length > 0) {
-                                $.each(h.returns, function (j, r) {
-                                    aoa.push(['', r.return_number || '', r.return_date || '', r.return_quantity || '', r.reason || '', r.remarks || '']);
+                                $.each(h.returns, function(j, r) {
+                                    aoa.push(['', r.return_number || '', r.return_date ||
+                                        '', r.return_quantity || '', r.reason || '',
+                                        r.remarks || ''
+                                    ]);
                                 });
                             } else {
                                 aoa.push(['', 'No returns found']);
@@ -428,7 +457,7 @@
 
                     XLSX.writeFile(workbook, 'PO_Tracking_Report.xlsx');
 
-                }).fail(function () {
+                }).fail(function() {
                     toastr.error('Unable to load history for export.');
                 });
 
@@ -451,23 +480,27 @@
                 // Build one AJAX request per row to fetch its history
                 var requests = [];
 
-                rows.each(function (rowData) {
+                rows.each(function(rowData) {
 
                     var url = '{{ route('reporting.po-tracking.item-history', ':poItemId') }}';
                     url = url.replace(':poItemId', rowData.po_item_id);
 
                     requests.push(
-                        $.ajax({ url: url, type: 'GET' })
+                        $.ajax({
+                            url: url,
+                            type: 'GET'
+                        })
                     );
 
                 });
 
                 // Wait until ALL history requests finish, then build the print page
-                $.when.apply($, requests).done(function () {
+                $.when.apply($, requests).done(function() {
 
                     // When there are multiple requests, arguments is an array of [data, status, xhr] per request
                     // When there's only 1 request, arguments itself is [data, status, xhr]
-                    var responses = requests.length === 1 ? [arguments] : Array.prototype.slice.call(arguments);
+                    var responses = requests.length === 1 ? [arguments] : Array.prototype.slice.call(
+                        arguments);
 
                     var html = '';
                     html += '<html><head><title>PO Tracking Report</title><style>';
@@ -475,12 +508,14 @@
                     html += 'h3{margin:0 0 2px; font-size:13px;}';
                     html += 'p{margin:0 0 6px; font-size:9px;}';
                     html += 'table{width:100%; border-collapse:collapse; margin-bottom:6px;}';
-                    html += 'th, td{border:1px solid #999; padding:2px 3px; text-align:left; line-height:1.2;}';
+                    html +=
+                        'th, td{border:1px solid #999; padding:2px 3px; text-align:left; line-height:1.2;}';
                     html += 'th{background:#f0f0f0; font-size:8px;}';
                     html += '.child-block{background:#fafafa; padding:3px 6px;}';
                     html += '.child-block strong{display:block; margin:3px 0 1px; font-size:8px;}';
                     html += '.history-table th, .history-table td{font-size:7px; padding:1px 3px;}';
-                    html += '.main-table th, .main-table td{font-size:7px; padding:1px 3px; line-height:1.1; font-weight:bold;}';
+                    html +=
+                        '.main-table th, .main-table td{font-size:7px; padding:1px 3px; line-height:1.1; font-weight:bold;}';
                     html += 'tr{page-break-inside:avoid;}';
                     html += '@page{size: A4 landscape; margin:6mm;}';
                     html += '</style></head><body>';
@@ -489,12 +524,13 @@
                     html += '<p>Purchase Order: ' + poText + '</p>';
 
                     html += '<table class="main-table"><thead><tr>';
-                    html += '<th>SL</th><th>Model Code</th><th>Item Code</th><th>Item Name</th><th>Supplier</th>';
+                    html +=
+                        '<th>SL</th><th>Model Code</th><th>Item Code</th><th>Item Name</th><th>Supplier</th>';
                     html += '<th>Ordered Qty</th><th>Received Qty</th><th>Pending Receipt</th>';
                     html += '<th>Issued Qty</th><th>Returned Qty</th><th>Balance in Stock</th>';
                     html += '</tr></thead><tbody>';
 
-                    rows.each(function (d, i) {
+                    rows.each(function(d, i) {
 
                         html += '<tr>' +
                             '<td>' + (i + 1) + '</td>' +
@@ -529,12 +565,12 @@
                     win.document.write(html);
                     win.document.close();
 
-                    win.onload = function () {
+                    win.onload = function() {
                         win.focus();
                         win.print();
                     };
 
-                }).fail(function () {
+                }).fail(function() {
                     toastr.error('Unable to load history for printing.');
                 });
 
@@ -557,7 +593,7 @@
 
                 if (response.receipts && response.receipts.length > 0) {
 
-                    $.each(response.receipts, function (i, r) {
+                    $.each(response.receipts, function(i, r) {
                         html += '<tr>' +
                             '<td>' + (r.grn_number || '') + '</td>' +
                             '<td>' + (r.receipt_date || '') + '</td>' +
@@ -581,7 +617,7 @@
 
                 if (response.issues && response.issues.length > 0) {
 
-                    $.each(response.issues, function (i, u) {
+                    $.each(response.issues, function(i, u) {
                         html += '<tr>' +
                             '<td>' + (u.usage_date || '') + '</td>' +
                             '<td>' + (u.quantity || '') + '</td>' +
@@ -605,7 +641,7 @@
 
                 if (response.returns && response.returns.length > 0) {
 
-                    $.each(response.returns, function (i, r) {
+                    $.each(response.returns, function(i, r) {
                         html += '<tr>' +
                             '<td>' + (r.return_number || '') + '</td>' +
                             '<td>' + (r.return_date || '') + '</td>' +
@@ -635,111 +671,111 @@
                 dom: 'Bfrtip',
                 data: [],
                 columns: [{
-                    className: 'details-control',
-                    orderable: false,
-                    searchable: false,
-                    data: null,
-                    defaultContent: '<i class="fas fa-plus-circle text-primary"></i>'
-                },
-                {
-                    data: null,
-                    orderable: false,
-                    searchable: false,
-                    render: function (data, type, row, meta) {
-                        return meta.row + 1;
-                    }
-                },
-                {
-                    data: 'model_code'
-                },
-                {
-                    data: 'item_code'
-                },
-                {
-                    data: 'item_name',
-                    render: function (data, type, row) {
-
-                        if (type !== 'display' || !data) {
-                            return data;
+                        className: 'details-control',
+                        orderable: false,
+                        searchable: false,
+                        data: null,
+                        defaultContent: '<i class="fas fa-plus-circle text-primary"></i>'
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        render: function(data, type, row, meta) {
+                            return meta.row + 1;
                         }
+                    },
+                    {
+                        data: 'model_code'
+                    },
+                    {
+                        data: 'item_code'
+                    },
+                    {
+                        data: 'item_name',
+                        render: function(data, type, row) {
 
-                        var words = data.split(' ');
+                            if (type !== 'display' || !data) {
+                                return data;
+                            }
 
-                        var short = words.length > 2 ?
-                            words.slice(0, 2).join(' ') + '...' :
-                            data;
+                            var words = data.split(' ');
 
-                        return '<span title="' + data.replace(/"/g, '&quot;') + '">' + short +
-                            '</span>';
-                    }
-                },
-                {
-                    data: 'supplier_name',
-                    render: function (data, type, row) {
+                            var short = words.length > 2 ?
+                                words.slice(0, 2).join(' ') + '...' :
+                                data;
 
-                        if (type !== 'display' || !data) {
-                            return data;
+                            return '<span title="' + data.replace(/"/g, '&quot;') + '">' + short +
+                                '</span>';
                         }
+                    },
+                    {
+                        data: 'supplier_name',
+                        render: function(data, type, row) {
 
-                        var words = data.split(' ');
+                            if (type !== 'display' || !data) {
+                                return data;
+                            }
 
-                        var short = words.length > 2 ?
-                            words.slice(0, 2).join(' ') + '...' :
-                            data;
+                            var words = data.split(' ');
 
-                        return '<span title="' + data.replace(/"/g, '&quot;') + '">' + short +
-                            '</span>';
+                            var short = words.length > 2 ?
+                                words.slice(0, 2).join(' ') + '...' :
+                                data;
+
+                            return '<span title="' + data.replace(/"/g, '&quot;') + '">' + short +
+                                '</span>';
+                        }
+                    },
+                    {
+                        data: 'ordered_quantity'
+                    },
+                    {
+                        data: 'received_quantity'
+                    },
+                    {
+                        data: 'pending_receipt'
+                    },
+                    {
+                        data: 'issued_quantity'
+                    },
+                    {
+                        data: 'returned_quantity'
+                    },
+                    {
+                        data: 'balance_in_stock'
                     }
-                },
-                {
-                    data: 'ordered_quantity'
-                },
-                {
-                    data: 'received_quantity'
-                },
-                {
-                    data: 'pending_receipt'
-                },
-                {
-                    data: 'issued_quantity'
-                },
-                {
-                    data: 'returned_quantity'
-                },
-                {
-                    data: 'balance_in_stock'
-                }
                 ],
                 buttons: [{
-                    text: '<i class="fas fa-file-excel mr-1"></i> Excel',
-                    className: 'btn btn-success btn-sm',
-                    action: function (e, dt, node, config) {
-                        exportExcelWithHistory(dt);
+                        text: '<i class="fas fa-file-excel mr-1"></i> Excel',
+                        className: 'btn btn-success btn-sm',
+                        action: function(e, dt, node, config) {
+                            exportExcelWithHistory(dt);
+                        }
+                    },
+                    {
+                        text: '<i class="fas fa-file-pdf mr-1"></i> PDF',
+                        className: 'btn btn-danger btn-sm',
+                        action: function(e, dt, node, config) {
+                            exportPdfWithHistory(dt);
+                        }
+                    },
+                    {
+                        extend: 'csvHtml5',
+                        text: '<i class="fas fa-file-csv mr-1"></i> CSV',
+                        className: 'btn btn-secondary btn-sm',
+                        title: 'PO Tracking Report',
+                        exportOptions: {
+                            columns: ':visible:not(.details-control)'
+                        }
+                    },
+                    {
+                        text: '<i class="fas fa-print mr-1"></i> Print',
+                        className: 'btn btn-info btn-sm',
+                        action: function(e, dt, node, config) {
+                            printCurrentView(dt);
+                        }
                     }
-                },
-                {
-                    text: '<i class="fas fa-file-pdf mr-1"></i> PDF',
-                    className: 'btn btn-danger btn-sm',
-                    action: function (e, dt, node, config) {
-                        exportPdfWithHistory(dt);
-                    }
-                },
-                {
-                    extend: 'csvHtml5',
-                    text: '<i class="fas fa-file-csv mr-1"></i> CSV',
-                    className: 'btn btn-secondary btn-sm',
-                    title: 'PO Tracking Report',
-                    exportOptions: {
-                        columns: ':visible:not(.details-control)'
-                    }
-                },
-                {
-                    text: '<i class="fas fa-print mr-1"></i> Print',
-                    className: 'btn btn-info btn-sm',
-                    action: function (e, dt, node, config) {
-                        printCurrentView(dt);
-                    }
-                }
 
 
 
@@ -753,7 +789,7 @@
             |--------------------------------------------------------------------------
             */
 
-            $('#poTrackingTable tbody').on('click', 'td.details-control', function () {
+            $('#poTrackingTable tbody').on('click', 'td.details-control', function() {
 
                 var tr = $(this).closest('tr');
                 var row = table.row(tr);
@@ -787,11 +823,11 @@
                     url: url,
                     type: 'GET',
 
-                    success: function (response) {
+                    success: function(response) {
                         row.child(buildHistoryHtml(response)).show();
                     },
 
-                    error: function () {
+                    error: function() {
                         row.child('<div class="text-danger p-2">Unable to load history.</div>')
                             .show();
                     }
@@ -831,14 +867,14 @@
                     url: url,
                     type: 'GET',
 
-                    success: function (response) {
+                    success: function(response) {
 
                         table.rows.add(
                             response.items || []
                         ).draw();
                     },
 
-                    error: function () {
+                    error: function() {
 
                         toastr.error(
                             'Unable to load items for this Purchase Order.'

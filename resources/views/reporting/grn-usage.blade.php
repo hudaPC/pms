@@ -6,22 +6,27 @@
     <div class="container-fluid py-4">
 
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="mb-1">GRN Usage Tracking</h2>
-                <p class="text-muted mb-0">
-                    {{ $goodsReceipt->grn_number }}
-                    @foreach ($goodsReceipt->purchaseOrders as $po)
-                        <span class="badge badge-light border">{{ $po->po_number }}</span>
-                    @endforeach
-                    @if ($goodsReceipt->status === 'voided')
-                        <span class="badge badge-danger">Voided</span>
-                    @endif
-                </p>
-            </div>
-            <a href="{{ route('goods-receipts.show', $goodsReceipt) }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left mr-1"></i> Back to GRN
-            </a>
-        </div>
+    <div>
+        <h2 class="mb-1">GRN Usage Tracking</h2>
+        <p class="text-muted mb-0">
+            {{ $goodsReceipt->grn_number }}
+            @foreach ($goodsReceipt->purchaseOrders as $po)
+                <span class="badge badge-light border">{{ $po->po_number }}</span>
+            @endforeach
+            @if ($goodsReceipt->status === 'voided')
+                <span class="badge badge-danger">Voided</span>
+            @endif
+        </p>
+    </div>
+    <div>
+        <a href="{{ url('reporting/grn-usage') }}" class="btn btn-secondary mr-2">
+            <i class="fas fa-arrow-left mr-1"></i> Back to GRN Usage
+        </a>
+        <a href="{{ route('goods-receipts.show', $goodsReceipt) }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left mr-1"></i> Back to GRN Receipt
+        </a>
+    </div>
+</div>
         @php
             $receiptDate = \Carbon\Carbon::parse($goodsReceipt->receipt_date)->startOfDay();
             $diff = $receiptDate->diff(now()->startOfDay());
@@ -47,7 +52,8 @@
                         <thead class="thead-light">
                             <tr>
                                 <th>#</th>
-                                <th>PO</th>
+                                <th>Purchase Order</th>
+                                <th>Product Model</th>
                                 <th>Item Code</th>
                                 <th>Item Name</th>
                                 <th class="text-right">Received</th>
@@ -63,16 +69,18 @@
                             @forelse ($rows as $r)
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
-                                    <td>{{ $r['line']->purchaseOrderItem->purchaseOrder->po_number ?? '-' }}</td>
-                                    <td><strong>{{ $r['line']->item->item_code ?? '-' }}</strong></td>
-                                    <td>
-                                        {{ $r['line']->item->item_name ?? '-' }}
-                                        @if ($r['line']->purchaseOrderItem?->productModel)
-                                            <span class="badge badge-info ml-1">
-                                                {{ $r['line']->purchaseOrderItem->productModel->model_code }}
-                                            </span>
-                                        @endif
-                                    </td>
+<td>{{ $r['line']->purchaseOrderItem->purchaseOrder->po_number ?? '-' }}</td>
+<td>
+    @if ($r['line']->purchaseOrderItem?->productModel)
+        <span class="badge badge-info">
+            {{ $r['line']->purchaseOrderItem->productModel->model_code }}
+        </span>
+    @else
+        -
+    @endif
+</td>
+<td><strong>{{ $r['line']->item->item_code ?? '-' }}</strong></td>
+<td>{{ $r['line']->item->item_name ?? '-' }}</td>
                                     <td class="text-right">{{ number_format($r['received'], 3) }}</td>
                                     <td class="text-right text-danger">{{ number_format($r['used'], 3) }}</td>
                                     <td class="text-right">{{ number_format($r['returned'], 3) }}</td>
@@ -97,7 +105,7 @@
                                 @if ($r['logs']->isNotEmpty() || $r['unassigned'] > 0)
                                     <tr>
                                         <td></td>
-                                        <td colspan="9" class="bg-light">
+                                        <td colspan="10" class="bg-light">
                                             @foreach ($r['logs'] as $log)
                                                 <div class="small {{ $log->status === 'void' ? 'text-muted' : '' }}"
                                                     @if ($log->status === 'void') style="text-decoration: line-through;" @endif>
@@ -119,13 +127,13 @@
                                 @endif
                             @empty
                                 <tr>
-                                    <td colspan="10" class="text-center text-muted py-4">No items on this GRN.</td>
+                                    <td colspan="11" class="text-center text-muted py-4">No items on this GRN.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                         <tfoot>
                             <tr class="font-weight-bold">
-                                <td colspan="4" class="text-right">Total</td>
+                                <td colspan="5" class="text-right">Total</td>
                                 <td class="text-right">{{ number_format($rows->sum('received'), 3) }}</td>
                                 <td class="text-right">{{ number_format($rows->sum('used'), 3) }}</td>
                                 <td class="text-right">{{ number_format($rows->sum('returned'), 3) }}</td>

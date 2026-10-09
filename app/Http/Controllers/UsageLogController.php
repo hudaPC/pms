@@ -16,7 +16,7 @@ class UsageLogController extends Controller
     /**
      * Display all material usage records.
      */
-    public function allUsage(Request $request)
+       public function allUsage(Request $request)
     {
         /*
         |--------------------------------------------------------------------------
@@ -136,6 +136,8 @@ class UsageLogController extends Controller
                     });
             });
         }
+
+
         /*
         |--------------------------------------------------------------------------
         | Date From
@@ -172,13 +174,66 @@ class UsageLogController extends Controller
         |--------------------------------------------------------------------------
         | Usage Logs
         |--------------------------------------------------------------------------
+        | Admin  : pagination is based on DATES (each page = a few date tabs,
+        |          and every row of those dates is shown).
+        | Others : normal pagination (20 rows per page), same as before.
         */
 
-        $usageLogs = $query
-            ->orderByDesc('usage_date')
-            ->orderByDesc('id')
-            ->paginate(20)
-            ->withQueryString();
+        $isAdmin = auth()->user()->role === 'admin';
+
+        if ($isAdmin) {
+
+            // How many date tabs (+ rows) to show on one page. Change this number if you want.
+            $datesPerPage = 5;
+
+            // 1) Get all distinct usage dates (newest first) that match the filters
+            $allDates = (clone $query)
+                ->setEagerLoads([])
+                ->reorder()
+                ->selectRaw('DATE(usage_date) as usage_day')
+                ->distinct()
+                ->orderByDesc('usage_day')
+                ->pluck('usage_day');
+
+            // 2) Pick only the dates for the current page
+            $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+
+            $pageDates = $allDates
+                ->slice(($currentPage - 1) * $datesPerPage, $datesPerPage)
+                ->values();
+
+            // 3) Paginator that counts DATES (used for the page buttons)
+            $datePaginator = new \Illuminate\Pagination\LengthAwarePaginator(
+                $pageDates,
+                $allDates->count(),
+                $datesPerPage,
+                $currentPage,
+                [
+                    'path'  => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+
+            // 4) Get ALL rows that belong to those dates
+            $usageLogs = $query
+                ->whereIn(
+                    \Illuminate\Support\Facades\DB::raw('DATE(usage_date)'),
+                    $pageDates->all()
+                )
+                ->orderByDesc('usage_date')
+                ->orderByDesc('id')
+                ->get();
+
+        } else {
+
+            $usageLogs = $query
+                ->orderByDesc('usage_date')
+                ->orderByDesc('id')
+                ->paginate(20)
+                ->withQueryString();
+
+            $datePaginator = null;
+        }
 
 
         /*
@@ -218,7 +273,7 @@ class UsageLogController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $view = auth()->user()->role === 'admin'
+        $view = $isAdmin
             ? 'material-usage.index'
             : 'user.material-usage.index';
 
@@ -226,6 +281,7 @@ class UsageLogController extends Controller
             $view,
             compact(
                 'usageLogs',
+                'datePaginator',
                 'totalUsageRecords',
                 'activeUsageRecords',
                 'voidedUsageRecords',
@@ -233,6 +289,7 @@ class UsageLogController extends Controller
             )
         );
     }
+
     /**
      * Show the global Material Usage creation form.
      */

@@ -209,12 +209,12 @@
         {{-- ============================================================ --}}
         @php
             // Group the rows of the current page by Usage Date
-            $groupedLogs = $usageLogs->getCollection()->groupBy(
+            $groupedLogs = $usageLogs->groupBy(
                 fn($log) => $log->usage_date?->format('Y-m-d') ?? 'no-date',
             );
 
-            // Running row number (continues across pages)
-            $rowNo = ($usageLogs->firstItem() ?? 1) - 1;
+            // Running row number
+            $rowNo = 0;
         @endphp
 
         <div class="card card-outline card-secondary">
@@ -434,9 +434,16 @@
 
             </div>
 
-            @if ($usageLogs->hasPages())
-                <div class="card-footer clearfix">
-                    {{ $usageLogs->links('pagination::bootstrap-5') }}
+            @if ($datePaginator && $datePaginator->total() > 0)
+                <div class="card-footer clearfix d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        Showing dates {{ $datePaginator->firstItem() }} to {{ $datePaginator->lastItem() }}
+                        of {{ $datePaginator->total() }}
+                    </small>
+
+                    @if ($datePaginator->hasPages())
+                        {{ $datePaginator->links('pagination::bootstrap-4') }}
+                    @endif
                 </div>
             @endif
 

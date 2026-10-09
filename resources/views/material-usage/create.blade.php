@@ -76,8 +76,7 @@
                         <div class="col-md-12">
                             <div class="form-group">
                                 <label for="remarks">Remarks</label>
-                                <textarea name="remarks" id="remarks" rows="2"
-                                    class="form-control @error('remarks') is-invalid @enderror"
+                                <textarea name="remarks" id="remarks" rows="2" class="form-control @error('remarks') is-invalid @enderror"
                                     placeholder="Optional remarks for this material issue">{{ old('remarks') }}</textarea>
                                 @error('remarks')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -115,7 +114,7 @@
                                     <th style="width: 15%; min-width: 150px;">Product Model <span
                                             class="text-danger">*</span></th>
                                     <th style="width: 30%; min-width: 220px;">Item <span class="text-danger">*</span></th>
-                                    <th style="width: 25%; min-width: 220px;">Goods Receipt (GRN) <span
+                                    <th style="width: 25%; min-width: 220px;">Items Receipt (GRN) <span
                                             class="text-danger">*</span></th>
                                     <th style="width: 110px;">Available Stock</th>
                                     <th style="width: 120px;">Issue Quantity <span class="text-danger">*</span></th>
@@ -136,6 +135,11 @@
                             Issue quantities cannot exceed available stock.
                             The server will validate all material rows before saving.
                         </small>
+                        <br>
+                        <br><i class="fas fa-sort-amount-down mr-1"></i>
+                        <strong>FIFO rule:</strong> type the total quantity. If the oldest Goods Receipt does not have
+                        enough, the system splits it into extra rows and takes the rest from the next GRN.
+
                     </div>
                 </div>
 
@@ -150,52 +154,56 @@
         </form>
     </div>
 
-<style>
-    #materialItemsTable {
-        table-layout: fixed;
-    }
-    #materialItemsTable td {
-        overflow: hidden;
-    }
-    #materialItemsTable .select2-container {
-        max-width: 100%;
-    }
-    #materialItemsTable .select2-selection__rendered,
-    #materialItemsTable .grn-select,
-    #materialItemsTable .product-model-select {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-</style>
+    <style>
+        #materialItemsTable {
+            table-layout: fixed;
+        }
+
+        #materialItemsTable td {
+            overflow: hidden;
+        }
+
+        #materialItemsTable .select2-container {
+            max-width: 100%;
+        }
+
+        #materialItemsTable .select2-selection__rendered,
+        #materialItemsTable .grn-select,
+        #materialItemsTable .product-model-select {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
 
             'use strict';
 
             // ------------------------------------------------------------------
             // Data from server
             // ------------------------------------------------------------------
-            const productModels = {{ Illuminate\Support\Js::from(
-        $productModels->map(
-            fn($model) => [
-                'id' => $model->id,
-                'model_code' => $model->model_code,
-                'model_name' => $model->model_name,
-            ],
-        )->values(),
-    ) }};
+            const productModels =
+                {{ Illuminate\Support\Js::from(
+                    $productModels->map(
+                            fn($model) => [
+                                'id' => $model->id,
+                                'model_code' => $model->model_code,
+                                'model_name' => $model->model_name,
+                            ],
+                        )->values(),
+                ) }};
 
             const oldItems = @json(old('items', []));
 
             const itemsUrlTemplate = @json(route('material-usage.product-model-items', [
-                'productModel' => '__PRODUCT_MODEL_ID__',
-            ]));
+                    'productModel' => '__PRODUCT_MODEL_ID__',
+                ]));
             const grnUrlTemplate = @json(route('material-usage.item-goods-receipts', [
-                'item' => '__ITEM_ID__',
-            ]));
+                    'item' => '__ITEM_ID__',
+                ]));
 
-            const grnCache = {};   // itemId => GRN list
+            const grnCache = {}; // itemId => GRN list
 
             // ------------------------------------------------------------------
             // Elements & state
@@ -204,9 +212,9 @@
             const addMaterialRowButton = $('#addMaterialRow');
             const materialRowCount = $('#materialRowCount');
 
-            let nextRowIndex = 0;      // never reused after deleting a row
-            let nextGroupId = 1;       // groups rows auto-created by one Product Model selection
-            const itemsCache = {};     // productModelId => items[]
+            let nextRowIndex = 0; // never reused after deleting a row
+            let nextGroupId = 1; // groups rows auto-created by one Product Model selection
+            const itemsCache = {}; // productModelId => items[]
 
             // ------------------------------------------------------------------
             // Helpers
@@ -217,14 +225,20 @@
                     required: true
                 });
 
-                select.append($('<option>', { value: '', text: '-- Select Product Model --' }));
+                select.append($('<option>', {
+                    value: '',
+                    text: '-- Select Product Model --'
+                }));
 
-                productModels.forEach(function (model) {
+                productModels.forEach(function(model) {
                     let label = model.model_code;
                     if (model.model_name) {
                         label += ' - ' + model.model_name;
                     }
-                    const option = $('<option>', { value: model.id, text: label });
+                    const option = $('<option>', {
+                        value: model.id,
+                        text: label
+                    });
                     if (String(selectedId) === String(model.id)) {
                         option.prop('selected', true);
                     }
@@ -247,20 +261,24 @@
             }
 
             function updateRowNumbers() {
-                materialItemsBody.children('tr').each(function (index) {
+                materialItemsBody.children('tr').each(function(index) {
                     $(this).find('.row-number').text(index + 1);
                 });
             }
 
             /** Quantity currently typed in the first row ('' if none). */
             function getFirstRowQuantity() {
-                return materialItemsBody.children('tr').first().find('.quantity-input').val() || '';
+                const first = materialItemsBody.children('tr').first();
+                const requested = first.data('requested');
+                return requested !== undefined ?
+                    requested :
+                    (first.find('.quantity-input').val() || '');
             }
 
             /** Item IDs already selected in rows other than $exceptRows. */
             function getSelectedItemIds(exceptRows) {
                 const ids = new Set();
-                materialItemsBody.children('tr').each(function () {
+                materialItemsBody.children('tr').each(function() {
                     if (exceptRows && exceptRows.is(this)) {
                         return;
                     }
@@ -277,7 +295,7 @@
                     width: '100%',
                     placeholder: '-- Select Item --',
                     allowClear: true,
-                    templateResult: function (option) {
+                    templateResult: function(option) {
                         if (!option.id) {
                             return option.text;
                         }
@@ -290,8 +308,10 @@
                         });
                         wrapper.append($('<span>').text(option.text));
                         wrapper.append(
-                            $('<span>', { class: 'badge badge-light border ml-2' })
-                                .text(formatStock(stock) + ' ' + unit)
+                            $('<span>', {
+                                class: 'badge badge-light border ml-2'
+                            })
+                            .text(formatStock(stock) + ' ' + unit)
                         );
                         return wrapper;
                     }
@@ -309,7 +329,7 @@
 
                     if (!selectedOption.val()) {
                         stockDisplay.text('—');
-                        validateQuantity(row);   // <-- add this
+                        validateQuantity(row); // <-- add this
                         return;
                     }
 
@@ -320,7 +340,7 @@
                 const unit = selectedOption.attr('data-unit') || '';
 
                 stockDisplay.text(formatStock(stock) + ' ' + unit);
-                validateQuantity(row);   // <-- add this
+                validateQuantity(row); // <-- add this
 
             }
 
@@ -365,7 +385,10 @@
 
             function resetItemSelect(row, text) {
                 const itemSelect = row.find('.item-select');
-                itemSelect.empty().append($('<option>', { value: '', text: text }));
+                itemSelect.empty().append($('<option>', {
+                    value: '',
+                    text: text
+                }));
                 itemSelect.prop('disabled', true).trigger('change');
                 row.find('.current-stock-display').text('—');
             }
@@ -375,12 +398,16 @@
                 const itemSelect = row.find('.item-select');
 
                 itemSelect.empty();
-                itemSelect.append($('<option>', { value: '', text: '-- Select Item --' }));
+                itemSelect.append($('<option>', {
+                    value: '',
+                    text: '-- Select Item --'
+                }));
 
-                items.forEach(function (item) {
+                items.forEach(function(item) {
                     const option = $('<option>', {
                         value: item.id,
-                        text: '[' + item.product_model + '] ' + item.item_code + ' - ' + item.item_name
+                        text: '[' + item.product_model + '] ' + item.item_code + ' - ' + item
+                            .item_name
                     });
                     option.attr('data-current-stock', item.current_stock);
                     option.attr('data-unit', item.unit || '');
@@ -413,11 +440,11 @@
                     url: url,
                     type: 'GET',
                     dataType: 'json',
-                    success: function (response) {
+                    success: function(response) {
                         itemsCache[productModelId] = response.items || [];
                         onSuccess(itemsCache[productModelId]);
                     },
-                    error: function (xhr, status) {
+                    error: function(xhr, status) {
                         if (status !== 'abort') {
                             onError();
                         }
@@ -425,33 +452,93 @@
                 });
             }
 
+
+            /** Lock newer GRNs until older GRNs are fully used (across all rows of the same item). */
+            function refreshFifo(itemId) {
+                const list = grnCache[itemId];
+                if (!itemId || !list) return;
+
+                const rows = materialItemsBody.children('tr').filter(function() {
+                    return String($(this).find('.item-select').val()) === String(itemId);
+                });
+
+                const used = {};
+                rows.each(function() {
+                    const g = $(this).find('.grn-select').val();
+                    const q = parseFloat($(this).find('.quantity-input').val()) || 0;
+                    if (g) used[g] = (used[g] || 0) + q;
+                });
+
+                const locked = {};
+                let blocked = false;
+                list.forEach(function(g) {
+                    locked[g.goods_receipt_item_id] = blocked;
+                    const left = g.remaining - (used[g.goods_receipt_item_id] || 0);
+                    if (left > 0.0005) blocked = true;
+                });
+
+                rows.each(function() {
+                    $(this).find('.grn-select option').each(function() {
+                        const id = $(this).val();
+                        if (!id) return;
+                        const isLocked = locked[id] && !$(this).is(':selected');
+                        $(this).prop('disabled', !!isLocked);
+                        const base = $(this).attr('data-label');
+                        $(this).text(isLocked ? base.replace(/^(\w+)/,
+                            '$1 - LOCKED: use older GRN first') : base);
+                    });
+                });
+            }
+
             function resetGrnSelect(row, text) {
                 row.data('noGrn', false);
                 const grnSelect = row.find('.grn-select');
-                grnSelect.empty().append($('<option>', { value: '', text: text }));
+                grnSelect.empty().append($('<option>', {
+                    value: '',
+                    text: text
+                }));
                 grnSelect.prop('disabled', true);
+            }
+
+            function ordinal(n) {
+                return n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : n + 'th';
             }
 
             function fillGrnSelect(row, list) {
                 row.data('noGrn', list.length === 0);
+
                 const grnSelect = row.find('.grn-select');
                 grnSelect.empty();
 
                 if (list.length === 0) {
-                    grnSelect.append($('<option>', { value: '', text: 'No GRN with stock available' }));
+                    grnSelect.append($('<option>', {
+                        value: '',
+                        text: 'No GRN with stock available'
+                    }));
                     grnSelect.prop('disabled', true);
                     validateQuantity(row);
                     return;
                 }
 
-                grnSelect.append($('<option>', { value: '', text: '-- Select GRN --' }));
+                grnSelect.append($('<option>', {
+                    value: '',
+                    text: '-- Select GRN (oldest first) --'
+                }));
 
-                list.forEach(function (g) {
+                list.forEach(function(g) {
+                    const label = ordinal(g.fifo_rank) +
+                        (g.fifo_rank === 1 ? ' - USE FIRST' : '') +
+                        ' | ' + g.grn_number +
+                        ' | ' + g.receipt_date +
+                        ' | ' + g.po_number +
+                        ' | ' + formatStock(g.available) + ' left';
+
                     const option = $('<option>', {
                         value: g.goods_receipt_item_id,
-                        text: g.grn_number + ' (' + g.po_number + ') - ' + formatStock(g.available) + ' left'
+                        text: label
                     });
                     option.attr('data-available', g.available);
+                    option.attr('data-label', label);
                     grnSelect.append(option);
                 });
 
@@ -461,11 +548,13 @@
                 if (pending) {
                     grnSelect.val(String(pending));
                     row.removeData('pendingGrn');
-                } else if (list.length === 1) {
-                    grnSelect.val(String(list[0].goods_receipt_item_id));   // only one choice
+                } else {
+                    // Oldest GRN is pre-selected (FIFO), unless another row already took it
+                    grnSelect.val(String(list[0].goods_receipt_item_id));
                 }
 
                 validateQuantity(row);
+                refreshFifo(row.find('.item-select').val());
             }
 
             function loadGoodsReceipts(row) {
@@ -488,7 +577,7 @@
                     url: grnUrlTemplate.replace('__ITEM_ID__', encodeURIComponent(itemId)),
                     type: 'GET',
                     dataType: 'json',
-                    success: function (response) {
+                    success: function(response) {
                         grnCache[itemId] = response.goods_receipts || [];
                         // Ignore stale answers (row removed or item changed)
                         if (!row.closest('body').length ||
@@ -497,10 +586,111 @@
                         }
                         fillGrnSelect(row, grnCache[itemId]);
                     },
-                    error: function () {
+                    error: function() {
                         resetGrnSelect(row, 'Unable to load GRNs');
                     }
                 });
+            }
+
+            let rowUid = 0;
+
+            /** Split a quantity across GRNs in FIFO order (adds extra rows when needed). */
+            function autoSplit(row) {
+
+                if (row.data('splitOf')) {
+                    validateQuantity(row);
+                    return;
+                } // child rows are edited by hand
+
+                if (!row.data('uid')) row.data('uid', ++rowUid);
+                const uid = row.data('uid');
+
+                // Remove rows created by an earlier split of this row
+                materialItemsBody.children('tr').filter(function() {
+                    return $(this).data('splitOf') === uid;
+                }).each(function() {
+                    destroyRow($(this));
+                });
+
+                const itemId = row.find('.item-select').val();
+                const list = grnCache[itemId];
+                const qty = parseFloat(row.find('.quantity-input').val());
+
+                if (!itemId || !list || isNaN(qty) || qty <= 0) {
+                    updateRowNumbers();
+                    updateRowCount();
+                    return;
+                }
+
+                row.data('requested', qty);
+
+                // Quantity other rows of the same item already take from each GRN
+                const usedByOthers = {};
+                materialItemsBody.children('tr').each(function() {
+                    if (this === row[0]) return;
+                    if (String($(this).find('.item-select').val()) !== String(itemId)) return;
+                    const g = $(this).find('.grn-select').val();
+                    if (g) usedByOthers[g] = (usedByOthers[g] || 0) + (parseFloat($(this).find(
+                        '.quantity-input').val()) || 0);
+                });
+
+                // Start at the selected GRN and walk forward (oldest first)
+                let start = list.findIndex(function(g) {
+                    return String(g.goods_receipt_item_id) === String(row.find('.grn-select').val());
+                });
+                if (start < 0) start = 0;
+
+                const allocations = [];
+                let rest = qty;
+
+                for (let i = start; i < list.length && rest > 0.0005; i++) {
+                    const left = list[i].available - (usedByOthers[list[i].goods_receipt_item_id] || 0);
+                    if (left <= 0.0005) continue;
+                    const take = Math.min(rest, left);
+                    allocations.push({
+                        id: list[i].goods_receipt_item_id,
+                        qty: take
+                    });
+                    rest -= take;
+                }
+
+                if (allocations.length === 0) {
+                    validateQuantity(row);
+                    return;
+                }
+
+                // More than all GRNs hold: put the rest on the last row so the red error shows
+                if (rest > 0.0005) allocations[allocations.length - 1].qty += rest;
+
+                const r3 = function(n) {
+                    return (Math.round(n * 1000) / 1000).toFixed(3);
+                };
+
+                row.find('.grn-select').val(String(allocations[0].id));
+                row.find('.quantity-input').val(r3(allocations[0].qty));
+
+                const productModelId = row.find('.product-model-select').val();
+                let anchor = row;
+
+                allocations.slice(1).forEach(function(a) {
+                    const child = addMaterialRow({
+                        productModelId: productModelId,
+                        itemId: itemId,
+                        items: itemsCache[productModelId],
+                        goodsReceiptItemId: a.id,
+                        quantity: r3(a.qty),
+                        after: anchor
+                    });
+                    child.data('splitOf', uid);
+                    child.find('.quantity-input').addClass('split-qty');
+                    validateQuantity(child);
+                    anchor = child;
+                });
+
+                validateQuantity(row);
+                refreshFifo(itemId);
+                updateRowNumbers();
+                updateRowCount();
             }
 
             function abortRowRequest(row) {
@@ -519,13 +709,13 @@
                 if (!groupId) {
                     return $();
                 }
-                return materialItemsBody.children('tr').filter(function () {
+                return materialItemsBody.children('tr').filter(function() {
                     return $(this).data('group') === groupId && this !== leaderRow[0];
                 });
             }
 
             function removeFollowerRows(leaderRow) {
-                getFollowerRows(leaderRow).each(function () {
+                getFollowerRows(leaderRow).each(function() {
                     destroyRow($(this));
                 });
                 leaderRow.removeData('group').removeData('leader');
@@ -571,7 +761,7 @@
                 const request = fetchItems(
                     productModelId,
 
-                    function (items) {
+                    function(items) {
                         // Ignore stale responses (row removed / model changed).
                         if (!row.closest('body').length ||
                             String(row.find('.product-model-select').val()) !== String(productModelId)) {
@@ -591,7 +781,7 @@
                         expandProductModel(row, productModelId, items);
                     },
 
-                    function () {
+                    function() {
                         resetItemSelect(row, 'Unable to load items');
                     }
                 );
@@ -606,7 +796,7 @@
 
                 // Skip items already chosen in other rows (avoid duplicates).
                 const alreadySelected = getSelectedItemIds(row);
-                const available = items.filter(function (item) {
+                const available = items.filter(function(item) {
                     return !alreadySelected.has(String(item.id));
                 });
 
@@ -623,7 +813,7 @@
                 const quantity = getFirstRowQuantity();
                 let anchor = row;
 
-                available.slice(1).forEach(function (item) {
+                available.slice(1).forEach(function(item) {
                     anchor = addMaterialRow({
                         productModelId: productModelId,
                         itemId: item.id,
@@ -651,47 +841,67 @@
                 const preloadedItems = options.items || null;
 
                 const index = nextRowIndex++;
-                const row = $('<tr>', { class: 'material-row' });
+                const row = $('<tr>', {
+                    class: 'material-row'
+                });
 
                 // Row number
-                const numberCell = $('<td>', { class: 'text-center align-middle row-number' });
+                const numberCell = $('<td>', {
+                    class: 'text-center align-middle row-number'
+                });
 
                 // Product Model
-                const modelCell = $('<td>', { class: 'align-middle' });
+                const modelCell = $('<td>', {
+                    class: 'align-middle'
+                });
                 const productModelSelect = buildProductModelOptions(selectedProductModelId);
                 productModelSelect.attr('name', 'items[' + index + '][product_model_id]');
                 modelCell.append(productModelSelect);
 
                 // Item
-                const itemCell = $('<td>', { class: 'align-middle' });
+                const itemCell = $('<td>', {
+                    class: 'align-middle'
+                });
                 const itemSelect = $('<select>', {
                     class: 'form-control item-select no-select2',
                     required: true,
                     disabled: true
                 });
                 itemSelect.attr('name', 'items[' + index + '][item_id]');
-                itemSelect.append($('<option>', { value: '', text: '-- Select Product Model First --' }));
+                itemSelect.append($('<option>', {
+                    value: '',
+                    text: '-- Select Product Model First --'
+                }));
                 itemCell.append(itemSelect);
                 // Goods Receipt
-                const grnCell = $('<td>', { class: 'align-middle' });
+                const grnCell = $('<td>', {
+                    class: 'align-middle'
+                });
                 const grnSelect = $('<select>', {
                     class: 'form-control grn-select no-select2',
                     required: true,
                     disabled: true
                 });
                 grnSelect.attr('name', 'items[' + index + '][goods_receipt_item_id]');
-                grnSelect.append($('<option>', { value: '', text: '-- Select Item First --' }));
+                grnSelect.append($('<option>', {
+                    value: '',
+                    text: '-- Select Item First --'
+                }));
                 grnCell.append(grnSelect);
 
                 // Available stock
-                const stockCell = $('<td>', { class: 'align-middle' });
+                const stockCell = $('<td>', {
+                    class: 'align-middle'
+                });
                 const stockDisplay = $('<span>', {
                     class: 'current-stock-display badge badge-light border p-2'
                 }).text('—');
                 stockCell.append(stockDisplay);
 
                 // Quantity
-                const quantityCell = $('<td>', { class: 'align-middle' });
+                const quantityCell = $('<td>', {
+                    class: 'align-middle'
+                });
                 const quantityInput = $('<input>', {
                     type: 'number',
                     class: 'form-control quantity-input',
@@ -703,16 +913,22 @@
                 quantityInput.attr('name', 'items[' + index + '][quantity]');
                 quantityInput.val(selectedQuantity);
                 quantityCell.append(quantityInput);
-                quantityCell.append($('<div>', { class: 'invalid-feedback quantity-feedback' }));
+                quantityCell.append($('<div>', {
+                    class: 'invalid-feedback quantity-feedback'
+                }));
 
                 // Remove button
-                const actionCell = $('<td>', { class: 'text-center align-middle' });
+                const actionCell = $('<td>', {
+                    class: 'text-center align-middle'
+                });
                 const removeButton = $('<button>', {
                     type: 'button',
                     class: 'btn btn-danger btn-sm remove-material-row',
                     title: 'Remove this material row'
                 });
-                removeButton.append($('<i>', { class: 'fas fa-trash' }));
+                removeButton.append($('<i>', {
+                    class: 'fas fa-trash'
+                }));
                 actionCell.append(removeButton);
 
                 row.append(numberCell, modelCell, itemCell, grnCell, stockCell, quantityCell, actionCell);
@@ -735,20 +951,21 @@
                 initializeItemSelect2(itemSelect);
 
                 // Events
-                productModelSelect.on('change', function () {
+                productModelSelect.on('change', function() {
                     handleProductModelChange(row);
                 });
 
-                itemSelect.on('change', function () {
+                itemSelect.on('change', function() {
                     showCurrentStock(row);
                     loadGoodsReceipts(row);
                 });
 
-                grnSelect.on('change', function () {
+                grnSelect.on('change', function() {
                     validateQuantity(row);
+                    refreshFifo(row.find('.item-select').val());
                 });
 
-                removeButton.on('click', function () {
+                removeButton.on('click', function() {
                     destroyRow(row);
                     updateRowNumbers();
                     updateRowCount();
@@ -765,7 +982,7 @@
 
                         const request = fetchItems(
                             selectedProductModelId,
-                            function (items) {
+                            function(items) {
                                 if (!row.closest('body').length) {
                                     return;
                                 }
@@ -775,7 +992,7 @@
                                 }
                                 populateItemSelect(row, items, selectedItemId);
                             },
-                            function () {
+                            function() {
                                 resetItemSelect(row, 'Unable to load items');
                             }
                         );
@@ -795,36 +1012,53 @@
             // ------------------------------------------------------------------
             // First-row quantity => copy to all other rows
             // ------------------------------------------------------------------
-            materialItemsBody.on('input', '.quantity-input', function () {
+            materialItemsBody.on('input', '.quantity-input', function() {
+
+                const currentRow = $(this).closest('tr');
+                const firstRow = materialItemsBody.children('tr').first();
+
+                currentRow.removeData('requested');
+
+                if (currentRow.is(firstRow)) {
+
+                    // Copy first-row quantity to all other rows (not to split rows)
+                    materialItemsBody.find('.quantity-input').not(this).not('.split-qty').val($(this)
+                        .val());
+
+                    materialItemsBody.children('tr').each(function() {
+                        validateQuantity($(this));
+                    });
+
+                } else {
+                    validateQuantity(currentRow);
+                }
+
+                refreshFifo(currentRow.find('.item-select').val());
+            });
+
+            // When the operator finishes typing, split the quantity across GRNs (FIFO)
+            materialItemsBody.on('change', '.quantity-input', function() {
 
                 const currentRow = $(this).closest('tr');
                 const firstRow = materialItemsBody.children('tr').first();
 
                 if (currentRow.is(firstRow)) {
-
-                    // Copy first-row quantity to all other rows
-                    materialItemsBody.find('.quantity-input').not(this).val($(this).val());
-
-                    // Check every row, because stock differs per item
-                    materialItemsBody.children('tr').each(function () {
-                        validateQuantity($(this));
+                    materialItemsBody.children('tr').not('[data-x]').toArray().forEach(function(tr) {
+                        if (!$(tr).data('splitOf')) autoSplit($(tr));
                     });
-
                 } else {
-
-                    validateQuantity(currentRow);
-
+                    autoSplit(currentRow);
                 }
             });
 
             // ------------------------------------------------------------------
             // Add Row button (manual row, keeps previous model, uses first-row quantity)
             // ------------------------------------------------------------------
-            addMaterialRowButton.on('click', function () {
+            addMaterialRowButton.on('click', function() {
                 const lastRow = materialItemsBody.children('tr').last();
-                const previousProductModelId = lastRow.length
-                    ? lastRow.find('.product-model-select').val()
-                    : '';
+                const previousProductModelId = lastRow.length ?
+                    lastRow.find('.product-model-select').val() :
+                    '';
 
                 addMaterialRow({
                     productModelId: previousProductModelId,
@@ -833,12 +1067,12 @@
             });
 
 
-            $('#materialUsageForm').on('submit', function (e) {
+            $('#materialUsageForm').on('submit', function(e) {
 
                 // Drop rows whose item has no GRN stock (nothing can be issued from them)
-                materialItemsBody.children('tr').filter(function () {
+                materialItemsBody.children('tr').filter(function() {
                     return $(this).data('noGrn') === true;
-                }).each(function () {
+                }).each(function() {
                     destroyRow($(this));
                 });
                 updateRowNumbers();
@@ -846,13 +1080,15 @@
 
                 if (materialItemsBody.children('tr').length === 0) {
                     e.preventDefault();
-                    alert('None of the selected items has stock on a Goods Receipt, so there is nothing to issue.');
+                    alert(
+                        'None of the selected items has stock on a Goods Receipt, so there is nothing to issue.'
+                    );
                     return;
                 }
 
                 let hasError = false;
 
-                materialItemsBody.children('tr').each(function () {
+                materialItemsBody.children('tr').each(function() {
                     if (!validateQuantity($(this))) {
                         hasError = true;
                     }
@@ -873,7 +1109,7 @@
             const restoredItems = Array.isArray(oldItems) ? oldItems : Object.values(oldItems || {});
 
             if (restoredItems.length > 0) {
-                restoredItems.forEach(function (item) {
+                restoredItems.forEach(function(item) {
                     addMaterialRow({
                         productModelId: item.product_model_id || '',
                         itemId: item.item_id || '',

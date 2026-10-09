@@ -73,20 +73,15 @@
 
 
                 @if ($productionPlan->status === 'confirmed' && $hasRemainingMaterials)
-                    <form action="{{ route('production-plans.material-issue.post', $productionPlan) }}" method="POST"
+                    <form id="materialIssueForm"
+                        action="{{ route('production-plans.material-issue.post', $productionPlan) }}" method="POST"
                         class="d-inline">
-
                         @csrf
-
-                        <button type="submit" class="btn btn-warning" onclick="return confirm(
-                            'Are you sure you want to post the remaining Production Material Issue?'
-                        )">
-
+                        <button type="submit" class="btn btn-warning"
+                            onclick="return confirm('Post the material issue for the GRN quantities you entered?')">
                             <i class="fas fa-check-circle mr-1"></i>
                             Post Material Issue
-
                         </button>
-
                     </form>
                 @endif
 
@@ -327,231 +322,113 @@
                     <table class="table table-bordered table-hover table-sm mb-0">
 
                         <thead class="thead-light">
-
                             <tr>
-
-                                <th style="width: 50px;">
-                                    #
-                                </th>
-
-                                <th style="width: 170px;">
-                                    Item
-                                </th>
-
-                                <th class="text-right">
-                                    BOM Qty
-                                </th>
-
-                                <th class="text-right">
-                                    Required
-                                </th>
-
-                                <th class="text-right">
-                                    Already Issued
-                                </th>
-
-                                <th class="text-right">
-                                    Remaining
-                                </th>
-
-                                <th class="text-right">
-                                    Current Stock
-                                </th>
-
-                                <th class="text-right">
-                                    Suggested Issue
-                                </th>
-
-                                <th class="text-center">
-                                    Stock
-                                </th>
-
-                                <th class="text-center">
-                                    Issue Status
-                                </th>
-
-                                <th>
-                                    Unit
-                                </th>
-
+                                <th style="width: 50px;">#</th>
+                                <th style="width: 170px;">Item</th>
+                                <th class="text-right">BOM Qty</th>
+                                <th class="text-right">Required</th>
+                                <th class="text-right">Already Issued</th>
+                                <th class="text-right">Remaining</th>
+                                <th class="text-right">Current Stock</th>
+                                <th class="text-right">Suggested Issue</th>
+                                <th class="text-center">Stock</th>
+                                <th class="text-center">Issue Status</th>
+                                <th>Unit</th>
                             </tr>
-
                         </thead>
-
 
                         <tbody>
 
                             @forelse($materialIssueRows as $index => $row)
-                                                <tr>
+                                <tr>
 
-                                                    <td>
-                                                        {{ $index + 1 }}
-                                                    </td>
+                                    <td>{{ $index + 1 }}</td>
 
+                                    {{-- Item --}}
+                                    <td title="{{ $row['item_name'] }}">
+                                        <strong>{{ $row['item_code'] }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            {{ $row['item_name'] ? \Illuminate\Support\Str::words($row['item_name'], 3, '......') : '-' }}
+                                        </small>
+                                    </td>
 
-                                                    {{-- Item --}}
-                                                    <td title="{{ $row['item_name'] }}">
-                                                        <strong>
-                                                            {{ $row['item_code'] }}
-                                                        </strong>
-                                                        <br>
-                                                        <small class="text-muted">
-                                                            {{ $row['item_name']
-                                                            ? \Illuminate\Support\Str::words($row['item_name'], 3, '......')
-                                                            : '-' }}
-                                                        </small>
-                                                    </td>
+                                    {{-- BOM Qty --}}
+                                    <td class="text-right">{{ number_format($row['bom_quantity'], 3) }}</td>
 
+                                    {{-- Required --}}
+                                    <td class="text-right">
+                                        <strong>{{ number_format($row['required_quantity'], 3) }}</strong>
+                                    </td>
 
+                                    {{-- Already Issued --}}
+                                    <td class="text-right">{{ number_format($row['already_issued'], 3) }}</td>
 
+                                    {{-- Remaining --}}
+                                    <td class="text-right">
+                                        @if ($row['remaining_to_issue'] > 0)
+                                            <strong
+                                                class="text-primary">{{ number_format($row['remaining_to_issue'], 3) }}</strong>
+                                        @else
+                                            <span class="text-success">0.000</span>
+                                        @endif
+                                    </td>
 
+                                    {{-- Current Stock --}}
+                                    <td class="text-right">{{ number_format($row['current_stock'], 3) }}</td>
 
-                                                    {{-- BOM Qty --}}
-                                                    <td class="text-right">
+                                    {{-- Suggested Issue --}}
+                                    <td class="text-right">
+                                        @if ($row['remaining_to_issue'] > 0)
+                                            <strong>{{ number_format($row['suggested_issue_quantity'], 3) }}</strong>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
 
-                                                        {{ number_format($row['bom_quantity'], 3) }}
+                                    {{-- Stock Availability --}}
+                                    <td class="text-center">
+                                        @if ($row['remaining_to_issue'] <= 0)
+                                            <span class="badge badge-secondary">N/A</span>
+                                        @elseif($row['can_fully_issue'])
+                                            <span class="badge badge-success">
+                                                <i class="fas fa-check mr-1"></i> Available
+                                            </span>
+                                        @else
+                                            <span class="badge badge-danger">
+                                                <i class="fas fa-exclamation-triangle mr-1"></i> Short
+                                            </span>
+                                        @endif
+                                    </td>
 
-                                                    </td>
+                                    {{-- Issue Status --}}
+                                    <td class="text-center">
+                                        @if ($row['issue_status'] === 'fully-issued')
+                                            <span class="badge badge-success">
+                                                <i class="fas fa-check-circle mr-1"></i> Fully Issued
+                                            </span>
+                                        @elseif($row['issue_status'] === 'partially-issued')
+                                            <span class="badge badge-warning">
+                                                <i class="fas fa-hourglass-half mr-1"></i> Partial
+                                            </span>
+                                        @else
+                                            <span class="badge badge-secondary">
+                                                <i class="fas fa-clock mr-1"></i> Not Issued
+                                            </span>
+                                        @endif
+                                    </td>
 
+                                    {{-- Unit --}}
+                                    <td>{{ $row['unit']->name ?? '-' }}</td>
 
-                                                    {{-- Required --}}
-                                                    <td class="text-right">
-
-                                                        <strong>
-
-                                                            {{ number_format($row['required_quantity'], 3) }}
-
-                                                        </strong>
-
-                                                    </td>
-
-
-                                                    {{-- Already Issued --}}
-                                                    <td class="text-right">
-
-                                                        {{ number_format($row['already_issued'], 3) }}
-
-                                                    </td>
-
-
-                                                    {{-- Remaining --}}
-                                                    <td class="text-right">
-
-                                                        @if ($row['remaining_to_issue'] > 0)
-                                                            <strong class="text-primary">
-
-                                                                {{ number_format($row['remaining_to_issue'], 3) }}
-
-                                                            </strong>
-                                                        @else
-                                                            <span class="text-success">
-                                                                0.000
-                                                            </span>
-                                                        @endif
-
-                                                    </td>
-
-
-                                                    {{-- Current Stock --}}
-                                                    <td class="text-right">
-
-                                                        {{ number_format($row['current_stock'], 3) }}
-
-                                                    </td>
-
-
-                                                    {{-- Suggested Issue --}}
-                                                    <td class="text-right">
-
-                                                        @if ($row['remaining_to_issue'] > 0)
-                                                            <strong>
-
-                                                                {{ number_format($row['suggested_issue_quantity'], 3) }}
-
-                                                            </strong>
-                                                        @else
-                                                            <span class="text-muted">
-                                                                -
-                                                            </span>
-                                                        @endif
-
-                                                    </td>
-
-
-                                                    {{-- Stock Availability --}}
-                                                    <td class="text-center">
-
-                                                        @if ($row['remaining_to_issue'] <= 0)
-                                                            <span class="badge badge-secondary">
-                                                                N/A
-                                                            </span>
-                                                        @elseif($row['can_fully_issue'])
-                                                            <span class="badge badge-success">
-
-                                                                <i class="fas fa-check mr-1"></i>
-                                                                Available
-
-                                                            </span>
-                                                        @else
-                                                            <span class="badge badge-danger">
-
-                                                                <i class="fas fa-exclamation-triangle mr-1"></i>
-                                                                Short
-
-                                                            </span>
-                                                        @endif
-
-                                                    </td>
-
-
-                                                    {{-- Issue Status --}}
-                                                    <td class="text-center">
-
-                                                        @if ($row['issue_status'] === 'fully-issued')
-                                                            <span class="badge badge-success">
-
-                                                                <i class="fas fa-check-circle mr-1"></i>
-                                                                Fully Issued
-
-                                                            </span>
-                                                        @elseif($row['issue_status'] === 'partially-issued')
-                                                            <span class="badge badge-warning">
-
-                                                                <i class="fas fa-hourglass-half mr-1"></i>
-                                                                Partial
-
-                                                            </span>
-                                                        @else
-                                                            <span class="badge badge-secondary">
-
-                                                                <i class="fas fa-clock mr-1"></i>
-                                                                Not Issued
-
-                                                            </span>
-                                                        @endif
-
-                                                    </td>
-
-
-                                                    {{-- Unit --}}
-                                                    <td>
-
-                                                        {{ $row['unit']->name ?? '-' }}
-
-                                                    </td>
-
-                                                </tr>
+                                </tr>
 
                             @empty
 
                                 <tr>
-
                                     <td colspan="11" class="text-center text-muted py-4">
-
                                         No BOM materials were found for this Production Plan.
-
                                     </td>
-
                                 </tr>
                             @endforelse
 
@@ -565,7 +442,6 @@
                      PAGINATION
                 ============================================================ --}}
                 @if ($materialIssueRows->hasPages())
-
                     <div class="card-footer d-flex flex-wrap justify-content-between align-items-center">
 
                         <small class="text-muted mb-2 mb-md-0">
@@ -583,7 +459,6 @@
                         {{ $materialIssueRows->onEachSide(1)->links('pagination::bootstrap-4') }}
 
                     </div>
-
                 @endif
 
             </div>
@@ -640,5 +515,6 @@
         @endif
 
     </div>
+   
 
 @endsection

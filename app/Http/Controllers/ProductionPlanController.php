@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\DB;
 use App\Models\PurchaseOrder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
+use App\Models\GoodsReceiptItem;
+use App\Models\Item;
+
 
 class ProductionPlanController extends Controller
 {
@@ -1804,6 +1807,24 @@ class ProductionPlanController extends Controller
                 $item->current_stock;
 
 
+            $grns = GoodsReceiptItem::query()
+                ->where('item_id', $item->id)
+                ->whereHas('goodsReceipt', fn($q) => $q->where('status', 'posted'))
+                ->with(['goodsReceipt', 'purchaseOrderItem.purchaseOrder'])
+                ->get()
+                ->map(fn($line) => [
+                    'id'        => $line->id,
+                    'grn'       => $line->goodsReceipt->grn_number,
+                    'po'        => $line->purchaseOrderItem->purchaseOrder->po_number ?? '-',
+                    'date'      => optional($line->goodsReceipt->receipt_date)->format('Y-m-d'),
+                    'available' => round($line->remainingQuantity(), 3),
+                ])
+                ->filter(fn($g) => $g['available'] > 0)
+                ->sortBy('date')
+                ->values()
+                ->all();
+
+
             /*
     |--------------------------------------------------------------------------
     | Issue Status
@@ -1900,6 +1921,7 @@ class ProductionPlanController extends Controller
 
                 'issue_status' =>
                 $issueStatus,
+                'grns' => $grns,
             ];
         }
 
@@ -1949,7 +1971,7 @@ class ProductionPlanController extends Controller
 */
 
         $perPage =
-            15;
+            100;
 
         $currentPage =
             LengthAwarePaginator::resolveCurrentPage('page');
@@ -1996,411 +2018,106 @@ class ProductionPlanController extends Controller
 
     public function postMaterialIssue(ProductionPlan $productionPlan)
     {
-
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Material Issue Allowed Only For Confirmed Production Plan
-    |--------------------------------------------------------------------------
-    */
-
         if ($productionPlan->status !== 'confirmed') {
-
             return redirect()
-                ->route(
-                    'production-plans.material-issue',
-                    $productionPlan
-                )
-                ->with(
-                    'error',
-                    'Item Issue can only be posted for a Confirmed Production Plan.'
-                );
+                ->route('production-plans.material-issue', $productionPlan)
+                ->with('error', 'Item Issue can only be posted for a Confirmed Production Plan.');
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Block Closed / Invalid Plans
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            in_array(
-                $productionPlan->status,
-                ['completed', 'cancelled']
-            )
-        ) {
-            return redirect()
-                ->route(
-                    'production-plans.material-issue',
-                    $productionPlan
-                )
-                ->with(
-                    'error',
-                    'Materials cannot be issued for a completed or cancelled Production Plan.'
-                );
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Load BOM
-    |--------------------------------------------------------------------------
-    */
-
-        $productionPlan->load([
-            'productModel.modelItems.item.unit',
-        ]);
+        $productionPlan->load('productModel.modelItems.item.unit');
 
         if (!$productionPlan->productModel) {
             return redirect()
                 ->route('production-plans.index')
-                ->with(
-                    'error',
-                    'No Product Model was found for this Production Plan.'
-                );
+                ->with('error', 'No Product Model was found for this Production Plan.');
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Issue Date
-    |--------------------------------------------------------------------------
-    */
 
         $issueDate = now()->toDateString();
 
+        DB::transaction(function () use ($productionPlan, $issueDate) {
 
-        /*
-    |--------------------------------------------------------------------------
-    | Transaction
-    |--------------------------------------------------------------------------
-    |
-    | IMPORTANT:
-    | Everything succeeds together or everything rolls back.
-    |
-    */
+            $productionQuantity = (float) $productionPlan->required_quantity;
+            $issueRows = [];
 
-        try {
+            foreach ($productionPlan->productModel->modelItems as $modelItem) {
 
-            DB::transaction(function () use ($productionPlan, $issueDate) {
-
-                $productionQuantity =
-                    (float) $productionPlan->required_quantity;
-
-                $issueRows = [];
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | First Pass - Validate ALL BOM Materials
-            |--------------------------------------------------------------------------
-            */
-
-                foreach (
-                    $productionPlan
-                        ->productModel
-                        ->modelItems
-                    as $modelItem
-                ) {
-
-                    $item = $modelItem->item;
-
-                    if (!$item) {
-                        continue;
-                    }
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | Required Quantity
-                |--------------------------------------------------------------------------
-                */
-
-                    $bomQuantity =
-                        (float) $modelItem->quantity;
-
-                    $requiredQuantity =
-                        $productionQuantity
-                        *
-                        $bomQuantity;
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | Already Issued
-                |--------------------------------------------------------------------------
-                */
-
-                    $alreadyIssued =
-                        (float)
-                        UsageLog::where(
-                            'production_plan_id',
-                            $productionPlan->id
-                        )
-                            ->where(
-                                'item_id',
-                                $item->id
-                            )
-                            ->where(
-                                'source',
-                                'production-plan'
-                            )
-                            ->where(
-                                'status',
-                                'active'
-                            )
-                            ->sum('quantity');
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | Remaining Quantity
-                |--------------------------------------------------------------------------
-                */
-
-                    $remainingQuantity =
-                        max(
-                            0,
-                            $requiredQuantity
-                                -
-                                $alreadyIssued
-                        );
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | Skip Fully Issued Items
-                |--------------------------------------------------------------------------
-                */
-
-                    if ($remainingQuantity <= 0.000001) {
-                        continue;
-                    }
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | Recalculate Physical Stock
-                |--------------------------------------------------------------------------
-                |
-                | Never use Inventory Position here.
-                |
-                */
-
-                    $currentStock =
-                        (float) $item->current_stock;
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | Block Entire Posting If Any Item Is Short
-                |--------------------------------------------------------------------------
-                */
-
-                    if (
-                        $remainingQuantity >
-                        ($currentStock + 0.000001)
-                    ) {
-
-                        throw ValidationException::withMessages([
-
-                            'material_issue' =>
-                            'Material issue cannot be posted. '
-                                . $item->item_code
-                                . ' - '
-                                . $item->item_name
-                                . ' requires '
-                                . number_format(
-                                    $remainingQuantity,
-                                    3
-                                )
-                                . ' '
-                                . ($item->unit->name ?? 'units')
-                                . ', but current physical stock is only '
-                                . number_format(
-                                    $currentStock,
-                                    3
-                                )
-                                . '.',
-
-                        ]);
-                    }
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | Queue Valid Issue
-                |--------------------------------------------------------------------------
-                */
-
-                    $issueRows[] = [
-
-                        'item' =>
-                        $item,
-
-                        'quantity' =>
-                        $remainingQuantity,
-
-                    ];
+                $item = $modelItem->item;
+                if (!$item) {
+                    continue;
                 }
 
+                $requiredQuantity = $productionQuantity * (float) $modelItem->quantity;
 
-                /*
-            |--------------------------------------------------------------------------
-            | Nothing Left To Issue
-            |--------------------------------------------------------------------------
-            */
+                $alreadyIssued = (float) UsageLog::where('production_plan_id', $productionPlan->id)
+                    ->where('item_id', $item->id)
+                    ->where('source', 'production-plan')
+                    ->where('status', 'active')
+                    ->sum('quantity');
 
-                if (empty($issueRows)) {
+                $remainingQuantity = max(0, $requiredQuantity - $alreadyIssued);
 
+                if ($remainingQuantity <= 0.000001) {
+                    continue;
+                }
+
+                $currentStock = (float) $item->current_stock;
+
+                if ($remainingQuantity > ($currentStock + 0.000001)) {
                     throw ValidationException::withMessages([
-
                         'material_issue' =>
-                        'All BOM materials for this Production Plan have already been fully issued.',
-
+                        'Material issue cannot be posted. ' . $item->item_code . ' - ' . $item->item_name
+                            . ' requires ' . number_format($remainingQuantity, 3) . ' ' . ($item->unit->name ?? 'units')
+                            . ', but current physical stock is only ' . number_format($currentStock, 3) . '.',
                     ]);
                 }
 
+                $issueRows[] = ['item' => $item, 'quantity' => $remainingQuantity];
+            }
 
-                /*
-            |--------------------------------------------------------------------------
-            | Create Usage + Stock OUT
-            |--------------------------------------------------------------------------
-            */
+            if (empty($issueRows)) {
+                throw ValidationException::withMessages([
+                    'material_issue' => 'All BOM materials for this Production Plan have already been fully issued.',
+                ]);
+            }
 
-                foreach ($issueRows as $row) {
+            foreach ($issueRows as $row) {
 
-                    $item =
-                        $row['item'];
+                $item = $row['item'];
+                $quantity = $row['quantity'];
 
-                    $quantity =
-                        $row['quantity'];
+                $reference = 'PROD-ISSUE-' . $productionPlan->id . '-' . $item->item_code . '-' . now()->format('YmdHis');
 
+                $usageLog = UsageLog::create([
+                    'item_id'            => $item->id,
+                    'product_model_id'   => $productionPlan->product_model_id,
+                    'source'             => 'production-plan',
+                    'production_plan_id' => $productionPlan->id,
+                    'usage_date'         => $issueDate,
+                    'quantity'           => $quantity,
+                    'reference'          => $reference,
+                    'remarks'            => 'Material issued for Production Plan '
+                        . ($productionPlan->reference ?? '#' . $productionPlan->id) . '.',
+                    'status'             => 'active',
+                ]);
 
-                    /*
-                |--------------------------------------------------------------------------
-                | Production Issue Reference
-                |--------------------------------------------------------------------------
-                */
-
-                    $reference =
-                        'PROD-ISSUE-'
-                        . $productionPlan->id
-                        . '-'
-                        . $item->item_code
-                        . '-'
-                        . now()->format('YmdHis');
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | Usage Log
-                |--------------------------------------------------------------------------
-                */
-
-                    $usageLog =
-                        UsageLog::create([
-
-                            'item_id' =>
-                            $item->id,
-
-                            'source' =>
-                            'production-plan',
-
-                            'production_plan_id' =>
-                            $productionPlan->id,
-
-                            'usage_date' =>
-                            $issueDate,
-
-                            'quantity' =>
-                            $quantity,
-
-                            'reference' =>
-                            $reference,
-
-                            'remarks' =>
-                            'Material issued for Production Plan '
-                                . (
-                                    $productionPlan->reference
-                                    ?? '#'
-                                    . $productionPlan->id
-                                )
-                                . '.',
-
-                            'status' =>
-                            'active',
-
-                        ]);
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | Stock Movement OUT
-                |--------------------------------------------------------------------------
-                */
-
-                    StockMovement::create([
-
-                        'item_id' =>
-                        $item->id,
-
-                        'movement_date' =>
-                        $issueDate,
-
-                        'movement_type' =>
-                        'usage',
-
-                        'direction' =>
-                        'out',
-
-                        'quantity' =>
-                        $quantity,
-
-                        'source_type' =>
-                        'usage_log',
-
-                        'source_id' =>
-                        $usageLog->id,
-
-                        'reference' =>
-                        $reference,
-
-                        'remarks' =>
-                        'Production material issue for '
-                            . (
-                                $productionPlan->reference
-                                ?? 'Production Plan #'
-                                . $productionPlan->id
-                            )
-                            . '.',
-
-                    ]);
-                }
-            });
-        } catch (ValidationException $e) {
-
-            throw $e;
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Success
-    |--------------------------------------------------------------------------
-    */
+                StockMovement::create([
+                    'item_id'       => $item->id,
+                    'movement_date' => $issueDate,
+                    'movement_type' => 'usage',
+                    'direction'     => 'out',
+                    'quantity'      => $quantity,
+                    'source_type'   => 'usage_log',
+                    'source_id'     => $usageLog->id,
+                    'reference'     => $reference,
+                    'remarks'       => 'Production material issue for '
+                        . ($productionPlan->reference ?? 'Production Plan #' . $productionPlan->id) . '.',
+                ]);
+            }
+        });
 
         return redirect()
-            ->route(
-                'production-plans.material-issue',
-                $productionPlan
-            )
-            ->with(
-                'success',
-                'Production materials issued successfully.'
-            );
+            ->route('production-plans.material-issue', $productionPlan)
+            ->with('success', 'Production materials issued successfully.');
     }
     public function materialIssueHistory(
         ProductionPlan $productionPlan

@@ -16,7 +16,7 @@ class UsageLogController extends Controller
     /**
      * Display all material usage records.
      */
-       public function allUsage(Request $request)
+    public function allUsage(Request $request)
     {
         /*
         |--------------------------------------------------------------------------
@@ -184,7 +184,7 @@ class UsageLogController extends Controller
         if ($isAdmin) {
 
             // How many date tabs (+ rows) to show on one page. Change this number if you want.
-            $datesPerPage = 5;
+            $datesPerPage = 10;
 
             // 1) Get all distinct usage dates (newest first) that match the filters
             $allDates = (clone $query)
@@ -223,7 +223,6 @@ class UsageLogController extends Controller
                 ->orderByDesc('usage_date')
                 ->orderByDesc('id')
                 ->get();
-
         } else {
 
             $usageLogs = $query
@@ -288,6 +287,65 @@ class UsageLogController extends Controller
                 'productModels'
             )
         );
+    }
+
+
+    public function datePdf(Request $request, string $date)
+    {
+        // Only accept a date like 2026-10-09
+        abort_unless(preg_match('/^\d{4}-\d{2}-\d{2}$/', $date), 404);
+
+        // All active records of that date (voided records are skipped)
+        $usageLogs = UsageLog::query()
+            ->with([
+                'item.unit',
+                'item.productModelItems.productModel',
+                'productModel',
+                'productionPlan.productModel',
+            ])
+            ->whereDate('usage_date', $date)
+            ->where('status', 'active')
+            ->orderBy('id')
+            ->get();
+
+        // Find the Product Model of one record (same logic as the table)
+        $resolveModel = function ($log) {
+            $model = $log->productModel ?? $log->productionPlan?->productModel;
+
+            if (!$model) {
+                $linked = $log->item?->productModelItems
+                    ?->pluck('productModel')
+                    ->filter()
+                    ->unique('id')
+                    ->values() ?? collect();
+
+                if ($linked->count() === 1) {
+                    $model = $linked->first();
+                }
+            }
+
+            return $model;
+        };
+
+        // Group by Product Model
+        $groups = $usageLogs
+            ->groupBy(function ($log) use ($resolveModel) {
+                $m = $resolveModel($log);
+
+                return $m
+                    ? trim($m->model_code . ($m->model_name ? ' - ' . $m->model_name : ''))
+                    : 'Model Not Recorded';
+            })
+            ->sortBy(fn($logs, $key) => $key === 'Model Not Recorded' ? 'zzzz' : $key);
+
+        $displayDate = \Carbon\Carbon::parse($date)->format('d-M-Y');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'material-usage.date-pdf',
+            compact('groups', 'displayDate', 'usageLogs', 'resolveModel')
+        )->setPaper('a4', 'portrait');
+
+        return $pdf->stream('Material-Usage-' . $date . '.pdf');
     }
 
     /**

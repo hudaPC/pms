@@ -124,8 +124,7 @@
                                 <select name="product_model_id" class="form-control">
                                     <option value="">All Product Models</option>
                                     @foreach ($productModels as $productModel)
-                                        <option value="{{ $productModel->id }}"
-                                            @selected((string) request('product_model_id') === (string) $productModel->id)>
+                                        <option value="{{ $productModel->id }}" @selected((string) request('product_model_id') === (string) $productModel->id)>
                                             {{ $productModel->model_code }}
                                             @if ($productModel->model_name)
                                                 - {{ $productModel->model_name }}
@@ -209,9 +208,7 @@
         {{-- ============================================================ --}}
         @php
             // Group the rows of the current page by Usage Date
-            $groupedLogs = $usageLogs->groupBy(
-                fn($log) => $log->usage_date?->format('Y-m-d') ?? 'no-date',
-            );
+            $groupedLogs = $usageLogs->groupBy(fn($log) => $log->usage_date?->format('Y-m-d') ?? 'no-date');
 
             // Running row number
             $rowNo = 0;
@@ -266,6 +263,30 @@
                                             : \Carbon\Carbon::parse($dateKey)->format('d-M-Y');
                                     $groupActive = $dateLogs->where('status', 'active')->count();
                                     $groupVoided = $dateLogs->where('status', 'void')->count();
+
+                                    // Product Models used on this date
+                                    $groupModels = $dateLogs
+                                        ->map(function ($log) {
+                                            $model = $log->productModel ?? $log->productionPlan?->productModel;
+
+                                            if (!$model) {
+                                                $linked =
+                                                    $log->item?->productModelItems
+                                                        ?->pluck('productModel')
+                                                        ->filter()
+                                                        ->unique('id')
+                                                        ->values() ?? collect();
+
+                                                if ($linked->count() === 1) {
+                                                    $model = $linked->first();
+                                                }
+                                            }
+
+                                            return $model?->model_code;
+                                        })
+                                        ->filter()
+                                        ->unique()
+                                        ->values();
                                 @endphp
 
                                 {{-- Date row with + sign (click to open) --}}
@@ -285,6 +306,19 @@
                                         @endif
                                         @if ($groupVoided > 0)
                                             <span class="badge badge-danger">{{ $groupVoided }} Voided</span>
+                                        @endif
+
+                                       
+                                        @foreach ($groupModels as $modelCode)
+                                            <span class="badge badge-primary">{{ $modelCode }}</span>
+                                        @endforeach
+
+                                        @if ($dateKey !== 'no-date')
+                                            <a href="{{ route('material-usage.date-pdf', $dateKey) }}" target="_blank"
+                                                class="btn btn-xs btn-danger ml-2" onclick="event.stopPropagation();"
+                                                title="PDF for {{ $groupDate }}">
+                                                <i class="fas fa-file-pdf mr-1"></i> PDF
+                                            </a>
                                         @endif
                                     </td>
                                 </tr>
@@ -312,7 +346,8 @@
                                             @if ($usageLog->productModel)
                                                 <strong>{{ $usageLog->productModel->model_code }}</strong>
                                                 <br>
-                                                <small class="text-muted">{{ $usageLog->productModel->model_name }}</small>
+                                                <small
+                                                    class="text-muted">{{ $usageLog->productModel->model_name }}</small>
                                             @elseif ($usageLog->productionPlan?->productModel)
                                                 <strong>{{ $usageLog->productionPlan->productModel->model_code }}</strong>
                                                 <br>
@@ -331,7 +366,8 @@
                                                 @if ($linkedModels->count() === 1)
                                                     <strong>{{ $linkedModels->first()->model_code }}</strong>
                                                     <br>
-                                                    <small class="text-muted">{{ $linkedModels->first()->model_name }}</small>
+                                                    <small
+                                                        class="text-muted">{{ $linkedModels->first()->model_name }}</small>
                                                 @elseif ($linkedModels->count() > 1)
                                                     <span class="badge badge-warning">Multiple Models</span>
                                                     <br>

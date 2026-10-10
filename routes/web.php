@@ -107,6 +107,10 @@ Route::middleware(['auth'])->group(function () {
         [UsageLogController::class, 'allUsage']
     )->name('material-usage.index');
 
+Route::get('material-usage/pdf/{date}', [UsageLogController::class, 'datePdf'])
+    ->name('material-usage.date-pdf');
+
+
     Route::get(
         '/material-usage/create',
         [UsageLogController::class, 'createMaterialUsage']

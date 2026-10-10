@@ -726,7 +726,7 @@
                             <a href="{{ route('reporting.grn-usage.index') }}" class="nav-link
             {{ request()->is('reporting/grn-usage*') ? 'active' : '' }}">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>GRN Usage</p>
+                                <p>GRN (Invoice) Usage</p>
                             </a>
                         </li>
 

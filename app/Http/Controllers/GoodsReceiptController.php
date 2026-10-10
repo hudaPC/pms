@@ -786,15 +786,37 @@ class GoodsReceiptController extends Controller
 
     public function usageReport(GoodsReceipt $goodsReceipt)
     {
+        $rows = $this->usageRows($goodsReceipt);
+
+        return view('reporting.grn-usage', compact('goodsReceipt', 'rows'));
+    }
+
+    public function usagePdf(GoodsReceipt $goodsReceipt)
+    {
+        $rows = $this->usageRows($goodsReceipt);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'reporting.grn-usage-pdf',
+            compact('goodsReceipt', 'rows')
+        )->setPaper('a4', 'portrait');
+
+        return $pdf->stream(
+            'GRN-Usage-' . \Illuminate\Support\Str::slug($goodsReceipt->grn_number) . '.pdf'
+        );
+    }
+
+    private function usageRows(GoodsReceipt $goodsReceipt)
+    {
         $goodsReceipt->load([
             'purchaseOrders',
             'items.item.unit',
             'items.purchaseOrderItem.purchaseOrder',
+            'items.purchaseOrderItem.productModel',
             'items.usageLogs' => fn($q) => $q->with('productModel')
                 ->orderBy('usage_date')->orderBy('id'),
         ]);
 
-        $rows = $goodsReceipt->items->map(function ($line) {
+        return $goodsReceipt->items->map(function ($line) {
 
             $active = $line->usageLogs->where('status', 'active');
             $used = (float) $active->sum('quantity');
@@ -818,8 +840,6 @@ class GoodsReceiptController extends Controller
                     ->sum('quantity'),
             ];
         });
-
-        return view('reporting.grn-usage', compact('goodsReceipt', 'rows'));
     }
 
 

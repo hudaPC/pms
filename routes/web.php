@@ -835,5 +835,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
             Route::get('/reporting/model-grn-usage', [GoodsReceiptController::class, 'modelUsage'])
         ->name('reporting.model-grn-usage');
 
+    Route::get('reporting/grn-usage/{goodsReceipt}/pdf', [GoodsReceiptController::class, 'usagePdf'])
+    ->name('reporting.grn-usage.pdf');
+
 
 });

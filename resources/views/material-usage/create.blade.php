@@ -191,7 +191,7 @@
             // Data from server
             // ------------------------------------------------------------------
             const productModels =
-                                {{ Illuminate\Support\Js::from(
+                                        {{ Illuminate\Support\Js::from(
         $productModels->map(
             fn($model) => [
                 'id' => $model->id,
@@ -973,7 +973,13 @@
                 });
 
                 removeButton.on('click', function () {
-                    destroyRow(row);
+                    if (cleanedRows) {
+                        // While "cleaned": only set the row aside, so Show All Rows can bring it back
+                        row.detach();
+                        deletedWhileCleaned.push(row[0]);
+                    } else {
+                        destroyRow(row);
+                    }
                     updateRowNumbers();
                     updateRowCount();
                 });
@@ -1077,10 +1083,12 @@
             // ------------------------------------------------------------------
             // Clean Disabled Rows (toggle)
             //  1st click: set aside every row whose GRN is disabled
-            //  2nd click: bring all rows back in their original order
+            //  2nd click: bring ALL rows back (even ones deleted with the trash icon
+            //             while cleaned) in their original order
             // ------------------------------------------------------------------
             let cleanedRows = null; // rows set aside while "cleaned"
             let originalOrder = []; // row order before cleaning
+            let deletedWhileCleaned = []; // rows deleted with the trash icon while cleaned
 
             $('#cleanDisabledRows').on('click', function () {
 
@@ -1099,15 +1107,18 @@
                         return originalOrder.indexOf(r) === -1;
                     });
 
-                    // Original rows in their original order
+                    // Original rows in their original order (including trash-deleted ones)
                     const orderedRows = originalOrder.filter(function (r) {
-                        return setAsideRows.indexOf(r) !== -1 || currentRows.indexOf(r) !== -1;
+                        return setAsideRows.indexOf(r) !== -1 ||
+                            deletedWhileCleaned.indexOf(r) !== -1 ||
+                            currentRows.indexOf(r) !== -1;
                     });
 
                     materialItemsBody.append($(orderedRows.concat(newRows)));
 
                     cleanedRows = null;
                     originalOrder = [];
+                    deletedWhileCleaned = [];
 
                     button.removeClass('btn-outline-primary').addClass('btn-outline-danger');
                     icon.removeClass('fa-undo').addClass('fa-broom');
@@ -1132,6 +1143,7 @@
                 }
 
                 originalOrder = materialItemsBody.children('tr').toArray();
+                deletedWhileCleaned = [];
                 cleanedRows = rowsToHide.detach();
 
                 button.removeClass('btn-outline-danger').addClass('btn-outline-primary');

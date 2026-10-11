@@ -799,7 +799,17 @@ class GoodsReceiptController extends Controller
             ->selectRaw('goods_receipt_items.goods_receipt_id as grn_id, SUM(usage_logs.quantity) as used')
             ->pluck('used', 'grn_id');
 
-        return view('reporting.grn-usage-index', compact('goodsReceipts', 'usedByGrn'));
+                // Value of active usage charged to each GRN (used qty x PO unit price)
+        $usedAmountByGrn = UsageLog::query()
+            ->join('goods_receipt_items', 'goods_receipt_items.id', '=', 'usage_logs.goods_receipt_item_id')
+            ->join('purchase_order_items', 'purchase_order_items.id', '=', 'goods_receipt_items.purchase_order_item_id')
+            ->where('usage_logs.status', 'active')
+            ->whereIn('goods_receipt_items.goods_receipt_id', $goodsReceipts->pluck('id'))
+            ->groupBy('goods_receipt_items.goods_receipt_id')
+            ->selectRaw('goods_receipt_items.goods_receipt_id as grn_id, SUM(usage_logs.quantity * COALESCE(purchase_order_items.unit_price, 0)) as used_amount')
+            ->pluck('used_amount', 'grn_id');
+
+        return view('reporting.grn-usage-index', compact('goodsReceipts', 'usedByGrn', 'usedAmountByGrn'));
     }
 
     public function usageReport(GoodsReceipt $goodsReceipt)

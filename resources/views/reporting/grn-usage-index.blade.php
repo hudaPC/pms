@@ -22,7 +22,9 @@
                                 <th>Receipt Date</th>
                                 <th class="text-center">Items</th>
                                 <th class="text-right">Received</th>
+                                <th class="text-right">Received Price</th>
                                 <th class="text-right">Used</th>
+                                <th class="text-right">Used Price</th>
                                 <th width="170">Action</th>
                             </tr>
                         </thead>
@@ -38,9 +40,13 @@
                                     </td>
                                     <td>{{ $grn->receipt_date ? $grn->receipt_date->format('d-M-Y') : '-' }}</td>
                                     <td class="text-center">{{ $grn->items_count }}</td>
-                                    <td class="text-right">{{ number_format((float) $grn->total_received_quantity, 3) }}</td>
+                                                                        <td class="text-right">{{ number_format((float) $grn->total_received_quantity, 3) }}</td>
+                                    <td class="text-right text-primary">
+                                        {{ number_format((float) $grn->total_amount, 2) }}</td>
                                     <td class="text-right text-danger">
                                         {{ number_format((float) ($usedByGrn[$grn->id] ?? 0), 3) }}</td>
+                                    <td class="text-right text-danger">
+                                        {{ number_format((float) ($usedAmountByGrn[$grn->id] ?? 0), 2) }}</td>
                                     <td class="text-nowrap">
                                         <a href="{{ route('reporting.grn-usage.show', $grn) }}" class="btn btn-sm btn-info">
                                             <i class="fas fa-chart-bar mr-1"></i> Usage
@@ -54,7 +60,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-center text-muted py-4">No Goods Receipts found.</td>
+                                    <td colspan="10" class="text-center text-muted py-4">No Goods Receipts found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

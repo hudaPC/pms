@@ -677,9 +677,12 @@ class GoodsReceiptController extends Controller
             }
 
             // Mark the GRN as voided
-            $lockedGoodsReceipt->status = 'voided';
+                    $lockedGoodsReceipt->status = 'voided';
             $lockedGoodsReceipt->voided_at = now();
             $lockedGoodsReceipt->void_reason = $validated['void_reason'];
+            $lockedGoodsReceipt->total_amount = 0;
+            $lockedGoodsReceipt->balance_amount = 0;
+            $lockedGoodsReceipt->payment_status = 'voided';
             $lockedGoodsReceipt->save();
         });
 

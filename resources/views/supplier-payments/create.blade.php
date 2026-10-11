@@ -16,16 +16,16 @@
                 </h2>
 
                 <p class="text-muted mb-0">
-                    Invoice: {{ $supplierInvoice->invoice_number }}
+                    GRN: {{ $goodsReceipt->grn_number }}
                 </p>
 
             </div>
 
-            <a href="{{ route('supplier-invoices.show', $supplierInvoice) }}" class="btn btn-secondary">
+            <a href="{{ route('goods-receipts.show', $goodsReceipt) }}" class="btn btn-secondary">
 
                 <i class="fas fa-arrow-left mr-1"></i>
 
-                Back to Invoice
+                Back to Goods Receipt
 
             </a>
 
@@ -49,7 +49,7 @@
         @endif
 
 
-        {{-- Invoice Summary --}}
+        {{-- Goods Receipt Summary --}}
         <div class="card card-primary card-outline mb-4">
 
             <div class="card-header">
@@ -58,7 +58,7 @@
 
                     <i class="fas fa-file-invoice-dollar mr-2"></i>
 
-                    Invoice Summary
+                    Goods Receipt Summary
 
                 </h3>
 
@@ -74,7 +74,7 @@
 
                         <div class="mt-1">
 
-                            {{ $supplierInvoice->supplier->name ?? '-' }}
+                            {{ $goodsReceipt->supplier->name ?? '-' }}
 
                         </div>
 
@@ -87,7 +87,7 @@
 
                         <div class="mt-1">
 
-                            {{ number_format((float) $supplierInvoice->total_amount, 4) }}
+                            {{ number_format((float) $goodsReceipt->total_amount, 4) }}
 
                         </div>
 
@@ -100,7 +100,7 @@
 
                         <div class="mt-1 text-success">
 
-                            {{ number_format((float) $supplierInvoice->paid_amount, 4) }}
+                            {{ number_format((float) $goodsReceipt->paid_amount, 4) }}
 
                         </div>
 
@@ -115,7 +115,7 @@
 
                             <strong>
 
-                                {{ number_format((float) $supplierInvoice->balance_amount, 4) }}
+                                {{ number_format((float) $goodsReceipt->balance_amount, 4) }}
 
                             </strong>
 
@@ -131,7 +131,7 @@
 
 
         {{-- Payment Form --}}
-        <form action="{{ route('supplier-invoices.payments.store', $supplierInvoice) }}" method="POST">
+        <form action="{{ route('goods-receipts.payments.store', $goodsReceipt) }}" method="POST">
 
             @csrf
 
@@ -208,7 +208,7 @@
                                 </label>
 
                                 <input type="number" name="amount" id="amount" step="0.0001" min="0.0001"
-                                    max="{{ $supplierInvoice->balance_amount }}" value="{{ old('amount') }}"
+                                    max="{{ $goodsReceipt->balance_amount }}" value="{{ old('amount') }}"
                                     class="form-control @error('amount') is-invalid @enderror" required>
 
                                 @error('amount')
@@ -220,7 +220,7 @@
                                 <small class="form-text text-muted">
 
                                     Maximum payable:
-                                    {{ number_format((float) $supplierInvoice->balance_amount, 4) }}
+                                    {{ number_format((float) $goodsReceipt->balance_amount, 4) }}
 
                                 </small>
 
@@ -360,7 +360,7 @@
 
                 const maximumPayable =
                     parseFloat(
-                        '{{ (float) $supplierInvoice->balance_amount }}'
+                        '{{ (float) $goodsReceipt->balance_amount }}'
                     ) || 0;
 
 

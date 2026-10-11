@@ -68,17 +68,17 @@
                         </div>
 
 
-                        {{-- Invoice Number --}}
+                        {{-- GRN Number --}}
                         <div class="col-md-4">
 
                             <div class="form-group">
 
                                 <label>
-                                    Invoice Number
+                                    GRN Number
                                 </label>
 
                                 <input type="text" name="invoice_number" value="{{ $invoiceNumber }}"
-                                    class="form-control" placeholder="Search invoice number">
+                                    class="form-control" placeholder="Search GRN Number">
 
                             </div>
 
@@ -242,7 +242,7 @@
 
                                 <th>Supplier</th>
 
-                                <th>Invoice Number</th>
+                                <th>GRN Number</th>
 
                                 <th>Payment Reference</th>
 
@@ -296,11 +296,11 @@
                                     {{-- Invoice --}}
                                     <td>
 
-                                        @if ($payment->supplierInvoice)
+                                        @if ($payment->goodsReceipt)
                                             <a
-                                                href="{{ route('supplier-invoices.show', $payment->supplierInvoice) }}">
+                                                href="{{ route('goods-receipts.show', $payment->goodsReceipt) }}">
 
-                                                {{ $payment->supplierInvoice->invoice_number }}
+                                                {{ $payment->goodsReceipt->grn_number }}
 
                                             </a>
                                         @else
@@ -368,13 +368,13 @@
                                     {{-- Action --}}
                                     <td class="text-center">
 
-                                        @if ($payment->supplierInvoice)
-                                            <a href="{{ route('supplier-invoices.show', $payment->supplierInvoice) }}"
+                                        @if ($payment->goodsReceipt)
+                                            <a href="{{ route('goods-receipts.show', $payment->goodsReceipt) }}"
                                                 class="btn btn-sm btn-outline-primary">
 
                                                 <i class="fas fa-eye"></i>
 
-                                                View Invoice
+                                                View Receipt
 
                                             </a>
                                         @else

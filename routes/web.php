@@ -21,8 +21,6 @@ use App\Http\Controllers\GoodsReceiptController;
 use App\Http\Controllers\GoodsReceiptItemController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\StockAdjustmentController;
-use App\Http\Controllers\SupplierInvoiceController;
-use App\Http\Controllers\SupplierInvoiceItemController;
 use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\SupplierLedgerController;
 use App\Http\Controllers\AccountsPayableController;
@@ -107,8 +105,8 @@ Route::middleware(['auth'])->group(function () {
         [UsageLogController::class, 'allUsage']
     )->name('material-usage.index');
 
-Route::get('material-usage/pdf/{date}', [UsageLogController::class, 'datePdf'])
-    ->name('material-usage.date-pdf');
+    Route::get('material-usage/pdf/{date}', [UsageLogController::class, 'datePdf'])
+        ->name('material-usage.date-pdf');
 
 
     Route::get(
@@ -192,102 +190,7 @@ Route::get('material-usage/pdf/{date}', [UsageLogController::class, 'datePdf'])
 
 
 
-    //INVOICES START
-    // Supplier Invoices
-    Route::post(
-        '/supplier-invoices/generate-number',
-        [SupplierInvoiceController::class, 'generateNumber']
-    )->name('supplier-invoices.generate-number');
-
-    // create purchase order
-    Route::post(
-        '/supplier-invoices/{supplierInvoice}/create-purchase-order',
-        [
-            SupplierInvoiceController::class,
-            'createPurchaseOrder'
-        ]
-    )->name(
-            'supplier-invoices.create-purchase-order'
-        );
-
-    Route::resource(
-        'supplier-invoices',
-        SupplierInvoiceController::class
-    );
-
-    Route::post(
-        '/supplier-invoices/{supplierInvoice}/confirm',
-        [SupplierInvoiceController::class, 'confirm']
-    )->name('supplier-invoices.confirm');
-
-
-    Route::post(
-        '/supplier-invoices/{supplierInvoice}/cancel',
-        [SupplierInvoiceController::class, 'cancel']
-    )->name('supplier-invoices.cancel');
-
-
-
-    Route::patch(
-        '/supplier-invoices/{supplierInvoice}/due-date',
-        [
-            SupplierInvoiceController::class,
-            'updateDueDate'
-        ]
-    )->name('supplier-invoices.due-date.update');
-
-
-
-    // Supplier Invoice Items
-    Route::get(
-        '/supplier-invoices/{supplierInvoice}/items/create',
-        [SupplierInvoiceItemController::class, 'create']
-    )->name('supplier-invoices.items.create');
-
-    Route::get(
-        '/supplier-invoices/{supplierInvoice}/product-models/{productModel}/items',
-        [SupplierInvoiceItemController::class, 'itemsByProductModel']
-    )->name(
-            'supplier-invoices.product-model-items'
-        );
-    Route::post(
-        '/supplier-invoices/{supplierInvoice}/items',
-        [SupplierInvoiceItemController::class, 'store']
-    )->name('supplier-invoices.items.store');
-
-
-    Route::get(
-        '/supplier-invoices/{supplierInvoice}/items/{supplierInvoiceItem}/edit',
-        [SupplierInvoiceItemController::class, 'edit']
-    )->name('supplier-invoices.items.edit');
-
-
-    Route::put(
-        '/supplier-invoices/{supplierInvoice}/items/{supplierInvoiceItem}',
-        [SupplierInvoiceItemController::class, 'update']
-    )->name('supplier-invoices.items.update');
-
-
-    Route::delete(
-        '/supplier-invoices/{supplierInvoice}/items/{supplierInvoiceItem}',
-        [SupplierInvoiceItemController::class, 'destroy']
-    )->name('supplier-invoices.items.destroy');
-
-
-    // INVOICE UPLOAD
-    Route::get(
-        'supplier-invoices/{supplierInvoice}/items/create-upload',
-        [SupplierInvoiceItemController::class, 'createWithUpload']
-    )
-        ->name('supplier-invoices.items.create-upload');
-
-    Route::post(
-        'supplier-invoices/{supplierInvoice}/items/bulk-store',
-        [SupplierInvoiceItemController::class, 'storeBulk']
-    )
-        ->name('supplier-invoices.items.bulk-store');
-
-
+    
 
 
 
@@ -717,7 +620,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
         'goods-receipts/{goodsReceipt}/purchase-orders',
         [GoodsReceiptController::class, 'attachPurchaseOrder']
     )->name('goods-receipts.purchase-orders.attach');
-    
+
     Route::get(
         'goods-receipts/{goodsReceipt}/usage',
         [GoodsReceiptController::class, 'usageReport']
@@ -739,21 +642,21 @@ Route::middleware(['auth', 'admin'])->group(function () {
     )->name('supplier-payments.index');
 
     Route::get(
-        '/supplier-invoices/{supplierInvoice}/payments/create',
+        '/goods-receipts/{goodsReceipt}/payments/create',
         [SupplierPaymentController::class, 'create']
-    )->name('supplier-invoices.payments.create');
+    )->name('goods-receipts.payments.create');
 
 
     Route::post(
-        '/supplier-invoices/{supplierInvoice}/payments',
+        '/goods-receipts/{goodsReceipt}/payments',
         [SupplierPaymentController::class, 'store']
-    )->name('supplier-invoices.payments.store');
+    )->name('goods-receipts.payments.store');
 
 
     Route::delete(
-        '/supplier-invoices/{supplierInvoice}/payments/{supplierPayment}',
+        '/goods-receipts/{goodsReceipt}/payments/{supplierPayment}',
         [SupplierPaymentController::class, 'destroy']
-    )->name('supplier-invoices.payments.destroy');
+    )->name('goods-receipts.payments.destroy');
 
     //ACCOUNT PAYABLE CONTROLLER
     Route::get(
@@ -827,16 +730,16 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->name('reporting.po-tracking.item-history');
 
 
-            Route::get('/reporting/grn-usage', [GoodsReceiptController::class, 'usageIndex'])
+    Route::get('/reporting/grn-usage', [GoodsReceiptController::class, 'usageIndex'])
         ->name('reporting.grn-usage.index');
 
     Route::get('/reporting/grn-usage/{goodsReceipt}', [GoodsReceiptController::class, 'usageReport'])
         ->name('reporting.grn-usage.show');
-            Route::get('/reporting/model-grn-usage', [GoodsReceiptController::class, 'modelUsage'])
+    Route::get('/reporting/model-grn-usage', [GoodsReceiptController::class, 'modelUsage'])
         ->name('reporting.model-grn-usage');
 
     Route::get('reporting/grn-usage/{goodsReceipt}/pdf', [GoodsReceiptController::class, 'usagePdf'])
-    ->name('reporting.grn-usage.pdf');
+        ->name('reporting.grn-usage.pdf');
 
 
 });

@@ -1029,7 +1029,7 @@
 
                                             <a
                                                 href="{{ route(
-                                                    'supplier-invoices.show',
+                                                    'goods-receipts.show',
                                                     $transaction['source_id']
                                                 ) }}"
                                                 class="btn btn-sm btn-outline-primary"

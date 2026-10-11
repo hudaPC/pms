@@ -73,14 +73,5 @@ class PurchaseOrder extends Model
             ->withTimestamps();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Supplier Invoices
-    |--------------------------------------------------------------------------
-    */
-
-    public function supplierInvoices(): HasMany
-    {
-        return $this->hasMany(SupplierInvoice::class);
-    }
+    
 }

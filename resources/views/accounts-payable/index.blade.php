@@ -736,7 +736,7 @@
                                 <td>
 
                                     <strong>
-                                        {{ $invoice->invoice_number }}
+                                        {{ $invoice->grn_number }}
                                     </strong>
 
                                 </td>
@@ -777,8 +777,8 @@
 
                                 <td>
 
-                                    {{ $invoice->invoice_date
-                                        ? $invoice->invoice_date->format('d-M-Y')
+                                    {{ $invoice->receipt_date
+                                        ? $invoice->receipt_date->format('d-M-Y')
                                         : '-'
                                     }}
 
@@ -841,19 +841,19 @@
 
                                 <td class="text-center">
 
-                                    @if($invoice->status === 'unpaid')
+                                    @if($invoice->payment_status === 'unpaid')
 
                                         <span class="badge badge-danger">
                                             Unpaid
                                         </span>
 
-                                    @elseif($invoice->status === 'partially_paid')
+                                    @elseif($invoice->payment_status === 'partially_paid')
 
                                         <span class="badge badge-warning">
                                             Partially Paid
                                         </span>
 
-                                    @elseif($invoice->status === 'paid')
+                                    @elseif($invoice->payment_status === 'paid')
 
                                         <span class="badge badge-success">
                                             Paid
@@ -867,7 +867,7 @@
                                                 str_replace(
                                                     '_',
                                                     ' ',
-                                                    $invoice->status
+                                                    $invoice->payment_status
                                                 )
                                             ) }}
 
@@ -938,7 +938,7 @@
 
                                     <a
                                         href="{{ route(
-                                            'supplier-invoices.show',
+                                            'goods-receipts.show',
                                             $invoice
                                         ) }}"
                                         class="btn btn-sm btn-outline-primary"

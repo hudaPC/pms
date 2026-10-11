@@ -11,7 +11,6 @@ use App\Services\ItemPurchasePlanningService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\SupplierInvoice;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class PurchaseOrderController extends Controller
@@ -654,8 +653,7 @@ class PurchaseOrderController extends Controller
         'supplier',
         'items.item.unit',
         'items.productModel',
-        'goodsReceipts.items',
-        'supplierInvoices',
+                'goodsReceipts.items',
     ]);
 
     return view(
@@ -839,17 +837,7 @@ class PurchaseOrderController extends Controller
             'Only draft purchase orders can be edited.'
         );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Supplier Invoice Purchase Order Header Is Locked
-        |--------------------------------------------------------------------------
-        */
-
-        abort_if(
-            $purchaseOrder->source === 'supplier-invoice',
-            403,
-            'This Purchase Order was created from a Supplier Invoice and cannot be edited manually.'
-        );
+        
         /*
         |--------------------------------------------------------------------------
         | Active Suppliers
@@ -898,17 +886,7 @@ class PurchaseOrderController extends Controller
             403,
             'Only draft purchase orders can be edited.'
         );
-        /*
-        |--------------------------------------------------------------------------
-        | Supplier Invoice Purchase Order Header Cannot Be Updated
-        |--------------------------------------------------------------------------
-        */
-
-        abort_if(
-            $purchaseOrder->source === 'supplier-invoice',
-            403,
-            'This Purchase Order was created from a Supplier Invoice and cannot be updated manually.'
-        );
+        
 
 
         /*
@@ -1186,62 +1164,9 @@ class PurchaseOrderController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        DB::transaction(function () use ($purchaseOrder) {
-            /*
-|--------------------------------------------------------------------------
-| Find Linked Supplier Invoice
-|--------------------------------------------------------------------------
-*/
-
-            $linkedSupplierInvoice = null;
-
-            if ($purchaseOrder->source === 'supplier-invoice') {
-
-                $linkedSupplierInvoice =
-                    SupplierInvoice::where(
-                        'purchase_order_id',
-                        $purchaseOrder->id
-                    )
-                        ->lockForUpdate()
-                        ->first();
-            }
-            /*
-               |--------------------------------------------------------------------------
-               | Unlink Supplier Invoice Items
-               |--------------------------------------------------------------------------
-               */
-
-            if ($linkedSupplierInvoice) {
-
-                $linkedSupplierInvoice
-                    ->items()
-                    ->update([
-                        'purchase_order_item_id' => null,
-                    ]);
-            }
-            /*
-        |--------------------------------------------------------------------------
-        | Unlink Supplier Invoice From Cancelled Purchase Order
-        |--------------------------------------------------------------------------
-        */
-
-            if ($linkedSupplierInvoice) {
-
-                $linkedSupplierInvoice->update([
-                    'purchase_order_id' => null,
-                ]);
-            }
-
-            /*
-              |--------------------------------------------------------------------------
-              | Cancel Purchase Order
-              |--------------------------------------------------------------------------
-              */
-
-            $purchaseOrder->update([
-                'status' => 'cancelled',
-            ]);
-        });
+                $purchaseOrder->update([
+            'status' => 'cancelled',
+        ]);
 
 
         /*

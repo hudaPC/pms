@@ -319,3 +319,12 @@ WHERE revision IN ('0','A', '1', '2');
 ***************************************
 
 SELECT * FROM stock_movements ORDER BY id DESC LIMIT 1;
+
+
+2026-10-11
+
+php artisan tinker
+
+App\Models\GoodsReceipt::with('purchaseOrder')->get()->each(function ($r) { $r->supplier_id = $r->purchaseOrder->supplier_id ?? null; $r->save(); if ($r->status !== 'voided') { $r->recalculateTotals(); } else { $r->update(['total_amount' => 0, 'balance_amount' => 0, 'payment_status' => 'voided']); } });
+
+App\Models\GoodsReceipt::select('grn_number','supplier_id','total_amount','balance_amount','payment_status')->get();

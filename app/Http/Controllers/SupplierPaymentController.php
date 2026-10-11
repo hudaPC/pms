@@ -2,191 +2,68 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SupplierInvoice;
+use App\Models\GoodsReceipt;
+use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\Supplier;
+use Illuminate\Validation\ValidationException;
 
 class SupplierPaymentController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Payment List
+    |--------------------------------------------------------------------------
+    */
 
     public function index(Request $request)
     {
-        /*
-    |--------------------------------------------------------------------------
-    | Filters
-    |--------------------------------------------------------------------------
-    */
+        $supplierId       = $request->input('supplier_id');
+        $invoiceNumber    = trim((string) $request->input('invoice_number', '')); // now filters by GRN number
+        $paymentReference = trim((string) $request->input('payment_reference', ''));
+        $paymentMethod    = $request->input('payment_method', '');
+        $fromDate         = $request->input('from_date');
+        $toDate           = $request->input('to_date');
 
-        $supplierId =
-            $request->input('supplier_id');
-
-        $invoiceNumber =
-            trim(
-                (string) $request->input(
-                    'invoice_number',
-                    ''
-                )
-            );
-
-        $paymentReference =
-            trim(
-                (string) $request->input(
-                    'payment_reference',
-                    ''
-                )
-            );
-
-        $paymentMethod =
-            $request->input(
-                'payment_method',
-                ''
-            );
-
-        $fromDate =
-            $request->input(
-                'from_date'
-            );
-
-        $toDate =
-            $request->input(
-                'to_date'
-            );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Suppliers For Filter
-    |--------------------------------------------------------------------------
-    */
-
-        $suppliers = Supplier::where(
-            'status',
-            true
-        )
+        $suppliers = Supplier::where('status', true)
             ->orderBy('name')
             ->get();
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Payment Query
-    |--------------------------------------------------------------------------
-    */
-
-        $query = SupplierPayment::with([
-            'supplier',
-            'supplierInvoice',
-        ]);
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Supplier Filter
-    |--------------------------------------------------------------------------
-    */
+        $query = SupplierPayment::with(['supplier', 'goodsReceipt']);
 
         if ($supplierId) {
-
-            $query->where(
-                'supplier_id',
-                $supplierId
-            );
+            $query->where('supplier_id', $supplierId);
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Invoice Number Filter
-    |--------------------------------------------------------------------------
-    */
 
         if ($invoiceNumber !== '') {
-
-            $query->whereHas(
-                'supplierInvoice',
-                function ($query) use ($invoiceNumber) {
-
-                    $query->where(
-                        'invoice_number',
-                        'like',
-                        '%' . $invoiceNumber . '%'
-                    );
-                }
-            );
+            $query->whereHas('goodsReceipt', function ($q) use ($invoiceNumber) {
+                $q->where('grn_number', 'like', '%' . $invoiceNumber . '%');
+            });
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Payment Reference Filter
-    |--------------------------------------------------------------------------
-    */
 
         if ($paymentReference !== '') {
-
-            $query->where(
-                'reference',
-                'like',
-                '%' . $paymentReference . '%'
-            );
+            $query->where('reference', 'like', '%' . $paymentReference . '%');
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Payment Method Filter
-    |--------------------------------------------------------------------------
-    */
 
         if ($paymentMethod !== '') {
-
-            $query->where(
-                'payment_method',
-                $paymentMethod
-            );
+            $query->where('payment_method', $paymentMethod);
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Date Range
-    |--------------------------------------------------------------------------
-    */
 
         if ($fromDate) {
-
-            $query->whereDate(
-                'payment_date',
-                '>=',
-                $fromDate
-            );
+            $query->whereDate('payment_date', '>=', $fromDate);
         }
-
 
         if ($toDate) {
-
-            $query->whereDate(
-                'payment_date',
-                '<=',
-                $toDate
-            );
+            $query->whereDate('payment_date', '<=', $toDate);
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Results
-    |--------------------------------------------------------------------------
-    */
 
         $payments = $query
             ->latest('payment_date')
             ->latest('id')
             ->paginate(20)
             ->withQueryString();
-
 
         return view(
             'supplier-payments.index',
@@ -203,533 +80,160 @@ class SupplierPaymentController extends Controller
         );
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Create Payment
     |--------------------------------------------------------------------------
     */
 
-    public function create(SupplierInvoice $supplierInvoice)
+    public function create(GoodsReceipt $goodsReceipt)
     {
-        /*
-        |--------------------------------------------------------------------------
-        | Only Payable Invoice Statuses
-        |--------------------------------------------------------------------------
-        */
-
         abort_if(
-            !in_array(
-                $supplierInvoice->status,
-                [
-                    'unpaid',
-                    'partially_paid',
-                ]
-            ),
+            $goodsReceipt->status === 'voided'
+                || !in_array($goodsReceipt->payment_status, ['unpaid', 'partially_paid']),
             403,
-            'Payments can only be entered for unpaid or partially paid invoices.'
+            'Payments can only be entered for unpaid or partially paid goods receipts.'
         );
 
+        $goodsReceipt->load(['supplier', 'purchaseOrders']);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Load Supplier
-        |--------------------------------------------------------------------------
-        */
+        // Payment reference: PAY-YYYYMMDD-0001
+        $datePrefix = 'PAY-' . now()->format('Ymd') . '-';
 
-        $supplierInvoice->load([
-            'supplier',
-            'purchaseOrder',
-        ]);
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Generate Payment Reference
-        |--------------------------------------------------------------------------
-        |
-        | Format:
-        |
-        | PAY-YYYYMMDD-0001
-        |
-        */
-
-        $datePrefix =
-            'PAY-' . now()->format('Ymd') . '-';
-
-
-        $lastPayment = SupplierPayment::where(
-            'reference',
-            'like',
-            $datePrefix . '%'
-        )
+        $lastPayment = SupplierPayment::where('reference', 'like', $datePrefix . '%')
             ->orderByDesc('reference')
             ->first();
 
+        $nextSequence = $lastPayment
+            ? ((int) substr($lastPayment->reference, -4)) + 1
+            : 1;
 
-        if ($lastPayment) {
-
-            $lastSequence = (int) substr(
-                $lastPayment->reference,
-                -4
-            );
-
-            $nextSequence =
-                $lastSequence + 1;
-        } else {
-
-            $nextSequence = 1;
-        }
-
-
-        $paymentReference =
-            $datePrefix
-            . str_pad(
-                $nextSequence,
-                4,
-                '0',
-                STR_PAD_LEFT
-            );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Create View
-        |--------------------------------------------------------------------------
-        */
+        $paymentReference = $datePrefix . str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
 
         return view(
             'supplier-payments.create',
-            compact(
-                'supplierInvoice',
-                'paymentReference'
-            )
+            compact('goodsReceipt', 'paymentReference')
         );
     }
 
-    public function store(
-        Request $request,
-        SupplierInvoice $supplierInvoice
-    ) {
-        /*
+    /*
     |--------------------------------------------------------------------------
-    | Only Payable Invoice Statuses
+    | Store Payment
     |--------------------------------------------------------------------------
     */
 
-        abort_if(
-            !in_array(
-                $supplierInvoice->status,
-                [
-                    'unpaid',
-                    'partially_paid',
-                ]
-            ),
-            403,
-            'Payments can only be entered for unpaid or partially paid invoices.'
-        );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Validation
-    |--------------------------------------------------------------------------
-    */
-
+    public function store(Request $request, GoodsReceipt $goodsReceipt)
+    {
         $validated = $request->validate([
-
-            'payment_date' => [
-                'required',
-                'date',
-            ],
-
-            'amount' => [
-                'required',
-                'numeric',
-                'min:0.0001',
-            ],
-
-            'payment_method' => [
-                'required',
-                'in:cash,bank_transfer,cheque,mobile_banking,other',
-            ],
-
-            'reference' => [
-                'required',
-                'string',
-                'max:100',
-                'unique:supplier_payments,reference',
-            ],
-
-            'transaction_reference' => [
-                'nullable',
-                'string',
-                'max:150',
-            ],
-
-            'remarks' => [
-                'nullable',
-                'string',
-            ],
-
+            'payment_date'          => ['required', 'date'],
+            'amount'                => ['required', 'numeric', 'min:0.0001'],
+            'payment_method'        => ['required', 'in:cash,bank_transfer,cheque,mobile_banking,other'],
+            'reference'             => ['required', 'string', 'max:100', 'unique:supplier_payments,reference'],
+            'transaction_reference' => ['nullable', 'string', 'max:150'],
+            'remarks'               => ['nullable', 'string'],
         ]);
-        /*
-        |--------------------------------------------------------------------------
-        | Payment Date Cannot Be Before Invoice Date
-        |--------------------------------------------------------------------------
-        */
 
-        $paymentDate =
-            \Carbon\Carbon::parse(
-                $validated['payment_date']
-            )->startOfDay();
+        $paymentAmount = (float) $validated['amount'];
 
-        $invoiceDate =
-            \Carbon\Carbon::parse(
-                $supplierInvoice->invoice_date
-            )->startOfDay();
+        DB::transaction(function () use ($validated, $goodsReceipt, $paymentAmount) {
 
+            // Lock the receipt so two payments cannot overpay it
+            $receipt = GoodsReceipt::query()
+                ->whereKey($goodsReceipt->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($paymentDate->lt($invoiceDate)) {
-
-            return back()
-                ->withInput()
-                ->withErrors([
-
-                    'payment_date' =>
-                    'Payment date cannot be earlier than the supplier invoice date of '
-                        . $invoiceDate->format('d-M-Y')
-                        . '.',
-
-                ]);
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Prevent Overpayment
-        |--------------------------------------------------------------------------
-        */
-
-        $paymentAmount =
-            (float) $validated['amount'];
-
-        $currentBalance =
-            (float) $supplierInvoice->balance_amount;
-
-
-
-        if ($paymentAmount > ($currentBalance + 0.0001)) {
-            return back()
-                ->withInput()
-                ->withErrors([
-
-                    'amount' =>
-                    'Payment amount cannot exceed the current invoice balance of '
-                        . number_format(
-                            $currentBalance,
-                            4
-                        )
-                        . '.',
-
-                ]);
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Save Payment + Update Invoice
-        |--------------------------------------------------------------------------
-        */
-
-        DB::transaction(
-            function () use (
-                $validated,
-                $supplierInvoice,
-                $paymentAmount
+            if (
+                $receipt->status === 'voided'
+                || !in_array($receipt->payment_status, ['unpaid', 'partially_paid'])
             ) {
+                abort(403, 'Payments can only be entered for unpaid or partially paid goods receipts.');
+            }
 
-                /*
-            |--------------------------------------------------------------------------
-            | Create Payment
-            |--------------------------------------------------------------------------
-            */
+            // Payment date cannot be before the receipt date
+            $paymentDate = Carbon::parse($validated['payment_date'])->startOfDay();
+            $receiptDate = Carbon::parse($receipt->receipt_date)->startOfDay();
 
-                SupplierPayment::create([
-
-                    'supplier_invoice_id' => $supplierInvoice->id,
-
-                    'supplier_id' => $supplierInvoice->supplier_id,
-
-                    'payment_date' => $validated['payment_date'],   // <-- fixed
-
-                    'amount' => $paymentAmount,
-
-                    'payment_method' => $validated['payment_method'],
-
-                    'reference' => $validated['reference'],
-
-                    'transaction_reference' => $validated['transaction_reference'] ?? null,
-
-                    'remarks' => $validated['remarks'] ?? null,
-
-                ]);
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | Recalculate Paid Amount From Payment History
-            |--------------------------------------------------------------------------
-            */
-
-                $paidAmount =
-                    (float) $supplierInvoice
-                        ->payments()
-                        ->where('status', 'active')
-                        ->sum('amount');
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | Balance
-            |--------------------------------------------------------------------------
-            */
-
-                $balanceAmount = max(
-                    0,
-                    (float) $supplierInvoice->total_amount
-                        - $paidAmount
-                );
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | Status
-            |--------------------------------------------------------------------------
-            */
-
-                if ($balanceAmount <= 0) {
-
-                    $status =
-                        'paid';
-                } elseif ($paidAmount > 0) {
-
-                    $status =
-                        'partially_paid';
-                } else {
-
-                    $status =
-                        'unpaid';
-                }
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | Update Invoice
-            |--------------------------------------------------------------------------
-            */
-
-                $supplierInvoice->update([
-
-                    'paid_amount' =>
-                    $paidAmount,
-
-                    'balance_amount' =>
-                    $balanceAmount,
-
-                    'status' =>
-                    $status,
-
+            if ($paymentDate->lt($receiptDate)) {
+                throw ValidationException::withMessages([
+                    'payment_date' =>
+                        'Payment date cannot be earlier than the goods receipt date of '
+                        . $receiptDate->format('d-M-Y') . '.',
                 ]);
             }
-        );
 
+            // Prevent overpayment
+            $currentBalance = (float) $receipt->balance_amount;
 
-        /*
-    |--------------------------------------------------------------------------
-    | Redirect
-    |--------------------------------------------------------------------------
-    */
+            if ($paymentAmount > ($currentBalance + 0.0001)) {
+                throw ValidationException::withMessages([
+                    'amount' =>
+                        'Payment amount cannot exceed the current balance of '
+                        . number_format($currentBalance, 4) . '.',
+                ]);
+            }
+
+            SupplierPayment::create([
+                'goods_receipt_id'      => $receipt->id,
+                'supplier_id'           => $receipt->supplier_id,
+                'payment_date'          => $validated['payment_date'],
+                'amount'                => $paymentAmount,
+                'payment_method'        => $validated['payment_method'],
+                'reference'             => $validated['reference'],
+                'transaction_reference' => $validated['transaction_reference'] ?? null,
+                'remarks'               => $validated['remarks'] ?? null,
+            ]);
+
+            $receipt->recalculateTotals();
+        });
 
         return redirect()
-            ->route(
-                'supplier-invoices.show',
-                $supplierInvoice
-            )
-            ->with(
-                'success',
-                'Supplier payment recorded successfully.'
-            );
+            ->route('goods-receipts.show', $goodsReceipt)
+            ->with('success', 'Supplier payment recorded successfully.');
     }
-    public function destroy(
-        Request $request,
-        SupplierInvoice $supplierInvoice,
-        SupplierPayment $supplierPayment
-    ) {
-        /*
+
+    /*
     |--------------------------------------------------------------------------
-    | Make Sure Payment Belongs To Invoice
+    | Void Payment
     |--------------------------------------------------------------------------
     */
 
+    public function destroy(
+        Request $request,
+        GoodsReceipt $goodsReceipt,
+        SupplierPayment $supplierPayment
+    ) {
         abort_unless(
-            (int) $supplierPayment->supplier_invoice_id
-                === (int) $supplierInvoice->id,
+            (int) $supplierPayment->goods_receipt_id === (int) $goodsReceipt->id,
             404
         );
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Prevent Double Void
-    |--------------------------------------------------------------------------
-    */
-
         if ($supplierPayment->status === 'void') {
-
             return redirect()
-                ->route(
-                    'supplier-invoices.show',
-                    $supplierInvoice
-                )
-                ->with(
-                    'error',
-                    'This supplier payment has already been voided.'
-                );
+                ->route('goods-receipts.show', $goodsReceipt)
+                ->with('error', 'This supplier payment has already been voided.');
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Validate Void Reason
-    |--------------------------------------------------------------------------
-    */
-
         $validated = $request->validate([
-
-            'void_reason' => [
-                'required',
-                'string',
-                'max:500',
-            ],
-
+            'void_reason' => ['required', 'string', 'max:500'],
         ]);
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Void Payment + Recalculate Invoice
-    |--------------------------------------------------------------------------
-    */
-
-        DB::transaction(function () use (
-            $supplierInvoice,
-            $supplierPayment,
-            $validated
-        ) {
-
-            /*
-        |--------------------------------------------------------------------------
-        | Mark Payment As Void
-        |--------------------------------------------------------------------------
-        */
+        DB::transaction(function () use ($goodsReceipt, $supplierPayment, $validated) {
 
             $supplierPayment->update([
-
-                'status' =>
-                'void',
-
-                'voided_at' =>
-                now(),
-
-                'void_reason' =>
-                $validated['void_reason'],
-
+                'status'      => 'void',
+                'voided_at'   => now(),
+                'void_reason' => $validated['void_reason'],
             ]);
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | Recalculate Active Paid Amount
-        |--------------------------------------------------------------------------
-        */
-
-            $paidAmount =
-                (float) $supplierInvoice
-                    ->payments()
-                    ->where(
-                        'status',
-                        'active'
-                    )
-                    ->sum('amount');
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Recalculate Balance
-        |--------------------------------------------------------------------------
-        */
-
-            $balanceAmount = max(
-                0,
-                (float) $supplierInvoice->total_amount
-                    - $paidAmount
-            );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Determine Invoice Status
-        |--------------------------------------------------------------------------
-        */
-
-            if ($balanceAmount <= 0.0001) {
-
-                $status = 'paid';
-            } elseif ($paidAmount > 0) {
-
-                $status = 'partially_paid';
-            } else {
-
-                $status = 'unpaid';
-            }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Update Supplier Invoice
-        |--------------------------------------------------------------------------
-        */
-
-            $supplierInvoice->update([
-
-                'paid_amount' =>
-                $paidAmount,
-
-                'balance_amount' =>
-                $balanceAmount,
-
-                'status' =>
-                $status,
-
-            ]);
+            $goodsReceipt->recalculateTotals();
         });
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Redirect
-    |--------------------------------------------------------------------------
-    */
-
         return redirect()
-            ->route(
-                'supplier-invoices.show',
-                $supplierInvoice
-            )
+            ->route('goods-receipts.show', $goodsReceipt)
             ->with(
                 'success',
-                'Supplier payment voided successfully. Invoice balance has been recalculated.'
+                'Supplier payment voided successfully. Receipt balance has been recalculated.'
             );
     }
 }

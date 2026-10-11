@@ -2,665 +2,193 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GoodsReceipt;
 use App\Models\Supplier;
-use App\Models\SupplierInvoice;
 use App\Models\SupplierPayment;
 use Illuminate\Http\Request;
 
 class SupplierLedgerController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | Supplier Ledger
-    |--------------------------------------------------------------------------
-    */
-
     public function index(Request $request)
     {
-        /*
-    |--------------------------------------------------------------------------
-    | Suppliers
-    |--------------------------------------------------------------------------
-    */
-
         $suppliers = Supplier::where('status', true)
             ->orderBy('name')
             ->get();
 
+        $supplierId = $request->input('supplier_id');
+        $fromDate   = $request->input('from_date');
+        $toDate     = $request->input('to_date');
 
-        /*
-    |--------------------------------------------------------------------------
-    | Filters
-    |--------------------------------------------------------------------------
-    */
-
-        $supplierId =
-            $request->input('supplier_id');
-
-        $fromDate =
-            $request->input('from_date');
-
-        $toDate =
-            $request->input('to_date');
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Defaults
-    |--------------------------------------------------------------------------
-    */
-
-        $supplier = null;
-
+        $supplier     = null;
         $transactions = collect();
 
         $summary = [
-
             'opening_balance' => 0,
-
             'period_invoiced' => 0,
-
-            'period_paid' => 0,
-
+            'period_paid'     => 0,
             'closing_balance' => 0,
-
         ];
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | No Supplier Selected
-    |--------------------------------------------------------------------------
-    */
-
         if (!$supplierId) {
-
             return view(
                 'supplier-ledger.index',
-                compact(
-                    'suppliers',
-                    'supplier',
-                    'transactions',
-                    'summary',
-                    'fromDate',
-                    'toDate'
-                )
+                compact('suppliers', 'supplier', 'transactions', 'summary', 'fromDate', 'toDate')
             );
         }
 
+        $supplier = Supplier::findOrFail($supplierId);
 
         /*
-    |--------------------------------------------------------------------------
-    | Supplier
-    |--------------------------------------------------------------------------
-    */
-
-        $supplier = Supplier::findOrFail(
-            $supplierId
-        );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Opening Balance
-    |--------------------------------------------------------------------------
-    |
-    | Opening balance includes all posted invoices and payments
-    | before From Date.
-    |
-    */
-
-        $openingInvoiceTotal = 0;
-
+        | Opening balance: receipts and payments before the From Date
+        */
+        $openingReceiptTotal = 0;
         $openingPaymentTotal = 0;
 
-
         if ($fromDate) {
+            $openingReceiptTotal = (float) GoodsReceipt::where('supplier_id', $supplier->id)
+                ->where('status', '!=', 'voided')
+                ->whereDate('receipt_date', '<', $fromDate)
+                ->sum('total_amount');
 
-            /*
-        |--------------------------------------------------------------------------
-        | Invoices Before From Date
-        |--------------------------------------------------------------------------
-        */
-
-            $openingInvoiceTotal =
-                (float) SupplierInvoice::where(
-                    'supplier_id',
-                    $supplier->id
-                )
-                    ->whereNotIn(
-                        'status',
-                        [
-                            'draft',
-                            'cancelled',
-                        ]
-                    )
-                    ->whereDate(
-                        'invoice_date',
-                        '<',
-                        $fromDate
-                    )
-                    ->sum('total_amount');
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Payments Before From Date
-        |--------------------------------------------------------------------------
-        */
-            $openingPaymentTotal =
-                (float) SupplierPayment::where(
-                    'supplier_id',
-                    $supplier->id
-                )
-                    ->where(
-                        'status',
-                        'active'
-                    )
-                    ->whereDate(
-                        'payment_date',
-                        '<',
-                        $fromDate
-                    )
-                    ->sum('amount');
+            $openingPaymentTotal = (float) SupplierPayment::where('supplier_id', $supplier->id)
+                ->where('status', 'active')
+                ->whereDate('payment_date', '<', $fromDate)
+                ->sum('amount');
         }
 
-
-        $openingBalance =
-            $openingInvoiceTotal
-            - $openingPaymentTotal;
-
+        $openingBalance = $openingReceiptTotal - $openingPaymentTotal;
 
         /*
-    |--------------------------------------------------------------------------
-    | Period Invoices Query
-    |--------------------------------------------------------------------------
-    */
-
-        $invoiceQuery = SupplierInvoice::where(
-            'supplier_id',
-            $supplier->id
-        )
-            ->whereNotIn(
-                'status',
-                [
-                    'draft',
-                    'cancelled',
-                ]
-            );
-
+        | Period goods receipts (debit)
+        */
+        $receiptQuery = GoodsReceipt::where('supplier_id', $supplier->id)
+            ->where('status', '!=', 'voided');
 
         if ($fromDate) {
-
-            $invoiceQuery->whereDate(
-                'invoice_date',
-                '>=',
-                $fromDate
-            );
+            $receiptQuery->whereDate('receipt_date', '>=', $fromDate);
         }
-
-
         if ($toDate) {
-
-            $invoiceQuery->whereDate(
-                'invoice_date',
-                '<=',
-                $toDate
-            );
+            $receiptQuery->whereDate('receipt_date', '<=', $toDate);
         }
 
+        $invoices = $receiptQuery->get()->map(function ($receipt) {
+            return [
+                'date'        => $receipt->receipt_date,
+                'type'        => 'invoice',
+                'reference'   => $receipt->grn_number,
+                'description' => 'Goods Receipt',
+                'debit'       => (float) $receipt->total_amount,
+                'credit'      => 0,
+                'sort_id'     => $receipt->id,
+                'source_id'   => $receipt->id,
+            ];
+        });
 
         /*
-    |--------------------------------------------------------------------------
-    | Period Invoices
-    |--------------------------------------------------------------------------
-    */
-
-        $invoices = $invoiceQuery
-            ->get()
-            ->map(function ($invoice) {
-
-                return [
-
-                    'date' =>
-                        $invoice->invoice_date,
-
-                    'type' =>
-                        'invoice',
-
-                    'reference' =>
-                        $invoice->invoice_number,
-
-                    'description' =>
-                        'Supplier Invoice',
-
-                    'debit' =>
-                        (float) $invoice->total_amount,
-
-                    'credit' =>
-                        0,
-
-                    'sort_id' =>
-                        $invoice->id,
-
-                    'source_id' =>
-                        $invoice->id,
-
-                ];
-            });
-
-        /*
-        |--------------------------------------------------------------------------
-        | Cancelled Supplier Invoices - Audit Only
-        |--------------------------------------------------------------------------
-        |
-        | Cancelled invoices do not affect the financial balance,
-        | but they should remain visible in the supplier ledger
-        | for audit history.
-        |
+        | Voided goods receipts: audit only, no financial effect
         */
-
-        $cancelledInvoiceQuery =
-            SupplierInvoice::where(
-                'supplier_id',
-                $supplier->id
-            )
-                ->where(
-                    'status',
-                    'cancelled'
-                );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Date Filter
-        |--------------------------------------------------------------------------
-        |
-        | Use original invoice date for ledger grouping.
-        |
-        */
+        $voidedQuery = GoodsReceipt::where('supplier_id', $supplier->id)
+            ->where('status', 'voided');
 
         if ($fromDate) {
-
-            $cancelledInvoiceQuery
-                ->whereDate(
-                    'invoice_date',
-                    '>=',
-                    $fromDate
-                );
+            $voidedQuery->whereDate('receipt_date', '>=', $fromDate);
         }
-
-
         if ($toDate) {
-
-            $cancelledInvoiceQuery
-                ->whereDate(
-                    'invoice_date',
-                    '<=',
-                    $toDate
-                );
+            $voidedQuery->whereDate('receipt_date', '<=', $toDate);
         }
 
+        $cancelledInvoices = $voidedQuery->get()->map(function ($receipt) {
+            return [
+                'date'                => $receipt->receipt_date,
+                'type'                => 'cancelled_invoice',
+                'reference'           => $receipt->grn_number,
+                'description'         => 'Voided Goods Receipt',
+                'debit'               => 0,
+                'credit'              => 0,
+                'display_amount'      => 0,
+                'status'              => 'cancelled',
+                'cancellation_reason' => $receipt->void_reason,
+                'cancelled_at'        => $receipt->voided_at,
+                'sort_id'             => $receipt->id,
+                'source_id'           => $receipt->id,
+            ];
+        });
 
         /*
-        |--------------------------------------------------------------------------
-        | Cancelled Invoice Audit Transactions
-        |--------------------------------------------------------------------------
+        | Period payments (credit)
         */
-
-        $cancelledInvoices =
-            $cancelledInvoiceQuery
-                ->get()
-                ->map(function ($invoice) {
-
-                    return [
-
-                        'date' =>
-                            $invoice->invoice_date,
-
-                        'type' =>
-                            'cancelled_invoice',
-
-                        'reference' =>
-                            $invoice->invoice_number,
-
-                        'description' =>
-                            'Cancelled Supplier Invoice',
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | No Financial Effect
-                        |--------------------------------------------------------------------------
-                        */
-
-                        'debit' =>
-                            0,
-
-                        'credit' =>
-                            0,
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Display Original Invoice Amount
-                        |--------------------------------------------------------------------------
-                        */
-
-                        'display_amount' =>
-                            (float) $invoice->total_amount,
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Cancellation Information
-                        |--------------------------------------------------------------------------
-                        */
-
-                        'status' =>
-                            'cancelled',
-
-                        'cancellation_reason' =>
-                            $invoice->cancellation_reason,
-
-                        'cancelled_at' =>
-                            $invoice->cancelled_at,
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Sorting / Source
-                        |--------------------------------------------------------------------------
-                        */
-
-                        'sort_id' =>
-                            $invoice->id,
-
-                        'source_id' =>
-                            $invoice->id,
-
-                    ];
-                });
-
-        /*
-    |--------------------------------------------------------------------------
-    | Period Payments Query
-    |--------------------------------------------------------------------------
-    */
-
-        $paymentQuery = SupplierPayment::where(
-            'supplier_id',
-            $supplier->id
-        );
-
+        $paymentQuery = SupplierPayment::where('supplier_id', $supplier->id);
 
         if ($fromDate) {
-
-            $paymentQuery->whereDate(
-                'payment_date',
-                '>=',
-                $fromDate
-            );
+            $paymentQuery->whereDate('payment_date', '>=', $fromDate);
         }
-
-
         if ($toDate) {
-
-            $paymentQuery->whereDate(
-                'payment_date',
-                '<=',
-                $toDate
-            );
+            $paymentQuery->whereDate('payment_date', '<=', $toDate);
         }
 
+        $payments = $paymentQuery->get()->map(function ($payment) {
+            $isVoided = $payment->status === 'void';
+
+            return [
+                'date'           => $payment->payment_date,
+                'type'           => $isVoided ? 'voided_payment' : 'payment',
+                'reference'      => $payment->reference,
+                'description'    => $isVoided ? 'Voided Supplier Payment' : 'Supplier Payment',
+                'debit'          => 0,
+                'credit'         => $isVoided ? 0 : (float) $payment->amount,
+                'display_amount' => (float) $payment->amount,
+                'status'         => $payment->status,
+                'void_reason'    => $payment->void_reason,
+                'voided_at'      => $payment->voided_at,
+                'sort_id'        => $payment->id,
+                'source_id'      => $payment->id,
+            ];
+        });
 
         /*
-    |--------------------------------------------------------------------------
-    | Period Payments
-    |--------------------------------------------------------------------------
-    */
-
-        $payments = $paymentQuery
-            ->get()
-            ->map(function ($payment) {
-
-                /*
-                |--------------------------------------------------------------------------
-                | Payment Status
-                |--------------------------------------------------------------------------
-                */
-
-                $isVoided =
-                    $payment->status === 'void';
-
-
-                return [
-
-                    'date' =>
-                        $payment->payment_date,
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Transaction Type
-                    |--------------------------------------------------------------------------
-                    */
-
-                    'type' =>
-                        $isVoided
-                        ? 'voided_payment'
-                        : 'payment',
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Reference
-                    |--------------------------------------------------------------------------
-                    */
-
-                    'reference' =>
-                        $payment->reference,
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Description
-                    |--------------------------------------------------------------------------
-                    */
-
-                    'description' =>
-                        $isVoided
-                        ? 'Voided Supplier Payment'
-                        : 'Supplier Payment',
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Invoice / Debit
-                    |--------------------------------------------------------------------------
-                    */
-
-                    'debit' =>
-                        0,
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Financial Credit
-                    |--------------------------------------------------------------------------
-                    |
-                    | Active payment reduces payable.
-                    |
-                    | Voided payment is displayed for audit purposes,
-                    | but has ZERO financial effect.
-                    |
-                    */
-
-                    'credit' =>
-                        $isVoided
-                        ? 0
-                        : (float) $payment->amount,
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Original Payment Amount
-                    |--------------------------------------------------------------------------
-                    |
-                    | Needed by the Blade so the voided amount can still
-                    | be displayed even though credit = 0.
-                    |
-                    */
-
-                    'display_amount' =>
-                        (float) $payment->amount,
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Status / Void Information
-                    |--------------------------------------------------------------------------
-                    */
-
-                    'status' =>
-                        $payment->status,
-
-                    'void_reason' =>
-                        $payment->void_reason,
-
-                    'voided_at' =>
-                        $payment->voided_at,
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Sorting / Source
-                    |--------------------------------------------------------------------------
-                    */
-
-                    'sort_id' =>
-                        $payment->id,
-
-                    'source_id' =>
-                        $payment->id,
-
-                ];
-            });
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Combine Transactions
-    |--------------------------------------------------------------------------
-    */
-
+        | Combine and sort (receipt before payment on the same date)
+        */
         $transactions = $invoices
             ->concat($cancelledInvoices)
             ->concat($payments)
             ->sortBy(function ($transaction) {
-
-                $date =
-                    $transaction['date']
+                $date = $transaction['date']
                     ? $transaction['date']->format('Ymd')
                     : '00000000';
 
-                /*
-            | Invoice before payment on same date
-            */
+                $typeOrder = $transaction['type'] === 'invoice' ? '1' : '2';
 
-                $typeOrder =
-                    $transaction['type'] === 'invoice'
-                    ? '1'
-                    : '2';
-
-                return
-                    $date
-                    . '-'
-                    . $typeOrder
-                    . '-'
-                    . str_pad(
-                        $transaction['sort_id'],
-                        10,
-                        '0',
-                        STR_PAD_LEFT
-                    );
+                return $date . '-' . $typeOrder . '-'
+                    . str_pad($transaction['sort_id'], 10, '0', STR_PAD_LEFT);
             })
             ->values();
 
-
         /*
-    |--------------------------------------------------------------------------
-    | Running Balance
-    |--------------------------------------------------------------------------
-    |
-    | Start from Opening Balance.
-    |
-    */
+        | Running balance
+        */
+        $runningBalance = $openingBalance;
 
-        $runningBalance =
-            $openingBalance;
+        $transactions = $transactions->map(function ($transaction) use (&$runningBalance) {
+            $runningBalance += (float) $transaction['debit'];
+            $runningBalance -= (float) $transaction['credit'];
+            $transaction['balance'] = $runningBalance;
 
+            return $transaction;
+        });
 
-        $transactions = $transactions
-            ->map(function ($transaction) use (&$runningBalance) {
-
-                $runningBalance +=
-                    (float) $transaction['debit'];
-
-                $runningBalance -=
-                    (float) $transaction['credit'];
-
-                $transaction['balance'] =
-                    $runningBalance;
-
-                return $transaction;
-            });
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Period Summary
-    |--------------------------------------------------------------------------
-    */
-
-        $periodInvoiced =
-            (float) $transactions
-                ->sum('debit');
-
-
-        $periodPaid =
-            (float) $transactions
-                ->sum('credit');
-
-
-        $closingBalance =
-            $openingBalance
-            + $periodInvoiced
-            - $periodPaid;
-
+        $periodInvoiced = (float) $transactions->sum('debit');
+        $periodPaid     = (float) $transactions->sum('credit');
 
         $summary = [
-
-            'opening_balance' =>
-                $openingBalance,
-
-            'period_invoiced' =>
-                $periodInvoiced,
-
-            'period_paid' =>
-                $periodPaid,
-
-            'closing_balance' =>
-                $closingBalance,
-
+            'opening_balance' => $openingBalance,
+            'period_invoiced' => $periodInvoiced,
+            'period_paid'     => $periodPaid,
+            'closing_balance' => $openingBalance + $periodInvoiced - $periodPaid,
         ];
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | View
-    |--------------------------------------------------------------------------
-    */
 
         return view(
             'supplier-ledger.index',
-            compact(
-                'suppliers',
-                'supplier',
-                'transactions',
-                'summary',
-                'fromDate',
-                'toDate'
-            )
+            compact('suppliers', 'supplier', 'transactions', 'summary', 'fromDate', 'toDate')
         );
     }
-
 }

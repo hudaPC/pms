@@ -592,6 +592,115 @@
 
         </div>
 
+                {{-- ============================================================
+        SUPPLIER PAYMENTS
+        ============================================================ --}}
+        <div class="card card-primary card-outline mb-4">
+
+            <div class="card-header d-flex justify-content-between align-items-center">
+
+                <h3 class="card-title">
+                    <i class="fas fa-money-check-alt mr-2"></i>
+                    Supplier Payments
+                </h3>
+
+                @if (
+                    $goodsReceipt->status !== 'voided' &&
+                        in_array($goodsReceipt->payment_status, ['unpaid', 'partially_paid']) &&
+                        (float) $goodsReceipt->balance_amount > 0)
+                    <a href="{{ route('goods-receipts.payments.create', $goodsReceipt) }}" class="btn btn-sm btn-success">
+                        <i class="fas fa-plus mr-1"></i>
+                        Add Payment
+                    </a>
+                @endif
+
+            </div>
+
+            <div class="card-body">
+
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Total Amount</strong>
+                        <div class="mt-1">{{ number_format((float) $goodsReceipt->total_amount, 4) }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Paid Amount</strong>
+                        <div class="mt-1 text-success">{{ number_format((float) $goodsReceipt->paid_amount, 4) }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Balance</strong>
+                        <div class="mt-1 text-danger">
+                            <strong>{{ number_format((float) $goodsReceipt->balance_amount, 4) }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Payment Status</strong>
+                        <div class="mt-1">
+                            {{ ucfirst(str_replace('_', ' ', $goodsReceipt->payment_status)) }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Reference</th>
+                                <th>Method</th>
+                                <th class="text-right">Amount</th>
+                                <th>Status</th>
+                                <th style="width: 280px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($goodsReceipt->payments()->latest('payment_date')->latest('id')->get() as $payment)
+                                <tr>
+                                    <td>{{ $payment->payment_date->format('d-M-Y') }}</td>
+                                    <td>{{ $payment->reference }}</td>
+                                    <td>{{ ucfirst(str_replace('_', ' ', $payment->payment_method)) }}</td>
+                                    <td class="text-right">{{ number_format((float) $payment->amount, 4) }}</td>
+                                    <td>
+                                        @if ($payment->status === 'void')
+                                            <span class="badge badge-danger">Void</span>
+                                        @else
+                                            <span class="badge badge-success">Active</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($payment->status === 'active')
+                                            <form action="{{ route('goods-receipts.payments.destroy', [$goodsReceipt, $payment]) }}"
+                                                method="POST" class="form-inline"
+                                                onsubmit="return confirm('Void this payment?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <input type="text" name="void_reason" maxlength="500"
+                                                    class="form-control form-control-sm mr-1" placeholder="Void reason"
+                                                    required>
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    Void
+                                                </button>
+                                            </form>
+                                        @else
+                                            <small class="text-muted">{{ $payment->void_reason }}</small>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-3">
+                                        No payments recorded yet.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+
 
         {{-- Received Items on this GRN --}}
         <div class="card card-success card-outline">

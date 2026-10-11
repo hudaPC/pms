@@ -374,56 +374,6 @@
 
 
 
-                {{-- ===================================================== --}}
-                {{-- INVOICING --}}
-                {{-- ===================================================== --}}
-
-                @php
-
-                    $invoicingActive = request()->is('supplier-invoices*');
-
-                @endphp
-
-
-                <li class="nav-item has-treeview
-                        {{ $invoicingActive ? 'menu-open' : '' }}">
-
-                    <a href="#" class="nav-link
-                            {{ $invoicingActive ? 'active' : '' }}">
-
-                        <i class="nav-icon fas fa-file-invoice"></i>
-
-                        <p>
-
-                            I N V O I C I N G
-
-                            <i class="right fas fa-angle-left"></i>
-
-                        </p>
-
-                    </a>
-
-
-                    <ul class="nav nav-treeview">
-
-                        <li class="nav-item">
-
-                            <a href="{{ url('/supplier-invoices') }}" class="nav-link
-                                    {{ request()->is('supplier-invoices*') ? 'active' : '' }}">
-
-                                <i class="far fa-circle nav-icon"></i>
-
-                                <p>
-                                    Supplier Invoices
-                                </p>
-
-                            </a>
-
-                        </li>
-
-                    </ul>
-
-                </li>
 
                 {{-- ===================================================== --}}
                 {{-- MATERIAL USAGE --}}

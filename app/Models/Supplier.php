@@ -58,9 +58,9 @@ class Supplier extends Model
     {
         return $this->hasMany(PurchaseOrder::class);
     }
-    public function supplierInvoices(): HasMany
+        public function goodsReceipts(): HasMany
     {
-        return $this->hasMany(SupplierInvoice::class);
+        return $this->hasMany(GoodsReceipt::class);
     }
     public function supplierPayments(): HasMany
     {

@@ -125,6 +125,29 @@
 
                 </div>
 
+                <hr>
+
+                <div class="row">
+
+                    <div class="col-md-4">
+                        <strong>Used Qty</strong>
+                        <div class="mt-1">{{ number_format($usedQuantity, 3) }}</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <strong>Used Price</strong>
+                        <div class="mt-1">{{ number_format($usedAmount, 4) }}</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <strong>Payable Now</strong>
+                        <div class="mt-1 text-primary">
+                            <strong>{{ number_format($payableAmount, 4) }}</strong>
+                        </div>
+                    </div>
+
+                </div>
+
             </div>
 
         </div>
@@ -208,7 +231,7 @@
                                 </label>
 
                                 <input type="number" name="amount" id="amount" step="0.0001" min="0.0001"
-                                    max="{{ $goodsReceipt->balance_amount }}" value="{{ old('amount') }}"
+                                    max="{{ $payableAmount }}" value="{{ old('amount') }}"
                                     class="form-control @error('amount') is-invalid @enderror" required>
 
                                 @error('amount')
@@ -219,8 +242,9 @@
 
                                 <small class="form-text text-muted">
 
-                                    Maximum payable:
-                                    {{ number_format((float) $goodsReceipt->balance_amount, 4) }}
+                                    Maximum payable (used value):
+
+                                    {{ number_format($payableAmount, 4) }}
 
                                 </small>
 
@@ -289,8 +313,8 @@
                                     Transaction / Cheque Reference
                                 </label>
 
-                                <input type="text" name="transaction_reference"
-                                    value="{{ old('transaction_reference') }}" maxlength="150"
+                                <input type="text" name="transaction_reference" value="{{ old('transaction_reference') }}"
+                                    maxlength="150"
                                     class="form-control @error('transaction_reference') is-invalid @enderror"
                                     placeholder="Bank transaction number, cheque number, etc.">
 
@@ -314,7 +338,8 @@
                                     Remarks
                                 </label>
 
-                                <textarea name="remarks" rows="3" class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
+                                <textarea name="remarks" rows="3"
+                                    class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
 
                                 @error('remarks')
                                     <div class="invalid-feedback">
@@ -347,7 +372,7 @@
     </div>
     @push('scripts')
         <script>
-            $(document).ready(function() {
+            $(document).ready(function () {
 
                 const $amount =
                     $('#amount');
@@ -360,7 +385,7 @@
 
                 const maximumPayable =
                     parseFloat(
-                        '{{ (float) $goodsReceipt->balance_amount }}'
+                    '{{ (float) $payableAmount }}'
                     ) || 0;
 
 
@@ -375,9 +400,9 @@
                     return Number(value || 0)
                         .toLocaleString(
                             'en-US', {
-                                minimumFractionDigits: 4,
-                                maximumFractionDigits: 4
-                            }
+                            minimumFractionDigits: 4,
+                            maximumFractionDigits: 4
+                        }
                         );
                 }
 
@@ -532,7 +557,7 @@
 
                 $amount.on(
                     'input',
-                    function() {
+                    function () {
 
                         validatePaymentAmount();
                     }

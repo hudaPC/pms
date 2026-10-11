@@ -25,7 +25,7 @@
                                 <th class="text-right">Received Price</th>
                                 <th class="text-right">Used</th>
                                 <th class="text-right">Used Price</th>
-                                <th width="170">Action</th>
+                                <th width="260">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -51,6 +51,17 @@
                                         <a href="{{ route('reporting.grn-usage.show', $grn) }}" class="btn btn-sm btn-info">
                                             <i class="fas fa-chart-bar mr-1"></i> Usage
                                         </a>
+                                                                                @if ($grn->status !== 'voided' && ((float) ($usedAmountByGrn[$grn->id] ?? 0) - (float) $grn->paid_amount) > 0.0001)
+                                            <a href="{{ route('goods-receipts.payments.create', $grn) }}"
+                                                class="btn btn-sm btn-success ml-1" title="Add payment for {{ $grn->grn_number }}">
+                                                <i class="fas fa-money-check-alt mr-1"></i> Payment
+                                            </a>
+                                        @else
+                                            <button type="button" class="btn btn-sm btn-secondary ml-1" disabled
+                                                title="Nothing payable yet">
+                                                <i class="fas fa-money-check-alt mr-1"></i> Payment
+                                            </button>
+                                        @endif
 
                                         <a href="{{ route('reporting.grn-usage.pdf', $grn) }}" target="_blank"
                                             class="btn btn-sm btn-danger ml-1" title="PDF for {{ $grn->grn_number }}">

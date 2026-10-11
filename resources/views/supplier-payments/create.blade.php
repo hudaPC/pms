@@ -83,7 +83,7 @@
 
                     <div class="col-md-3">
 
-                        <strong>Total Amount</strong>
+                        <strong>Receipt Total</strong>
 
                         <div class="mt-1">
 
@@ -109,7 +109,7 @@
 
                     <div class="col-md-3">
 
-                        <strong>Balance Amount</strong>
+                        <strong>Receipt Balance</strong>
 
                         <div class="mt-1 text-danger">
 
@@ -183,12 +183,24 @@
 
                             <div class="form-group">
 
-                                <label>
+                                                                <label>
                                     Payment Reference
+                                    <span class="text-danger">*</span>
                                 </label>
 
-                                <input type="text" name="reference" value="{{ old('reference', $paymentReference) }}"
-                                    class="form-control" readonly>
+                                                                <input type="text" name="reference" value="{{ old('reference', $paymentReference) }}" maxlength="100"
+                                    class="form-control @error('reference') is-invalid @enderror"
+                                                                        placeholder="Edit or enter payment reference" required>
+
+                                                                @error('reference')
+                                    <div class="invalid-feedback">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+
+                                <small class="form-text text-muted">
+                                    Reference is generated automatically, but you can type your own.
+                                </small>
 
                             </div>
 

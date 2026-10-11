@@ -328,3 +328,13 @@ php artisan tinker
 App\Models\GoodsReceipt::with('purchaseOrder')->get()->each(function ($r) { $r->supplier_id = $r->purchaseOrder->supplier_id ?? null; $r->save(); if ($r->status !== 'voided') { $r->recalculateTotals(); } else { $r->update(['total_amount' => 0, 'balance_amount' => 0, 'payment_status' => 'voided']); } });
 
 App\Models\GoodsReceipt::select('grn_number','supplier_id','total_amount','balance_amount','payment_status')->get();
+
+
+*******************
+php artisan make:migration drop_supplier_invoice_tables
+
+
+SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME
+FROM information_schema.KEY_COLUMN_USAGE
+WHERE REFERENCED_TABLE_SCHEMA = 'pms'
+  AND REFERENCED_TABLE_NAME IN ('supplier_invoices','supplier_invoice_items');

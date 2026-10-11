@@ -20,7 +20,7 @@
             </h2>
 
             <p class="text-muted mb-0">
-                Review supplier invoices, outstanding balances,
+                Review goods receipt payables, outstanding balances,
                 overdue payables and payment status.
             </p>
 
@@ -98,7 +98,7 @@
                         <div class="form-group mb-md-0">
 
                             <label for="status">
-                                Invoice Status
+                                Payment Status
                             </label>
 
                             <select
@@ -227,7 +227,7 @@
     <div class="row mb-4">
 
 
-        {{-- Total Invoiced --}}
+        {{-- Total Received Value --}}
         <div class="col-lg-3 col-md-6 mb-3">
 
             <div class="small-box bg-light border shadow-sm">
@@ -235,7 +235,7 @@
                 <div class="inner">
 
                     <p class="text-muted mb-1">
-                        Total Invoiced
+                        Total Received Value
                     </p>
 
                     <h3 class="text-danger">
@@ -351,7 +351,7 @@
                         {{ number_format(
                             $summary['open_invoice_count']
                         ) }}
-                        Open Invoice(s)
+                        Open Receipt(s)
 
                     </small>
 
@@ -407,7 +407,7 @@
                             </th>
 
                             <th class="text-right">
-                                Total Invoiced
+                                Total Received Value
                             </th>
 
                             <th class="text-right">
@@ -423,7 +423,7 @@
                             </th>
 
                             <th class="text-center">
-                                Open Invoices
+                                Open Receipts
                             </th>
 
                             <th class="text-center">
@@ -615,7 +615,7 @@
 
                 <i class="fas fa-file-invoice-dollar mr-2"></i>
 
-                Accounts Payable Invoice Details
+                Accounts Payable Goods Receipt Details
 
             </h3>
 
@@ -637,7 +637,7 @@
                             </th>
 
                             <th>
-                                Invoice Number
+                                GRN Number
                             </th>
 
                             <th>
@@ -649,7 +649,7 @@
                             </th>
 
                             <th>
-                                Invoice Date
+                                Receipt Date
                             </th>
 
                             <th>
@@ -965,7 +965,7 @@
 
                                     <i class="fas fa-info-circle mr-1"></i>
 
-                                    No active supplier invoices found.
+                                    No active goods receipts found.
 
                                 </td>
 

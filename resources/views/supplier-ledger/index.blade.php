@@ -19,7 +19,7 @@
             </h2>
 
             <p class="text-muted mb-0">
-                View supplier invoices, payments, opening balance,
+                View goods receipts, payments, opening balance,
                 and closing payable balance.
             </p>
 
@@ -308,7 +308,7 @@
             </div>
 
 
-            {{-- Period Invoiced --}}
+            {{-- Period Received --}}
             <div class="col-md-3 mb-3">
 
                 <div class="card shadow-sm h-100">
@@ -316,7 +316,7 @@
                     <div class="card-body">
 
                         <small class="text-muted">
-                            Period Invoiced
+                            Period Received
                         </small>
 
                         <h3 class="mb-0 mt-1 text-danger">
@@ -450,7 +450,7 @@
                                 </th>
 
                                 <th class="text-right">
-                                    Invoice
+                                    Receipt(GRN)
                                 </th>
 
                                 <th class="text-right">
@@ -630,7 +630,7 @@
 
                                                 <i class="fas fa-file-invoice mr-1"></i>
 
-                                                Invoice
+                                                Goods Receipt
 
                                             </span>
 
@@ -665,7 +665,7 @@
                                             </span>
 
 
-                                        {{-- Cancelled Invoice --}}
+                                        {{-- Voided Receipt --}}
                                         @elseif(
                                             $transaction['type']
                                             === 'cancelled_invoice'
@@ -675,7 +675,7 @@
 
                                                 <i class="fas fa-ban mr-1"></i>
 
-                                                Cancelled Invoice
+                                                Voided Receipt
 
                                             </span>
 
@@ -786,7 +786,7 @@
 
 
                                         {{-- =================================================
-                                             CANCELLED INVOICE AUDIT INFORMATION
+                                             Voided Receipt AUDIT INFORMATION
                                         ================================================== --}}
                                         @if(
                                             $transaction['type']
@@ -850,7 +850,7 @@
                                     <td class="text-right">
 
 
-                                        {{-- Cancelled Invoice --}}
+                                        {{-- Voided Receipt --}}
                                         @if(
                                             $transaction['type']
                                             === 'cancelled_invoice'
@@ -1016,7 +1016,7 @@
                                     <td class="text-center">
 
 
-                                        {{-- Invoice / Cancelled Invoice --}}
+                                        {{-- Invoice / Voided Receipt --}}
                                         @if(
                                             in_array(
                                                 $transaction['type'],
@@ -1077,7 +1077,7 @@
 
                                             <i class="fas fa-info-circle mr-1"></i>
 
-                                            No invoice or payment transactions
+                                            No receipt or payment transactions
                                             found for this period.
 
                                         </td>

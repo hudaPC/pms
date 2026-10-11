@@ -591,7 +591,7 @@
 
                 <div class="row mb-3">
                     <div class="col-md-3">
-                        <strong>Total Amount</strong>
+                        <strong>Receipt Total</strong>
                         <div class="mt-1">{{ number_format((float) $goodsReceipt->total_amount, 4) }}</div>
                     </div>
                     <div class="col-md-3">
@@ -599,18 +599,38 @@
                         <div class="mt-1 text-success">{{ number_format((float) $goodsReceipt->paid_amount, 4) }}</div>
                     </div>
                     <div class="col-md-3">
-                        <strong>Balance</strong>
+                        <strong>Receipt Balance</strong>
+
                         <div class="mt-1 text-danger">
                             <strong>{{ number_format((float) $goodsReceipt->balance_amount, 4) }}</strong>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                                        <div class="col-md-3">
                         <strong>Payment Status</strong>
                         <div class="mt-1">
                             {{ ucfirst(str_replace('_', ' ', $goodsReceipt->payment_status)) }}
                         </div>
                     </div>
                 </div>
+
+                @if ($goodsReceipt->status !== 'voided')
+                    <div class="row mb-3 border-top pt-3">
+                        <div class="col-md-3">
+                            <strong>Used Qty</strong>
+                            <div class="mt-1">{{ number_format($goodsReceipt->usedQuantity(), 3) }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Used Price</strong>
+                            <div class="mt-1">{{ number_format($goodsReceipt->usedAmount(), 4) }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Payable Now</strong>
+                            <div class="mt-1 text-primary">
+                                <strong>{{ number_format($goodsReceipt->payableAmount(), 4) }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 <div class="table-responsive">
                     <table class="table table-bordered table-sm mb-0">

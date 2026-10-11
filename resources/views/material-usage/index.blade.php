@@ -162,6 +162,20 @@
                     </div>
 
                     <div class="row">
+                        {{-- GRN Number --}}
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>GRN Number</label>
+                                <select name="goods_receipt_id" class="form-control">
+                                    <option value="">All GRNs</option>
+                                    @foreach ($goodsReceipts as $goodsReceipt)
+                                        <option value="{{ $goodsReceipt->id }}" @selected((string) request('goods_receipt_id') === (string) $goodsReceipt->id)>
+                                            {{ $goodsReceipt->grn_number }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
 
                         {{-- Date From --}}
                         <div class="col-md-2">
@@ -287,7 +301,15 @@
                                         ->filter()
                                         ->unique()
                                         ->values();
+
+                                    // GRN numbers used on this date
+                                    $groupGrns = $dateLogs
+                                        ->map(fn($log) => $log->goodsReceiptItem?->goodsReceipt?->grn_number)
+                                        ->filter()
+                                        ->unique()
+                                        ->values();
                                 @endphp
+                              
 
                                 {{-- Date row with + sign (click to open) --}}
                                 <tr class="date-group-row bg-light" data-group="grp-{{ $dateKey }}"
@@ -308,9 +330,14 @@
                                             <span class="badge badge-danger">{{ $groupVoided }} Voided</span>
                                         @endif
 
-                                       
+
                                         @foreach ($groupModels as $modelCode)
                                             <span class="badge badge-primary">{{ $modelCode }}</span>
+                                        @endforeach
+                                        @foreach ($groupGrns as $grnNumber)
+                                            <span class="badge badge-warning" title="Goods Receipt">
+                                                <i class="fas fa-truck-loading mr-1"></i>{{ $grnNumber }}
+                                            </span>
                                         @endforeach
 
                                         @if ($dateKey !== 'no-date')

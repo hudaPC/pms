@@ -30,6 +30,7 @@ class UsageLogController extends Controller
                 'item.productModelItems.productModel',
                 'productModel',
                 'productionPlan.productModel',
+                'goodsReceiptItem.goodsReceipt',
             ]);
 
 
@@ -69,6 +70,24 @@ class UsageLogController extends Controller
                                 );
                         }
                     );
+            });
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | GRN Filter
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('goods_receipt_id')) {
+
+            $goodsReceiptId = (int) $request->input('goods_receipt_id');
+
+            $query->whereIn('goods_receipt_item_id', function ($sub) use ($goodsReceiptId) {
+                $sub->select('goods_receipt_items.id')
+                    ->from('goods_receipt_items')
+                    ->where('goods_receipt_items.goods_receipt_id', $goodsReceiptId);
             });
         }
 
@@ -268,6 +287,17 @@ class UsageLogController extends Controller
 
         /*
         |--------------------------------------------------------------------------
+        | Goods Receipts For Filter Dropdown
+        |--------------------------------------------------------------------------
+        */
+
+        $goodsReceipts = \App\Models\GoodsReceipt::query()
+            ->orderByDesc('receipt_date')
+            ->orderByDesc('id')
+            ->get(['id', 'grn_number']);
+
+        /*
+        |--------------------------------------------------------------------------
         | View
         |--------------------------------------------------------------------------
         */
@@ -284,7 +314,8 @@ class UsageLogController extends Controller
                 'totalUsageRecords',
                 'activeUsageRecords',
                 'voidedUsageRecords',
-                'productModels'
+                'productModels',
+                'goodsReceipts'
             )
         );
     }

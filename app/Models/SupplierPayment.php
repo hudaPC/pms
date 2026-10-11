@@ -11,7 +11,7 @@ class SupplierPayment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'supplier_invoice_id',
+        'goods_receipt_id',
         'supplier_id',
         'payment_date',
         'amount',
@@ -35,14 +35,14 @@ class SupplierPayment extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Supplier Invoice
+    | Goods Receipt
     |--------------------------------------------------------------------------
     */
 
-    public function supplierInvoice(): BelongsTo
+    public function goodsReceipt(): BelongsTo
     {
         return $this->belongsTo(
-            SupplierInvoice::class
+            GoodsReceipt::class
         );
     }
 

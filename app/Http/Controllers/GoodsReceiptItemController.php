@@ -437,7 +437,10 @@ class GoodsReceiptItemController extends Controller
             }
 
 
-            $purchaseOrder->save();
+           $purchaseOrder->save();
+
+            // Update the receipt's total amount and payment status
+            $goodsReceipt->recalculateTotals();
         });
 
 

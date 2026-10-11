@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\PurchaseOrderItem;
-use App\Models\SupplierInvoiceItem;
 use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
 use App\Models\GoodsReceipt;
@@ -430,13 +429,16 @@ class GoodsReceiptController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $goodsReceipt = GoodsReceipt::create([
+               $goodsReceipt = GoodsReceipt::create([
 
             'grn_number' =>
                 $validated['grn_number'],
 
             'purchase_order_id' =>
                 $purchaseOrder->id,
+
+            'supplier_id' =>
+                $purchaseOrder->supplier_id,
 
             'receipt_date' =>
                 $validated['receipt_date'],
@@ -521,6 +523,19 @@ class GoodsReceiptController extends Controller
             if ($receiptItems->isEmpty()) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'void_reason' => 'This Goods Receipt has no received items to reverse.',
+                ]);
+            }
+                        // Active supplier payment protection
+            $activePaymentCount = $lockedGoodsReceipt->payments()
+                ->where('status', 'active')
+                ->count();
+
+            if ($activePaymentCount > 0) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'void_reason' =>
+                        'This Goods Receipt cannot be voided because it has '
+                        . $activePaymentCount
+                        . ' active supplier payment(s). Void those payments first.',
                 ]);
             }
 

@@ -645,12 +645,12 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($goodsReceipt->payments()->latest('payment_date')->latest('id')->get() as $payment)
+                            @forelse ($goodsReceipt->payments()->latest('supplier_payments.payment_date')->latest('supplier_payments.id')->get() as $payment)
                                 <tr>
                                     <td>{{ $payment->payment_date->format('d-M-Y') }}</td>
                                     <td>{{ $payment->reference }}</td>
                                     <td>{{ ucfirst(str_replace('_', ' ', $payment->payment_method)) }}</td>
-                                    <td class="text-right">{{ number_format((float) $payment->amount, 4) }}</td>
+                                    <td class="text-right">{{ number_format((float) $payment->pivot->amount, 4) }}</td>
                                     <td>
                                         @if ($payment->status === 'void')
                                             <span class="badge badge-danger">Void</span>

@@ -64,9 +64,16 @@ class GoodsReceipt extends Model
         return $this->hasMany(PurchaseReturn::class);
     }
 
-    public function payments(): HasMany
+      public function paymentItems(): HasMany
     {
-        return $this->hasMany(SupplierPayment::class);
+        return $this->hasMany(SupplierPaymentItem::class);
+    }
+
+    public function payments(): BelongsToMany
+    {
+        return $this->belongsToMany(SupplierPayment::class, 'supplier_payment_items')
+            ->withPivot('amount')
+            ->withTimestamps();
     }
     /**
      * Recalculate total, paid, balance and payment status.
@@ -85,8 +92,8 @@ class GoodsReceipt extends Model
                 'goods_receipt_items.received_quantity * COALESCE(purchase_order_items.unit_price, 0)'
             ));
 
-        $paid = (float) $this->payments()
-            ->where('status', 'active')
+               $paid = (float) $this->paymentItems()
+            ->whereHas('payment', fn($q) => $q->where('status', 'active'))
             ->sum('amount');
 
         $balance = max(0, $total - $paid);
@@ -133,11 +140,11 @@ class GoodsReceipt extends Model
             ->sum(DB::raw('usage_logs.quantity * COALESCE(purchase_order_items.unit_price, 0)'));
     }
 
-    /**
-     * Amount that can be paid now: used value minus what is already paid.
+        /**
+     * Amount that can be paid now: total received price minus what is already paid.
      */
     public function payableAmount(): float
     {
-        return max(0, $this->usedAmount() - (float) $this->paid_amount);
+        return max(0, (float) $this->total_amount - (float) $this->paid_amount);
     }
 }

@@ -526,8 +526,8 @@ class GoodsReceiptController extends Controller
                 ]);
             }
                         // Active supplier payment protection
-            $activePaymentCount = $lockedGoodsReceipt->payments()
-                ->where('status', 'active')
+                        $activePaymentCount = $lockedGoodsReceipt->payments()
+                ->where('supplier_payments.status', 'active')
                 ->count();
 
             if ($activePaymentCount > 0) {

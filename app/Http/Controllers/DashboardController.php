@@ -6,91 +6,35 @@ use App\Models\Category;
 use App\Models\Item;
 use App\Models\Supplier;
 use App\Models\Unit;
-use App\Services\StockProjectionService;
-use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 class DashboardController extends Controller
 {
-    public function index(StockProjectionService $service)
+    public function index(GoodsReceiptController $goodsReceipts)
     {
         if (auth()->user()->role !== 'admin') {
-        return view('user.dashboard');
-    }
-        $counts = [
+            return view('user.dashboard');
+        }
 
+        $counts = [
             'categories' => Category::count(),
-            'units' => Unit::count(),
-            'suppliers' => Supplier::count(),
-            'items' => Item::count(),
+            'units'      => Unit::count(),
+            'suppliers'  => Supplier::count(),
+            'items'      => Item::count(),
         ];
 
+        // Holding time data (same as the Holding Time report)
+        $holdingGroups = $goodsReceipts->holdingGroups();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Items Needing Attention (reuse the same logic as Purchase Calendar)
-        |--------------------------------------------------------------------------
-        */
-
-        $items = Item::with(['unit', 'purchaseSettings'])
-            ->where('status', true)
-            ->get();
-        $urgentItems = collect();
-        $notConfiguredCount = 0;
-        foreach ($items as $item) {
-            $settings = $item->purchaseSettings;
-            if (!$settings) {
-                $notConfiguredCount++;
-                continue;
-            }
-
-           $currentStock =
-    (float) $item->current_stock;
-
-            $safetyStock = (float) $settings->safety_stock;
-
-            $minimumStock = $settings->minimum_stock !== null
-                ? (float) $settings->minimum_stock
-                : $safetyStock;
-
-            if ($currentStock < $minimumStock) {
-
-                $urgentItems->push([
-                    'item' => $item,
-                    'current_stock' => $currentStock,
-                    'minimum_stock' => $minimumStock,
-                ]);
-            }
-        }
-        /*
-|--------------------------------------------------------------------------
-| Paginate Needs Attention Items
-|--------------------------------------------------------------------------
-*/
-
-        $perPage = 10;
-
-        $currentPage = LengthAwarePaginator::resolveCurrentPage('urgent_page');
-
-        $urgentItems = new LengthAwarePaginator(
-            $urgentItems->forPage($currentPage, $perPage)->values(),
-            $urgentItems->count(),
-            $perPage,
-            $currentPage,
-            [
-                'path' => request()->url(),
-                'query' => request()->query(),
-                'pageName' => 'urgent_page',
-            ]
-        );
+        $holdingSummary = [
+            'grns'   => $holdingGroups->count(),
+            'items'  => $holdingGroups->sum('item_count'),
+            'unused' => $holdingGroups->sum('unused'),
+            'oldest' => (int) ($holdingGroups->max('max_days') ?? 0),
+        ];
 
         return view(
             'admin.dashboard',
-            compact(
-                'counts',
-                'urgentItems',
-                'notConfiguredCount'
-            )
+            compact('counts', 'holdingGroups', 'holdingSummary')
         );
     }
 }

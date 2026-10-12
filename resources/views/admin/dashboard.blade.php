@@ -190,152 +190,29 @@
 
         <div class="row">
 
-            {{-- Needs Attention --}}
+
+
+
+
+
+                       {{-- Holding Time --}}
             <div class="col-lg-8 mb-4">
 
-                <div class="card shadow-sm h-100">
-
-                    <div class="card-header d-flex justify-content-between align-items-center">
-
-                        <h3 class="card-title mb-0">
-
-                            <i class="fas fa-exclamation-triangle mr-2 text-danger"></i>
-
-                            Needs Attention
-
-                        </h3>
-
-                        <a href="{{ route('purchase-calendar.index') }}" class="btn btn-sm btn-outline-primary">
-                            View Purchase Calendar
-                        </a>
-
-                    </div>
-
-                    <div class="card-body p-0">
-
-                        @if ($urgentItems->isEmpty())
-
-                            <div class="text-center text-muted py-5">
-
-                                <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
-
-                                <p class="mb-0">
-                                    No items below minimum stock right now.
-                                </p>
-
-                            </div>
-
-                        @else
-
-                            <div class="table-responsive">
-
-                                <table class="table table-hover mb-0">
-
-                                    <thead>
-
-                                        <tr>
-
-                                            <th>Item Code</th>
-
-                                            <th>Item Name</th>
-
-                                            <th class="text-end">Current Stock</th>
-
-                                            <th class="text-end">Minimum Stock</th>
-
-                                            <th class="text-center">Action</th>
-
-                                        </tr>
-
-                                    </thead>
-
-                                    <tbody>
-
-                                        @foreach ($urgentItems as $row)
-
-                                            <tr class="table-danger">
-
-                                                <td>
-                                                    {{ $row['item']->item_code }}
-                                                </td>
-
-                                                <td>
-                                                    {{ $row['item']->item_name }}
-                                                </td>
-
-                                                <td class="text-end">
-                                                    {{ number_format($row['current_stock'], 0) }}
-                                                </td>
-
-                                                <td class="text-end">
-                                                    {{ number_format($row['minimum_stock'], 0) }}
-                                                </td>
-
-                                                <td class="text-center">
-
-                                                    <a href="{{ route('items.purchase-planning.index', $row['item']) }}"
-                                                        class="btn btn-sm btn-outline-secondary">
-
-                                                        View
-
-                                                    </a>
-
-                                                </td>
-
-                                            </tr>
-
-                                        @endforeach
-
-                                    </tbody>
-
-                                </table>
-
-                            </div>
-
-
-                            {{-- Pagination --}}
-                            @if($urgentItems->hasPages())
-
-                                <div class="card-footer clearfix">
-
-                                    <div class="float-left text-muted">
-
-                                        Showing
-                                        {{ $urgentItems->firstItem() }}
-                                        to
-                                        {{ $urgentItems->lastItem() }}
-                                        of
-                                        {{ $urgentItems->total() }}
-                                        items
-
-                                    </div>
-
-
-                                    <div class="float-right">
-
-                                        {{ $urgentItems->links('pagination::bootstrap-4') }}
-
-                                    </div>
-
-                                </div>
-
-                            @endif
-
-
-
-
-
-
-
-
-
-
-
-                        @endif
-
-                    </div>
-
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">
+                        <i class="fas fa-hourglass-half mr-2 text-primary"></i>
+                        Holding Time
+                    </h5>
+                    <a href="{{ route('reporting.holding-time') }}" class="btn btn-sm btn-outline-primary">
+                        Open Full Report
+                    </a>
                 </div>
+
+                @include('reporting.partials.holding-list', [
+                    'groups'    => $holdingGroups,
+                    'showTools' => false,
+                    'uid'       => 'dash',
+                ])
 
             </div>
 
@@ -409,21 +286,7 @@
 
                     </div>
 
-                    @if ($notConfiguredCount > 0)
-
-                        <div class="card-footer">
-
-                            <small class="text-muted">
-
-                                <i class="fas fa-info-circle mr-1"></i>
-
-                                {{ $notConfiguredCount }} item(s) have no purchase settings configured.
-
-                            </small>
-
-                        </div>
-
-                    @endif
+                    
 
                 </div>
 

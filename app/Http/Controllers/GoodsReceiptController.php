@@ -781,6 +781,152 @@ class GoodsReceiptController extends Controller
         ));
     }
 
+    /**
+     * Holding time report: GRN > Product Model > Item.
+     */
+       /**
+     * Builds the Holding Time data: GRN > Product Model > Item.
+     * Used by the report page and by the dashboard.
+     */
+    public function holdingGroups(?int $minDays = null, ?string $status = null)
+    {
+        $today = now()->startOfDay();
+
+        $goodsReceipts = GoodsReceipt::query()
+            ->where('status', '!=', 'voided')
+            ->with([
+                'purchaseOrders:id,po_number',
+                'items.item',
+                'items.purchaseOrderItem.productModel',
+                'items.usageLogs',
+            ])
+            ->orderByDesc('receipt_date')
+            ->orderByDesc('id')
+            ->get();
+
+        return $goodsReceipts->map(function ($grn) use ($today, $minDays, $status) {
+
+            $receiptDate = \Carbon\Carbon::parse($grn->receipt_date)->startOfDay();
+
+            $lines = $grn->items->map(function ($line) use ($receiptDate, $today) {
+
+                $active    = $line->usageLogs->where('status', 'active');
+                $received  = (float) $line->received_quantity;
+                $used      = (float) $active->sum('quantity');
+                $returned  = $line->postedReturnedQuantity();
+                $remaining = max(0, $received - $used - $returned);
+
+                $lastUsage = $active->max('usage_date');
+
+                $endDate = ($remaining > 0.0001 || !$lastUsage)
+                    ? $today
+                    : \Carbon\Carbon::parse($lastUsage)->startOfDay();
+
+                if ($endDate->lt($receiptDate)) {
+                    $endDate = $receiptDate->copy();
+                }
+
+                $diff   = $receiptDate->diff($endDate);
+                $months = ($diff->y * 12) + $diff->m;
+                $days   = (int) $receiptDate->diffInDays($endDate);
+
+                $parts = [];
+                if ($months > 0) {
+                    $parts[] = $months . ' ' . \Illuminate\Support\Str::plural('Month', $months);
+                }
+                if ($diff->d > 0 || $months === 0) {
+                    $parts[] = $diff->d . ' ' . \Illuminate\Support\Str::plural('Day', $diff->d);
+                }
+
+                if ($used <= 0.0001) {
+                    $lineStatus = 'unused';
+                } elseif ($remaining <= 0.0001) {
+                    $lineStatus = 'used';
+                } else {
+                    $lineStatus = 'partial';
+                }
+
+                $model = $line->purchaseOrderItem?->productModel;
+
+                return [
+                    'item_code'   => $line->item->item_code ?? '-',
+                    'item_name'   => $line->item->item_name ?? '-',
+                    'model_key'   => $model->id ?? 0,
+                    'model_label' => $model->model_code ?? 'Common',
+                    'received'    => $received,
+                    'used'        => $used,
+                    'remaining'   => $remaining,
+                    'status'      => $lineStatus,
+                    'days'        => $days,
+                    'label'       => implode(' ', $parts),
+                    'last_usage'  => $lastUsage ? \Carbon\Carbon::parse($lastUsage) : null,
+                ];
+            })->filter(function ($row) use ($minDays, $status) {
+
+                if ($minDays !== null && $row['days'] < $minDays) {
+                    return false;
+                }
+
+                if ($status && $row['status'] !== $status) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            if ($lines->isEmpty()) {
+                return null;
+            }
+
+            $models = $lines->groupBy('model_key')->map(function ($rows) {
+                return [
+                    'model'    => $rows->first()['model_label'],
+                    'items'    => $rows->sortByDesc('days')->values(),
+                    'max_days' => $rows->max('days'),
+                    'unused'   => $rows->where('status', 'unused')->count(),
+                ];
+            })->sortBy('model')->values();
+
+            return [
+                'grn'          => $grn,
+                'receipt_date' => $receiptDate,
+                'models'       => $models,
+                'item_count'   => $lines->count(),
+                'unused'       => $lines->where('status', 'unused')->count(),
+                'max_days'     => $lines->max('days'),
+            ];
+        })->filter()->values();
+    }
+
+    /**
+     * Holding time report page.
+     */
+    public function holdingTime(Request $request)
+    {
+        $minDays = $request->filled('days')
+            ? max(0, (int) $request->input('days'))
+            : null;
+
+        $status = in_array($request->input('status'), ['unused', 'partial', 'used'], true)
+            ? $request->input('status')
+            : null;
+
+        $groups = $this->holdingGroups($minDays, $status);
+
+        $summary = [
+            'grns'   => $groups->count(),
+            'items'  => $groups->sum('item_count'),
+            'unused' => $groups->sum('unused'),
+            'oldest' => (int) ($groups->max('max_days') ?? 0),
+        ];
+
+        return view(
+            'reporting.holding-time',
+            compact('groups', 'summary', 'minDays', 'status')
+        );
+    }
+
+
     public function usageIndex()
     {
         $goodsReceipts = GoodsReceipt::with('purchaseOrders')

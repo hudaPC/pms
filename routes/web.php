@@ -190,7 +190,7 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-    
+
 
 
 
@@ -740,6 +740,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     Route::get('reporting/grn-usage/{goodsReceipt}/pdf', [GoodsReceiptController::class, 'usagePdf'])
         ->name('reporting.grn-usage.pdf');
+    Route::get('/reporting/holding-time', [GoodsReceiptController::class, 'holdingTime'])
+        ->name('reporting.holding-time');
 
 
 });

@@ -689,6 +689,15 @@
                             </a>
                         </li>
 
+                        {{-- Holding Time --}}
+                        <li class="nav-item">
+                            <a href="{{ route('reporting.holding-time') }}" class="nav-link
+            {{ request()->is('reporting/holding-time*') ? 'active' : '' }}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Holding Time</p>
+                            </a>
+                        </li>
+
 
                     </ul>
 

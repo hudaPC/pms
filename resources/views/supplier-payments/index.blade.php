@@ -294,19 +294,24 @@
 
 
                                     {{-- Invoice --}}
+                                    {{-- GRN Numbers (one line per GRN with its share) --}}
                                     <td>
 
-                                        @if ($payment->goodsReceipt)
-                                            <a
-                                                href="{{ route('goods-receipts.show', $payment->goodsReceipt) }}">
+                                        @forelse ($payment->goodsReceipts as $grn)
+                                            <div class="text-nowrap">
+                                                <a href="{{ route('goods-receipts.show', $grn) }}">
+                                                    {{ $grn->grn_number }}
+                                                </a>
+                                                <small class="text-muted">
+                                                    ({{ number_format((float) $grn->pivot->amount, 4) }})
+                                                </small>
+                                            </div>
+                                        @empty
+                                            <span class="text-muted">-</span>
+                                        @endforelse
 
-                                                {{ $payment->goodsReceipt->grn_number }}
-
-                                            </a>
-                                        @else
-                                            <span class="text-muted">
-                                                -
-                                            </span>
+                                        @if ($payment->status === 'void')
+                                            <span class="badge badge-danger">Void</span>
                                         @endif
 
                                     </td>
@@ -366,22 +371,18 @@
 
 
                                     {{-- Action --}}
-                                    <td class="text-center">
+                                    <td class="text-center text-nowrap">
 
-                                        @if ($payment->goodsReceipt)
-                                            <a href="{{ route('goods-receipts.show', $payment->goodsReceipt) }}"
-                                                class="btn btn-sm btn-outline-primary">
-
+                                        @forelse ($payment->goodsReceipts as $grn)
+                                            <a href="{{ route('goods-receipts.show', $grn) }}"
+                                                class="btn btn-sm btn-outline-primary mb-1"
+                                                title="View {{ $grn->grn_number }}">
                                                 <i class="fas fa-eye"></i>
-
-                                                View Receipt
-
+                                                {{ $payment->goodsReceipts->count() > 1 ? $grn->grn_number : 'View Receipt' }}
                                             </a>
-                                        @else
-                                            <span class="text-muted">
-                                                -
-                                            </span>
-                                        @endif
+                                        @empty
+                                            <span class="text-muted">-</span>
+                                        @endforelse
 
                                     </td>
 

@@ -7,7 +7,34 @@
     @php
         $oldAmounts = old('amounts', []);
         $hasOld = !empty($oldAmounts);
-               $totalPayableAll = collect($candidates)->where('eligible', true)->sum('payable');
+
+        // Make sure every candidate has all the keys the view needs
+        $candidates = collect($candidates)->map(function ($c) {
+            $c = (array) $c;
+
+            $receiptDate = !empty($c['receipt_date'])
+                ? \Carbon\Carbon::parse($c['receipt_date'])->startOfDay()
+                : null;
+
+            $eligibleFrom = $c['eligible_from'] ?? ($receiptDate ? $receiptDate->copy()->addMonths(6) : null);
+
+            $c['eligible_from'] = $eligibleFrom;
+            $c['eligible'] = $c['eligible'] ?? ($eligibleFrom
+                ? now()->startOfDay()->gte(\Carbon\Carbon::parse($eligibleFrom))
+                : false);
+
+            $c['receipt_date'] = $c['receipt_date'] ?? null;
+            $c['received_price'] = $c['received_price'] ?? 0;
+            $c['used_quantity'] = $c['used_quantity'] ?? 0;
+            $c['used_price'] = $c['used_price'] ?? 0;
+            $c['paid'] = $c['paid'] ?? 0;
+            $c['payable'] = $c['payable'] ?? 0;
+            $c['grn_number'] = $c['grn_number'] ?? '-';
+
+            return $c;
+        });
+
+        $totalPayableAll = $candidates->where('eligible', true)->sum('payable');
     @endphp
 
     <div class="container-fluid py-4">
@@ -41,8 +68,8 @@
             @csrf
 
             {{-- ============================================================
-            GRN SELECTION
-            ============================================================ --}}
+                 GRN SELECTION
+                 ============================================================ --}}
             <div class="card card-primary card-outline mb-4">
 
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -52,8 +79,9 @@
                     </h3>
 
                     <div class="form-inline">
-                        <input type="number" step="0.0001" min="0" id="autoTotal" class="form-control form-control-sm mr-1"
-                            style="width:170px" placeholder="Total to split">
+                        <input type="number" step="0.0001" min="0" id="autoTotal"
+                            class="form-control form-control-sm mr-1" style="width:170px"
+                            placeholder="Total to split">
                         <button type="button" class="btn btn-sm btn-outline-primary" id="btnAutoSplit"
                             title="Split this amount over the ticked GRNs, oldest first">
                             <i class="fas fa-random mr-1"></i> Auto split
@@ -84,258 +112,261 @@
 
                             <tbody>
                                 @forelse ($candidates as $c)
-                                                @php
-                                                                                            $isChecked = $c['eligible'] && ($hasOld
+                                    @php
+                                        $isChecked = $c['eligible'] && ($hasOld
                                             ? (float) ($oldAmounts[$c['id']] ?? 0) > 0
                                             : $c['id'] === $goodsReceipt->id);
 
-                                                    $value = $hasOld
-                                                        ? $oldAmounts[$c['id']] ?? ''
-                                                        : ($isChecked
-                                                            ? number_format($c['payable'], 4, '.', '')
-                                                            : '');
-                                                @endphp
+                                        $value = $hasOld
+                                            ? ($oldAmounts[$c['id']] ?? '')
+                                            : ($isChecked ? number_format($c['payable'], 4, '.', '') : '');
 
-                                                                                    <tr class="grn-row {{ $c['eligible'] ? '' : 'text-muted bg-light' }}"
+                                        // Holding time
+                                        $hParts = [];
+                                        $hDays = 0;
+                                        $hClass = 'badge-success';
+                                        $hStyle = '';
+
+                                        if ($c['receipt_date']) {
+                                            $rd = \Carbon\Carbon::parse($c['receipt_date'])->startOfDay();
+                                            $todayDate = now()->startOfDay();
+                                            $hDiff = $rd->diff($todayDate);
+                                            $hMonths = $hDiff->y * 12 + $hDiff->m;
+                                            $hDays = (int) $rd->diffInDays($todayDate);
+
+                                            if ($hMonths > 0) {
+                                                $hParts[] = $hMonths . ' ' . \Illuminate\Support\Str::plural('Month', $hMonths);
+                                            }
+                                            if ($hDiff->d > 0 || $hMonths === 0) {
+                                                $hParts[] = $hDiff->d . ' ' . \Illuminate\Support\Str::plural('Day', $hDiff->d);
+                                            }
+
+                                            if ($hDays >= 180) {
+                                                $hClass = 'badge-danger';
+                                            } elseif ($hDays >= 90) {
+                                                $hClass = '';
+                                                $hStyle = 'background:#fd7e14;color:#fff;';
+                                            } elseif ($hDays >= 30) {
+                                                $hClass = 'badge-warning';
+                                            }
+                                        }
+                                    @endphp
+
+                                    <tr class="grn-row {{ $c['eligible'] ? '' : 'text-muted bg-light' }}"
                                         data-payable="{{ $c['payable'] }}">
-                                                    <td class="text-center">
-                                                                                                    <input type="checkbox" class="grn-check" @checked($isChecked)
+                                        <td class="text-center">
+                                            <input type="checkbox" class="grn-check" @checked($isChecked)
                                                 @disabled(!$c['eligible'])>
-                                                    </td>
-                                                    <td>
-                                                        <strong>{{ $c['grn_number'] }}</strong>
-                                                        @if ($c['id'] === $goodsReceipt->id)
-                                                            <span class="badge badge-info ml-1">Current</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        {{ $c['receipt_date'] ? \Carbon\Carbon::parse($c['receipt_date'])->format('d-M-Y') : '-' }}
-                                                    </td>
-                                                    <td class="text-center text-nowrap">
-                                                        @php
-                                                            $rd = \Carbon\Carbon::parse($c['receipt_date'])->startOfDay();
-                                                            $todayDate = now()->startOfDay();
-                                                            $hDiff = $rd->diff($todayDate);
-                                                            $hMonths = $hDiff->y * 12 + $hDiff->m;
-                                                            $hDays = (int) $rd->diffInDays($todayDate);
-
-                                                            $hParts = [];
-                                                            if ($hMonths > 0) {
-                                                                $hParts[] = $hMonths . ' ' . \Illuminate\Support\Str::plural('Month', $hMonths);
-                                                            }
-                                                            if ($hDiff->d > 0 || $hMonths === 0) {
-                                                                $hParts[] = $hDiff->d . ' ' . \Illuminate\Support\Str::plural('Day', $hDiff->d);
-                                                            }
-
-                                                                                                            $eligible = $c['eligible'];
-
-                                                            if ($hDays >= 180) {
-                                                                $hClass = 'badge-danger';
-                                                                $hStyle = '';
-                                                            } elseif ($hDays >= 90) {
-                                                                $hClass = '';
-                                                                $hStyle = 'background:#fd7e14;color:#fff;';
-                                                            } elseif ($hDays >= 30) {
-                                                                $hClass = 'badge-warning';
-                                                                $hStyle = '';
-                                                            } else {
-                                                                $hClass = 'badge-success';
-                                                                $hStyle = '';
-                                                            }
-                                                        @endphp
-
-                                                        <span class="badge {{ $hClass }}" style="{{ $hStyle }}"
-                                                            title="{{ number_format($hDays) }} days total">
-                                                            <i class="fas fa-clock mr-1"></i>{{ implode(' ', $hParts) }}
-                                                        </span>
-                                                        <div>
-                                                            @if ($eligible)
-                                                                <small class="text-success">
-                                                                    <i class="fas fa-check-circle"></i> 6 months reached
-                                                                </small>
-                                                            @else
-                                                                                                                    <small class="text-danger">
+                                        </td>
+                                        <td>
+                                            <strong>{{ $c['grn_number'] }}</strong>
+                                            @if ($c['id'] === $goodsReceipt->id)
+                                                <span class="badge badge-info ml-1">Current</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            {{ $c['receipt_date'] ? \Carbon\Carbon::parse($c['receipt_date'])->format('d-M-Y') : '-' }}
+                                        </td>
+                                        <td class="text-center text-nowrap">
+                                            @if ($c['receipt_date'])
+                                                <span class="badge {{ $hClass }}" style="{{ $hStyle }}"
+                                                    title="{{ number_format($hDays) }} days total">
+                                                    <i class="fas fa-clock mr-1"></i>{{ implode(' ', $hParts) }}
+                                                </span>
+                                            @else
+                                                -
+                                            @endif
+                                            <div>
+                                                @if ($c['eligible'])
+                                                    <small class="text-success">
+                                                        <i class="fas fa-check-circle"></i> 6 months reached
+                                                    </small>
+                                                @else
+                                                    <small class="text-danger">
                                                         <i class="fas fa-lock"></i>
                                                         Locked until
-                                                        {{ \Carbon\Carbon::parse($c['eligible_from'])->format('d-M-Y') }}
+                                                        {{ $c['eligible_from'] ? \Carbon\Carbon::parse($c['eligible_from'])->format('d-M-Y') : '-' }}
                                                     </small>
-                                                            @endif
-                                                        </div>
-                                                    </td>
-                                    </div>
-                                    <td class="text-right text-primary">
-                                        {{ number_format($c['received_price'], 4) }}
-                                    </td>
-                                    <td class="text-right">{{ number_format($c['used_quantity'], 3) }}</td>
-                                    <td class="text-right text-danger">
-                                        {{ number_format($c['used_price'], 4) }}
-                                    </td>
-                                    <td class="text-right text-success">
-                                        {{ number_format($c['paid'], 4) }}
-                                    </td>
-                                    <td class="text-right">
-                                        <strong>{{ number_format($c['payable'], 4) }}</strong>
-                                    </td>
-                                    <td>
-                                        <input type="number" step="0.0001" min="0" name="amounts[{{ $c['id'] }}]" value="{{ $value }}"
-                                            class="form-control form-control-sm text-right grn-amount" @disabled(!$isChecked)>
-                                    </td>
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td class="text-right text-primary">
+                                            {{ number_format($c['received_price'], 4) }}
+                                        </td>
+                                        <td class="text-right">{{ number_format($c['used_quantity'], 3) }}</td>
+                                        <td class="text-right text-danger">
+                                            {{ number_format($c['used_price'], 4) }}
+                                        </td>
+                                        <td class="text-right text-success">
+                                            {{ number_format($c['paid'], 4) }}
+                                        </td>
+                                        <td class="text-right">
+                                            <strong>{{ number_format($c['payable'], 4) }}</strong>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.0001" min="0"
+                                                name="amounts[{{ $c['id'] }}]" value="{{ $value }}"
+                                                class="form-control form-control-sm text-right grn-amount"
+                                                @disabled(!$isChecked)>
+                                        </td>
                                     </tr>
                                 @empty
-                        <tr>
-                            <td colspan="10" class="text-center text-muted py-4">
-                                No goods receipts of this supplier have a payable amount.
-                            </td>
-                        </tr>
-                    @endforelse
-                    </tbody>
+                                    <tr>
+                                        <td colspan="10" class="text-center text-muted py-4">
+                                            No goods receipts of this supplier have a payable amount.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
 
-                    <tfoot>
-                        <tr class="font-weight-bold bg-light">
-                            <td colspan="8" class="text-right">
-                                Total payable (all GRNs):
-                                {{ number_format($totalPayableAll, 4) }}
-                                &nbsp;|&nbsp; Selected GRNs: <span id="selectedCount">0</span>
-                            </td>
-                            <td class="text-right">To pay:</td>
-                            <td class="text-right text-success" id="selectedTotal">0.0000</td>
-                        </tr>
-                    </tfoot>
+                            <tfoot>
+                                <tr class="font-weight-bold bg-light">
+                                    <td colspan="8" class="text-right">
+                                        Total payable (all GRNs):
+                                        {{ number_format($totalPayableAll, 4) }}
+                                        &nbsp;|&nbsp; Selected GRNs: <span id="selectedCount">0</span>
+                                    </td>
+                                    <td class="text-right">To pay:</td>
+                                    <td class="text-right text-success" id="selectedTotal">0.0000</td>
+                                </tr>
+                            </tfoot>
 
-                    </table>
+                        </table>
+                    </div> {{-- .table-responsive --}}
+                </div> {{-- .card-body --}}
+
+                <div class="card-footer">
+                    <small id="amountValidationMessage" class="form-text"></small>
+                    <small class="form-text text-muted">
+                        Tick the goods receipts you are paying. Each amount is filled with its payable
+                        value and you can edit it. A GRN cannot be paid more than its payable amount.
+                    </small>
                 </div>
-            </div>
-
-            <div class="card-footer">
-                <small id="amountValidationMessage" class="form-text"></small>
-                <small class="form-text text-muted">
-                    Tick the goods receipts you are paying. Each amount is filled with its payable
-                    value and you can edit it. A GRN cannot be paid more than its payable amount.
-                </small>
-            </div>
-    </div>
+            </div> {{-- GRN selection .card --}}
 
 
-    {{-- ============================================================
-    PAYMENT INFORMATION
-    ============================================================ --}}
-    <div class="card shadow-sm">
+            {{-- ============================================================
+                 PAYMENT INFORMATION
+                 ============================================================ --}}
+            <div class="card shadow-sm">
 
-        <div class="card-header">
-            <h3 class="card-title">
-                <i class="fas fa-money-check-alt mr-2"></i>
-                Payment Information
-            </h3>
-        </div>
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-money-check-alt mr-2"></i>
+                        Payment Information
+                    </h3>
+                </div>
 
-        <div class="card-body">
-            <div class="row">
+                <div class="card-body">
+                    <div class="row">
 
-                {{-- Payment Reference --}}
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label>
-                            Payment Reference
-                            <span class="text-danger">*</span>
-                        </label>
+                        {{-- Payment Reference --}}
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>
+                                    Payment Reference
+                                    <span class="text-danger">*</span>
+                                </label>
 
-                        <input type="text" name="reference" value="{{ old('reference', $paymentReference) }}"
-                            maxlength="100" class="form-control @error('reference') is-invalid @enderror"
-                            placeholder="Edit or enter payment reference" required>
+                                <input type="text" name="reference"
+                                    value="{{ old('reference', $paymentReference) }}" maxlength="100"
+                                    class="form-control @error('reference') is-invalid @enderror"
+                                    placeholder="Edit or enter payment reference" required>
 
-                        @error('reference')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                                @error('reference')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
 
-                        <small class="form-text text-muted">
-                            Reference is generated automatically, but you can type your own.
-                        </small>
+                                <small class="form-text text-muted">
+                                    Reference is generated automatically, but you can type your own.
+                                </small>
+                            </div>
+                        </div>
+
+                        {{-- Payment Date --}}
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>
+                                    Payment Date
+                                    <span class="text-danger">*</span>
+                                </label>
+
+                                <input type="date" name="payment_date"
+                                    value="{{ old('payment_date', now()->format('Y-m-d')) }}"
+                                    class="form-control @error('payment_date') is-invalid @enderror" required>
+
+                                @error('payment_date')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        {{-- Payment Method --}}
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>
+                                    Payment Method
+                                    <span class="text-danger">*</span>
+                                </label>
+
+                                <select name="payment_method"
+                                    class="form-control @error('payment_method') is-invalid @enderror" required>
+                                    <option value="cash" @selected(old('payment_method') === 'cash')>Cash</option>
+                                    <option value="bank_transfer" @selected(old('payment_method', 'bank_transfer') === 'bank_transfer')>Bank Transfer</option>
+                                    <option value="cheque" @selected(old('payment_method') === 'cheque')>Cheque</option>
+                                    <option value="mobile_banking" @selected(old('payment_method') === 'mobile_banking')>Mobile Banking</option>
+                                    <option value="other" @selected(old('payment_method') === 'other')>Other</option>
+                                </select>
+
+                                @error('payment_method')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        {{-- Transaction Reference --}}
+                        <div class="col-md-8">
+                            <div class="form-group">
+                                <label>Transaction / Cheque Reference</label>
+
+                                <input type="text" name="transaction_reference"
+                                    value="{{ old('transaction_reference') }}" maxlength="150"
+                                    class="form-control @error('transaction_reference') is-invalid @enderror"
+                                    placeholder="Bank transaction number, cheque number, etc.">
+
+                                @error('transaction_reference')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        {{-- Remarks --}}
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label>Remarks</label>
+                                <textarea name="remarks" rows="3"
+                                    class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
+
+                                @error('remarks')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
-                {{-- Payment Date --}}
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label>
-                            Payment Date
-                            <span class="text-danger">*</span>
-                        </label>
-
-                        <input type="date" name="payment_date" value="{{ old('payment_date', now()->format('Y-m-d')) }}"
-                            class="form-control @error('payment_date') is-invalid @enderror" required>
-
-                        @error('payment_date')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+                <div class="card-footer text-right">
+                    <button type="submit" class="btn btn-success" id="savePaymentButton" disabled>
+                        <i class="fas fa-save mr-1"></i>
+                        Save Payment
+                    </button>
                 </div>
 
-                {{-- Payment Method --}}
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label>
-                            Payment Method
-                            <span class="text-danger">*</span>
-                        </label>
+            </div> {{-- Payment info .card --}}
 
-                        <select name="payment_method" class="form-control @error('payment_method') is-invalid @enderror"
-                            required>
-                            <option value="cash" @selected(old('payment_method') === 'cash')>Cash</option>
-                            <option value="bank_transfer" @selected(old('payment_method', 'bank_transfer') === 'bank_transfer')>Bank Transfer</option>
-                            <option value="cheque" @selected(old('payment_method') === 'cheque')>Cheque</option>
-                            <option value="mobile_banking" @selected(old('payment_method') === 'mobile_banking')>Mobile
-                                Banking</option>
-                            <option value="other" @selected(old('payment_method') === 'other')>Other</option>
-                        </select>
-
-                        @error('payment_method')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-
-                {{-- Transaction Reference --}}
-                <div class="col-md-8">
-                    <div class="form-group">
-                        <label>Transaction / Cheque Reference</label>
-
-                        <input type="text" name="transaction_reference" value="{{ old('transaction_reference') }}"
-                            maxlength="150" class="form-control @error('transaction_reference') is-invalid @enderror"
-                            placeholder="Bank transaction number, cheque number, etc.">
-
-                        @error('transaction_reference')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-
-                {{-- Remarks --}}
-                <div class="col-md-12">
-                    <div class="form-group">
-                        <label>Remarks</label>
-                        <textarea name="remarks" rows="3"
-                            class="form-control @error('remarks') is-invalid @enderror">{{ old('remarks') }}</textarea>
-
-                        @error('remarks')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <div class="card-footer text-right">
-            <button type="submit" class="btn btn-success" id="savePaymentButton" disabled>
-                <i class="fas fa-save mr-1"></i>
-                Save Payment
-            </button>
-        </div>
-
-    </div>
-
-    </form>
-    </div>
+        </form>
+    </div> {{-- .container-fluid --}}
 
     @push('scripts')
         <script>
@@ -418,13 +449,13 @@
                 // Tick all
                 $('#checkAll').on('change', function () {
                     const state = this.checked;
-                                        $('.grn-check:not(:disabled)').prop('checked', state).trigger('change');
+                    $('.grn-check:not(:disabled)').prop('checked', state).trigger('change');
                 });
 
                 // Typing an amount
                 $('.grn-amount').on('input', recalc);
 
-                // Auto split a total over ticked GRNs, oldest first
+                // Auto split a total over ticked GRNs, in table order (oldest first)
                 $('#btnAutoSplit').on('click', function () {
                     let remaining = parseFloat($('#autoTotal').val()) || 0;
 

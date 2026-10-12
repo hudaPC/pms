@@ -114,7 +114,7 @@ class SupplierPaymentController extends Controller
         }
 
         // All GRNs of the same supplier that still have something payable (oldest first)
-        $candidates = GoodsReceipt::query()
+                $candidates = GoodsReceipt::query()
             ->where('supplier_id', $goodsReceipt->supplier_id)
             ->where('status', '!=', 'voided')
             ->orderBy('receipt_date')
@@ -122,14 +122,16 @@ class SupplierPaymentController extends Controller
             ->get()
             ->map(function ($receipt) {
                 return [
-                    'id'            => $receipt->id,
-                    'grn_number'    => $receipt->grn_number,
-                    'receipt_date'  => $receipt->receipt_date?->format('Y-m-d'),
+                    'id'             => $receipt->id,
+                    'grn_number'     => $receipt->grn_number,
+                    'receipt_date'   => $receipt->receipt_date?->format('Y-m-d'),
                     'received_price' => (float) $receipt->total_amount,
-                    'used_quantity' => $receipt->usedQuantity(),
-                    'used_price'    => $receipt->usedAmount(),
-                    'paid'          => (float) $receipt->paid_amount,
-                    'payable'       => $receipt->payableAmount(),
+                    'used_quantity'  => $receipt->usedQuantity(),
+                    'used_price'     => $receipt->usedAmount(),
+                    'paid'           => (float) $receipt->paid_amount,
+                    'payable'        => $receipt->payableAmount(),
+                    'eligible'       => $receipt->isHoldingEligible(),
+                    'eligible_from'  => $receipt->eligibleFrom()?->format('Y-m-d'),
                 ];
             })
             ->filter(fn($row) => $row['payable'] > 0.0001)

@@ -129,10 +129,7 @@ class SupplierPaymentController extends Controller
                     'used_quantity' => $receipt->usedQuantity(),
                     'used_price'    => $receipt->usedAmount(),
                     'paid'          => (float) $receipt->paid_amount,
-                                       'payable'       => $receipt->payableAmount(),
-                    'eligible'      => $receipt->isHoldingEligible(),
-                    'eligible_from' => $receipt->eligibleFrom()?->format('Y-m-d'),
-                ];
+                    'payable'       => $receipt->payableAmount(),
                 ];
             })
             ->filter(fn($row) => $row['payable'] > 0.0001)

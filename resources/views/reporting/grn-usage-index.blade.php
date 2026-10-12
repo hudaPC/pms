@@ -21,6 +21,7 @@
                                 <th>PO Number</th>
                                 <th>Receipt Date</th>
                                 <th class="text-center">Items</th>
+                                <th class="text-center">Holding Time</th>
                                 <th class="text-right">Received</th>
                                 <th class="text-right">Received Price</th>
                                 <th class="text-right">Used</th>
@@ -40,7 +41,46 @@
                                     </td>
                                     <td>{{ $grn->receipt_date ? $grn->receipt_date->format('d-M-Y') : '-' }}</td>
                                     <td class="text-center">{{ $grn->items_count }}</td>
-                                                                        <td class="text-right">{{ number_format((float) $grn->total_received_quantity, 3) }}</td>
+                                                                        <td class="text-center text-nowrap">
+                                        @if ($grn->receipt_date && $grn->status !== 'voided')
+                                            @php
+                                                $rd = $grn->receipt_date->copy()->startOfDay();
+                                                $todayDate = now()->startOfDay();
+                                                $hDiff = $rd->diff($todayDate);
+                                                $hMonths = $hDiff->y * 12 + $hDiff->m;
+                                                $hDays = (int) $rd->diffInDays($todayDate);
+
+                                                $hParts = [];
+                                                if ($hMonths > 0) {
+                                                    $hParts[] = $hMonths . ' ' . \Illuminate\Support\Str::plural('Month', $hMonths);
+                                                }
+                                                if ($hDiff->d > 0 || $hMonths === 0) {
+                                                    $hParts[] = $hDiff->d . ' ' . \Illuminate\Support\Str::plural('Day', $hDiff->d);
+                                                }
+
+                                                if ($hDays >= 180) {
+                                                    $hClass = 'badge-danger';
+                                                    $hStyle = '';
+                                                } elseif ($hDays >= 90) {
+                                                    $hClass = '';
+                                                    $hStyle = 'background:#fd7e14;color:#fff;';
+                                                } elseif ($hDays >= 30) {
+                                                    $hClass = 'badge-warning';
+                                                    $hStyle = '';
+                                                } else {
+                                                    $hClass = 'badge-success';
+                                                    $hStyle = '';
+                                                }
+                                            @endphp
+                                            <span class="badge {{ $hClass }}" style="{{ $hStyle }}"
+                                                title="{{ number_format($hDays) }} days total">
+                                                <i class="fas fa-clock mr-1"></i>{{ implode(' ', $hParts) }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-right">{{ number_format((float) $grn->total_received_quantity, 3) }}</td>
                                     <td class="text-right text-primary">
                                         {{ number_format((float) $grn->total_amount, 2) }}</td>
                                     <td class="text-right text-danger">
@@ -71,7 +111,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10" class="text-center text-muted py-4">No Goods Receipts found.</td>
+                                    <td colspan="11" class="text-center text-muted py-4">No Goods Receipts found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

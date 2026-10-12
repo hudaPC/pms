@@ -147,4 +147,23 @@ class GoodsReceipt extends Model
     {
         return max(0, (float) $this->total_amount - (float) $this->paid_amount);
     }
+        /**
+     * Date from which this receipt may be paid (receipt date + 6 months).
+     */
+    public function eligibleFrom(): ?\Carbon\Carbon
+    {
+        return $this->receipt_date
+            ? $this->receipt_date->copy()->startOfDay()->addMonthsNoOverflow(6)
+            : null;
+    }
+
+    /**
+     * Payment rule: only receipts held for 6 months or more can be paid.
+     */
+    public function isHoldingEligible(): bool
+    {
+        $from = $this->eligibleFrom();
+
+        return $from !== null && $from->lte(now()->startOfDay());
+    }
 }

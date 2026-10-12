@@ -91,14 +91,14 @@
                                         <a href="{{ route('reporting.grn-usage.show', $grn) }}" class="btn btn-sm btn-info">
                                             <i class="fas fa-chart-bar mr-1"></i> Usage
                                         </a>
-                                                                                @if ($grn->status !== 'voided' && ((float) $grn->total_amount - (float) $grn->paid_amount) > 0.0001)
+                                                                                                                       @if ($grn->status !== 'voided' && $grn->isHoldingEligible() && ((float) $grn->total_amount - (float) $grn->paid_amount) > 0.0001)
                                             <a href="{{ route('goods-receipts.payments.create', $grn) }}"
                                                 class="btn btn-sm btn-success ml-1" title="Add payment for {{ $grn->grn_number }}">
                                                 <i class="fas fa-money-check-alt mr-1"></i> Payment
                                             </a>
                                         @else
                                             <button type="button" class="btn btn-sm btn-secondary ml-1" disabled
-                                                title="Nothing payable yet">
+                                                                                                title="{{ $grn->isHoldingEligible() ? 'Nothing payable' : 'Payable after ' . $grn->eligibleFrom()?->format('d-M-Y') }}">
                                                 <i class="fas fa-money-check-alt mr-1"></i> Payment
                                             </button>
                                         @endif

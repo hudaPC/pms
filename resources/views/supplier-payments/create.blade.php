@@ -7,7 +7,7 @@
     @php
         $oldAmounts = old('amounts', []);
         $hasOld = !empty($oldAmounts);
-        $totalPayableAll = collect($candidates)->sum('payable');
+               $totalPayableAll = collect($candidates)->where('eligible', true)->sum('payable');
     @endphp
 
     <div class="container-fluid py-4">
@@ -85,9 +85,9 @@
                             <tbody>
                                 @forelse ($candidates as $c)
                                                 @php
-                                                    $isChecked = $hasOld
-                                                        ? (float) ($oldAmounts[$c['id']] ?? 0) > 0
-                                                        : $c['id'] === $goodsReceipt->id;
+                                                                                            $isChecked = $c['eligible'] && ($hasOld
+                                            ? (float) ($oldAmounts[$c['id']] ?? 0) > 0
+                                            : $c['id'] === $goodsReceipt->id);
 
                                                     $value = $hasOld
                                                         ? $oldAmounts[$c['id']] ?? ''
@@ -96,9 +96,11 @@
                                                             : '');
                                                 @endphp
 
-                                                <tr class="grn-row" data-payable="{{ $c['payable'] }}">
+                                                                                    <tr class="grn-row {{ $c['eligible'] ? '' : 'text-muted bg-light' }}"
+                                        data-payable="{{ $c['payable'] }}">
                                                     <td class="text-center">
-                                                        <input type="checkbox" class="grn-check" @checked($isChecked)>
+                                                                                                    <input type="checkbox" class="grn-check" @checked($isChecked)
+                                                @disabled(!$c['eligible'])>
                                                     </td>
                                                     <td>
                                                         <strong>{{ $c['grn_number'] }}</strong>
@@ -125,7 +127,7 @@
                                                                 $hParts[] = $hDiff->d . ' ' . \Illuminate\Support\Str::plural('Day', $hDiff->d);
                                                             }
 
-                                                            $eligible = $hMonths >= 6;
+                                                                                                            $eligible = $c['eligible'];
 
                                                             if ($hDays >= 180) {
                                                                 $hClass = 'badge-danger';
@@ -152,7 +154,11 @@
                                                                     <i class="fas fa-check-circle"></i> 6 months reached
                                                                 </small>
                                                             @else
-                                                                <small class="text-muted">Under 6 months</small>
+                                                                                                                    <small class="text-danger">
+                                                        <i class="fas fa-lock"></i>
+                                                        Locked until
+                                                        {{ \Carbon\Carbon::parse($c['eligible_from'])->format('d-M-Y') }}
+                                                    </small>
                                                             @endif
                                                         </div>
                                                     </td>
@@ -412,7 +418,7 @@
                 // Tick all
                 $('#checkAll').on('change', function () {
                     const state = this.checked;
-                    $('.grn-check').prop('checked', state).trigger('change');
+                                        $('.grn-check:not(:disabled)').prop('checked', state).trigger('change');
                 });
 
                 // Typing an amount

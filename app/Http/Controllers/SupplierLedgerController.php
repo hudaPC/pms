@@ -16,16 +16,16 @@ class SupplierLedgerController extends Controller
             ->get();
 
         $supplierId = $request->input('supplier_id');
-        $fromDate   = $request->input('from_date');
-        $toDate     = $request->input('to_date');
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
 
-        $supplier     = null;
+        $supplier = null;
         $transactions = collect();
 
         $summary = [
             'opening_balance' => 0,
             'period_invoiced' => 0,
-            'period_paid'     => 0,
+            'period_paid' => 0,
             'closing_balance' => 0,
         ];
 
@@ -73,14 +73,14 @@ class SupplierLedgerController extends Controller
 
         $invoices = $receiptQuery->get()->map(function ($receipt) {
             return [
-                'date'        => $receipt->receipt_date,
-                'type'        => 'invoice',
-                'reference'   => $receipt->grn_number,
+                'date' => $receipt->receipt_date,
+                'type' => 'invoice',
+                'reference' => $receipt->grn_number,
                 'description' => 'Goods Receipt',
-                'debit'       => (float) $receipt->total_amount,
-                'credit'      => 0,
-                'sort_id'     => $receipt->id,
-                'source_id'   => $receipt->id,
+                'debit' => (float) $receipt->total_amount,
+                'credit' => 0,
+                'sort_id' => $receipt->id,
+                'source_id' => $receipt->id,
             ];
         });
 
@@ -99,25 +99,26 @@ class SupplierLedgerController extends Controller
 
         $cancelledInvoices = $voidedQuery->get()->map(function ($receipt) {
             return [
-                'date'                => $receipt->receipt_date,
-                'type'                => 'cancelled_invoice',
-                'reference'           => $receipt->grn_number,
-                'description'         => 'Voided Goods Receipt',
-                'debit'               => 0,
-                'credit'              => 0,
-                'display_amount'      => 0,
-                'status'              => 'cancelled',
+                'date' => $receipt->receipt_date,
+                'type' => 'cancelled_invoice',
+                'reference' => $receipt->grn_number,
+                'description' => 'Voided Goods Receipt',
+                'debit' => 0,
+                'credit' => 0,
+                'display_amount' => 0,
+                'status' => 'cancelled',
                 'cancellation_reason' => $receipt->void_reason,
-                'cancelled_at'        => $receipt->voided_at,
-                'sort_id'             => $receipt->id,
-                'source_id'           => $receipt->id,
+                'cancelled_at' => $receipt->voided_at,
+                'sort_id' => $receipt->id,
+                'source_id' => $receipt->id,
             ];
         });
 
         /*
         | Period payments (credit)
         */
-        $paymentQuery = SupplierPayment::where('supplier_id', $supplier->id);
+        $paymentQuery = SupplierPayment::with('goodsReceipts')
+            ->where('supplier_id', $supplier->id);
 
         if ($fromDate) {
             $paymentQuery->whereDate('payment_date', '>=', $fromDate);
@@ -130,18 +131,23 @@ class SupplierLedgerController extends Controller
             $isVoided = $payment->status === 'void';
 
             return [
-                'date'           => $payment->payment_date,
-                'type'           => $isVoided ? 'voided_payment' : 'payment',
-                'reference'      => $payment->reference,
-                'description'    => $isVoided ? 'Voided Supplier Payment' : 'Supplier Payment',
-                'debit'          => 0,
-                'credit'         => $isVoided ? 0 : (float) $payment->amount,
+                'date' => $payment->payment_date,
+                'type' => $isVoided ? 'voided_payment' : 'payment',
+                'reference' => $payment->reference,
+                'description' => $isVoided ? 'Voided Supplier Payment' : 'Supplier Payment',
+                'debit' => 0,
+                'credit' => $isVoided ? 0 : (float) $payment->amount,
                 'display_amount' => (float) $payment->amount,
-                'status'         => $payment->status,
-                'void_reason'    => $payment->void_reason,
-                'voided_at'      => $payment->voided_at,
-                'sort_id'        => $payment->id,
-                'source_id'      => $payment->id,
+                'grns' => $payment->goodsReceipts->map(fn($grn) => [
+                    'id' => $grn->id,
+                    'grn_number' => $grn->grn_number,
+                    'amount' => (float) $grn->pivot->amount,
+                ])->values()->all(),
+                'status' => $payment->status,
+                'void_reason' => $payment->void_reason,
+                'voided_at' => $payment->voided_at,
+                'sort_id' => $payment->id,
+                'source_id' => $payment->id,
             ];
         });
 
@@ -177,12 +183,12 @@ class SupplierLedgerController extends Controller
         });
 
         $periodInvoiced = (float) $transactions->sum('debit');
-        $periodPaid     = (float) $transactions->sum('credit');
+        $periodPaid = (float) $transactions->sum('credit');
 
         $summary = [
             'opening_balance' => $openingBalance,
             'period_invoiced' => $periodInvoiced,
-            'period_paid'     => $periodPaid,
+            'period_paid' => $periodPaid,
             'closing_balance' => $openingBalance + $periodInvoiced - $periodPaid,
         ];
 

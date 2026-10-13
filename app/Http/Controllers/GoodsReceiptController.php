@@ -788,12 +788,13 @@ class GoodsReceiptController extends Controller
      * Builds the Holding Time data: GRN > Product Model > Item.
      * Used by the report page and by the dashboard.
      */
-    public function holdingGroups(?int $minDays = null, ?string $status = null)
+        public function holdingGroups(?int $minDays = null, ?string $status = null, bool $excludePaid = false)
     {
         $today = now()->startOfDay();
 
-        $goodsReceipts = GoodsReceipt::query()
+                $goodsReceipts = GoodsReceipt::query()
             ->where('status', '!=', 'voided')
+            ->when($excludePaid, fn($q) => $q->where('payment_status', '!=', 'paid'))
             ->with([
                 'purchaseOrders:id,po_number',
                 'items.item',

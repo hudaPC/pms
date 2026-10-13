@@ -26,6 +26,8 @@
                                 <th class="text-right">Received Price</th>
                                 <th class="text-right">Used</th>
                                 <th class="text-right">Used Price</th>
+                                 <th class="text-right">Paid</th>
+                                <th class="text-center">Payment Status</th>
                                 <th width="260">Action</th>
                             </tr>
                         </thead>
@@ -87,18 +89,39 @@
                                         {{ number_format((float) ($usedByGrn[$grn->id] ?? 0), 3) }}</td>
                                     <td class="text-right text-danger">
                                         {{ number_format((float) ($usedAmountByGrn[$grn->id] ?? 0), 2) }}</td>
-                                    <td class="text-nowrap">
+                                                                        <td class="text-right text-success">
+                                        {{ number_format((float) $grn->paid_amount, 2) }}
+                                    </td>
+                                    <td class="text-center text-nowrap">
+                                        @if ($grn->status === 'voided')
+                                            <span class="badge badge-dark">Voided</span>
+                                        @elseif ($grn->payment_status === 'paid')
+                                            <span class="badge badge-success">
+                                                <i class="fas fa-check-circle mr-1"></i>Paid
+                                            </span>
+                                        @elseif ($grn->payment_status === 'partially_paid')
+                                            <span class="badge badge-warning"
+                                                title="Balance {{ number_format((float) $grn->balance_amount, 2) }}">
+                                                <i class="fas fa-adjust mr-1"></i>Partly Paid
+                                            </span>
+                                        @else
+                                            <span class="badge badge-danger">
+                                                <i class="fas fa-times-circle mr-1"></i>Unpaid
+                                            </span>
+                                        @endif
+                                    </td>
+                                        <td class="text-nowrap">
                                         <a href="{{ route('reporting.grn-usage.show', $grn) }}" class="btn btn-sm btn-info">
                                             <i class="fas fa-chart-bar mr-1"></i> Usage
                                         </a>
-                                                                                                                       @if ($grn->status !== 'voided' && $grn->isHoldingEligible() && ((float) $grn->total_amount - (float) $grn->paid_amount) > 0.0001)
+                                          @if ($grn->status !== 'voided' && ((float) $grn->total_amount - (float) $grn->paid_amount) > 0.0001)
                                             <a href="{{ route('goods-receipts.payments.create', $grn) }}"
                                                 class="btn btn-sm btn-success ml-1" title="Add payment for {{ $grn->grn_number }}">
                                                 <i class="fas fa-money-check-alt mr-1"></i> Payment
                                             </a>
                                         @else
                                             <button type="button" class="btn btn-sm btn-secondary ml-1" disabled
-                                                                                                title="{{ $grn->isHoldingEligible() ? 'Nothing payable' : 'Payable after ' . $grn->eligibleFrom()?->format('d-M-Y') }}">
+                                                title="{{ $grn->status === 'voided' ? 'Voided receipt' : 'Payment complete' }}">
                                                 <i class="fas fa-money-check-alt mr-1"></i> Payment
                                             </button>
                                         @endif
@@ -111,7 +134,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="11" class="text-center text-muted py-4">No Goods Receipts found.</td>
+                                    <td colspan="13" class="text-center text-muted py-4">No Goods Receipts found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

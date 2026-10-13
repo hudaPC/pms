@@ -34,7 +34,7 @@
             return $c;
         });
 
-        $totalPayableAll = $candidates->where('eligible', true)->sum('payable');
+                $totalPayableAll = collect($candidates)->sum('payable');
     @endphp
 
     <div class="container-fluid py-4">
@@ -113,9 +113,9 @@
                             <tbody>
                                 @forelse ($candidates as $c)
                                     @php
-                                        $isChecked = $c['eligible'] && ($hasOld
+                                         $isChecked = $hasOld
                                             ? (float) ($oldAmounts[$c['id']] ?? 0) > 0
-                                            : $c['id'] === $goodsReceipt->id);
+                                            : $c['id'] === $goodsReceipt->id;
 
                                         $value = $hasOld
                                             ? ($oldAmounts[$c['id']] ?? '')
@@ -152,11 +152,10 @@
                                         }
                                     @endphp
 
-                                    <tr class="grn-row {{ $c['eligible'] ? '' : 'text-muted bg-light' }}"
-                                        data-payable="{{ $c['payable'] }}">
+                                       <tr class="grn-row" data-payable="{{ $c['payable'] }}"
+                                        data-early="{{ $c['eligible'] ? 0 : 1 }}">
                                         <td class="text-center">
-                                            <input type="checkbox" class="grn-check" @checked($isChecked)
-                                                @disabled(!$c['eligible'])>
+                                          <input type="checkbox" class="grn-check" @checked($isChecked)>
                                         </td>
                                         <td>
                                             <strong>{{ $c['grn_number'] }}</strong>
@@ -182,10 +181,10 @@
                                                         <i class="fas fa-check-circle"></i> 6 months reached
                                                     </small>
                                                 @else
-                                                    <small class="text-danger">
-                                                        <i class="fas fa-lock"></i>
-                                                        Locked until
-                                                        {{ $c['eligible_from'] ? \Carbon\Carbon::parse($c['eligible_from'])->format('d-M-Y') : '-' }}
+                                                                                                        <small class="text-warning">
+                                                        <i class="fas fa-exclamation-circle"></i>
+                                                        Early payment (6 months on
+                                                        {{ \Carbon\Carbon::parse($c['eligible_from'])->format('d-M-Y') }})
                                                     </small>
                                                 @endif
                                             </div>
@@ -482,6 +481,20 @@
                     if (remaining > 0.0001) {
                         $msg.removeClass('text-success text-muted').addClass('text-danger')
                             .text(fmt(remaining) + ' could not be placed. Tick more goods receipts or lower the total.');
+                    }
+                });
+
+                               // Ask for confirmation when an early payment (under 6 months) is included
+                $('#savePaymentButton').closest('form').on('submit', function(e) {
+                    const early = $('.grn-row').filter(function() {
+                        return $(this).data('early') == 1 &&
+                            $(this).find('.grn-check').is(':checked');
+                    }).length;
+
+                    if (early > 0 && !confirm(
+                            early + ' selected goods receipt(s) are under 6 months old. ' +
+                            'Do you want to pay them early?')) {
+                        e.preventDefault();
                     }
                 });
 

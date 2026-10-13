@@ -106,12 +106,7 @@ class SupplierPaymentController extends Controller
                 ->route('reporting.grn-usage.index')
                 ->with('error', 'Nothing is payable on this goods receipt. It is already fully paid or has no received value.');
         }
-                if (!$goodsReceipt->isHoldingEligible()) {
-            return redirect()
-                ->route('reporting.grn-usage.index')
-                ->with('error', $goodsReceipt->grn_number . ' can be paid only after 6 months from its receipt date ('
-                    . $goodsReceipt->eligibleFrom()?->format('d-M-Y') . ').');
-        }
+                
 
         // All GRNs of the same supplier that still have something payable (oldest first)
                 $candidates = GoodsReceipt::query()
@@ -228,14 +223,7 @@ class SupplierPaymentController extends Controller
                         'amounts' => $receipt->grn_number . ' is voided and cannot be paid.',
                     ]);
                 }
-                                // Holding rule: only receipts held for 6 months or more can be paid
-                if (!$receipt->isHoldingEligible()) {
-                    throw ValidationException::withMessages([
-                        'amounts' =>
-                            $receipt->grn_number . ' can be paid only after '
-                            . $receipt->eligibleFrom()?->format('d-M-Y') . ' (6 months from receipt).',
-                    ]);
-                }
+                 
 
                 // All GRNs must belong to the same supplier
                 if ((int) $receipt->supplier_id !== (int) $goodsReceipt->supplier_id) {

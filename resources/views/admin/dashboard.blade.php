@@ -19,6 +19,115 @@
 
         </div>
 
+                {{-- ============================================================
+             PAYMENT SCHEDULE (month by month)
+        ============================================================ --}}
+        <div class="mb-4">
+
+            <h5 class="mb-1">
+                <i class="fas fa-calendar-check mr-2 text-success"></i>
+                GRNs to Pay
+            </h5>
+            <div class="text-muted small mb-3">
+                Goods receipts that reach 6 months in each month, and still have money left to pay.
+            </div>
+
+            <div class="row">
+                @foreach ($schedule as $month)
+                    <div class="col-lg-6 mb-3">
+                        <div class="card shadow-sm h-100 {{ $month['is_current'] ? 'card-success card-outline' : '' }}">
+
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h3 class="card-title mb-0">
+                                    {{ $month['label'] }}
+                                    @if ($month['is_current'])
+                                        <span class="badge badge-success ml-1">This month</span>
+                                    @endif
+                                </h3>
+                                <strong class="{{ $month['total'] > 0 ? 'text-danger' : 'text-muted' }}">
+                                    {{ number_format($month['total'], 2) }}
+                                </strong>
+                            </div>
+
+                                                        {{-- Last paid (shown on this month's card only) --}}
+                            @if ($month['is_current'] && $lastPayment)
+                                <div class="px-3 py-2 border-bottom bg-light">
+                                    <div class="small text-muted mb-1">
+                                        <i class="fas fa-check-circle text-success mr-1"></i>
+                                        Last paid &middot; {{ $lastPayment->payment_date->format('d-M-Y') }}
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            @foreach ($lastPayment->goodsReceipts as $paidGrn)
+                                                <a href="{{ route('goods-receipts.show', $paidGrn) }}"
+                                                    class="badge badge-light border mr-1">
+                                                    {{ $paidGrn->grn_number }}
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                        <strong class="text-success">
+                                            {{ number_format((float) $lastPayment->amount, 2) }}
+                                        </strong>
+                                    </div>
+                                </div>
+                            @endif
+
+                            <div class="card-body p-0">
+                                @if ($month['rows']->isEmpty())
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-check-circle text-success mr-1"></i>
+                                        Nothing to pay
+                                    </div>
+                                @else
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover mb-0">
+                                            <tbody>
+                                                @foreach ($month['rows'] as $r)
+                                                    @php $from = $r->eligibleFrom(); @endphp
+                                                    <tr>
+                                                        <td>
+                                                            <strong>{{ $r->grn_number }}</strong>
+                                                            <div class="small text-muted">
+                                                                {{ $r->supplier->name ?? '-' }}
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-nowrap">
+                                                            @if ($from->lte(now()->startOfDay()))
+                                                                <span class="badge badge-danger">Ready</span>
+                                                            @else
+                                                                <span class="badge badge-secondary">
+                                                                    {{ $from->format('d-M') }}
+                                                                </span>
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-right text-danger">
+                                                            <strong>{{ number_format((float) $r->balance_amount, 2) }}</strong>
+                                                        </td>
+                                                        <td class="text-right">
+                                                            <a href="{{ route('goods-receipts.payments.create', $r) }}"
+                                                                class="btn btn-xs btn-success">
+                                                                <i class="fas fa-money-check-alt mr-1"></i> Pay
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @endif
+                            </div>
+
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+        </div>
+
+
+
+
+
 
         {{-- Stat Cards --}}
         <div class="row mb-4">
@@ -195,7 +304,7 @@
 
 
 
-                       {{-- Holding Time --}}
+            {{-- Holding Time --}}
             <div class="col-lg-8 mb-4">
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -209,9 +318,9 @@
                 </div>
 
                 @include('reporting.partials.holding-list', [
-                    'groups'    => $holdingGroups,
+                    'groups' => $holdingGroups,
                     'showTools' => false,
-                    'uid'       => 'dash',
+                    'uid' => 'dash',
                 ])
 
             </div>
@@ -286,7 +395,7 @@
 
                     </div>
 
-                    
+
 
                 </div>
 

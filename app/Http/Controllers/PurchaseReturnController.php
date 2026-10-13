@@ -33,10 +33,19 @@ class PurchaseReturnController extends Controller
                 ->paginate(20);
 
 
+        // Posted GRNs that have received items (for the "Create Purchase Return" picker)
+        $goodsReceipts = GoodsReceipt::with('purchaseOrder.supplier')
+            ->where('status', 'posted')
+            ->has('items')
+            ->orderByDesc('receipt_date')
+            ->orderByDesc('id')
+            ->get();
+
         return view(
             'purchase-returns.index',
             compact(
-                'purchaseReturns'
+                'purchaseReturns',
+                'goodsReceipts'
             )
         );
     }
@@ -177,17 +186,15 @@ class PurchaseReturnController extends Controller
                         'already_returned' =>
                             $alreadyReturned,
 
-                        'returnable_quantity' =>
+                            'returnable_quantity' =>
                             $returnableQuantity,
+
+                        'used_quantity' =>
+                            (float) $receiptItem->activeUsedQuantity(),
 
                     ];
                 })
-                ->filter(function ($row) {
-
-                    return
-                        $row['returnable_quantity']
-                        > 0;
-                })
+                ->sortBy(fn ($row) => $row['receipt_item']->purchaseOrderItem->purchaseOrder->po_number ?? '')
                 ->values();
 
 

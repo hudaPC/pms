@@ -25,10 +25,7 @@
             </div>
 
 
-            <a href="{{ route(
-        'goods-receipts.show',
-        $goodsReceipt
-    ) }}" class="btn btn-secondary">
+            <a href="{{ route('goods-receipts.show', $goodsReceipt) }}" class="btn btn-secondary">
 
                 <i class="fas fa-arrow-left mr-1"></i>
 
@@ -119,10 +116,7 @@
 
                         <div class="mt-1">
 
-                            {{ $goodsReceipt->receipt_date
-        ? $goodsReceipt->receipt_date->format('d-M-Y')
-        : '-'
-                                }}
+                            {{ $goodsReceipt->receipt_date ? $goodsReceipt->receipt_date->format('d-M-Y') : '-' }}
 
                         </div>
 
@@ -153,10 +147,7 @@
             </div>
 
 
-            <form action="{{ route(
-        'purchase-returns.store',
-        $goodsReceipt
-    ) }}" method="POST">
+            <form action="{{ route('purchase-returns.store', $goodsReceipt) }}" method="POST">
 
                 @csrf
 
@@ -180,21 +171,18 @@
                                     <span class="text-danger">*</span>
                                 </label>
 
-                                <input type="text" name="return_number" value="{{ old(
-        'return_number',
-        $returnNumber
-    ) }}" class="form-control
+                                <input type="text" name="return_number" value="{{ old('return_number', $returnNumber) }}"
+                                    class="form-control
                                             @error('return_number')
                                                 is-invalid
                                             @enderror
-                                        " maxlength="100" placeholder="Edit or enter return number" required>
+                                        "
+                                    maxlength="100" placeholder="Edit or enter return number" required>
 
                                 @error('return_number')
-
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
-
                                 @enderror
                                 <small class="form-text text-muted">
                                     Return number is generated automatically, but you can type your own.
@@ -214,24 +202,20 @@
                                     Return Date
                                 </label>
 
-                                <input type="date" name="return_date" value="{{ old(
-        'return_date',
-        now()->format('Y-m-d')
-    ) }}" min="{{ $goodsReceipt->receipt_date
-        ? $goodsReceipt->receipt_date->format('Y-m-d')
-        : ''
-                                        }}" class="form-control
+                                <input type="date" name="return_date"
+                                    value="{{ old('return_date', now()->format('Y-m-d')) }}"
+                                    min="{{ $goodsReceipt->receipt_date ? $goodsReceipt->receipt_date->format('Y-m-d') : '' }}"
+                                    class="form-control
                                             @error('return_date')
                                                 is-invalid
                                             @enderror
-                                        " required>
+                                        "
+                                    required>
 
                                 @error('return_date')
-
                                     <div class="invalid-feedback">
                                         {{ $message }}
                                     </div>
-
                                 @enderror
 
                             </div>
@@ -254,45 +238,27 @@
                                         -- Select Reason --
                                     </option>
 
-                                    <option value="Damaged goods" @selected(
-                                        old('reason')
-                                        === 'Damaged goods'
-                                    )>
+                                    <option value="Damaged goods" @selected(old('reason') === 'Damaged goods')>
                                         Damaged goods
                                     </option>
 
-                                    <option value="Wrong item supplied" @selected(
-                                        old('reason')
-                                        === 'Wrong item supplied'
-                                    )>
+                                    <option value="Wrong item supplied" @selected(old('reason') === 'Wrong item supplied')>
                                         Wrong item supplied
                                     </option>
 
-                                    <option value="Excess quantity supplied" @selected(
-                                        old('reason')
-                                        === 'Excess quantity supplied'
-                                    )>
+                                    <option value="Excess quantity supplied" @selected(old('reason') === 'Excess quantity supplied')>
                                         Excess quantity supplied
                                     </option>
 
-                                    <option value="Quality rejected" @selected(
-                                        old('reason')
-                                        === 'Quality rejected'
-                                    )>
+                                    <option value="Quality rejected" @selected(old('reason') === 'Quality rejected')>
                                         Quality rejected
                                     </option>
 
-                                    <option value="Specification mismatch" @selected(
-                                        old('reason')
-                                        === 'Specification mismatch'
-                                    )>
+                                    <option value="Specification mismatch" @selected(old('reason') === 'Specification mismatch')>
                                         Specification mismatch
                                     </option>
 
-                                    <option value="Other" @selected(
-                                        old('reason')
-                                        === 'Other'
-                                    )>
+                                    <option value="Other" @selected(old('reason') === 'Other')>
                                         Other
                                     </option>
 
@@ -319,7 +285,7 @@
                     </h5>
 
 
-                    @if(!$returnableItems->contains(fn($r) => $r['returnable_quantity'] > 0.0001))
+                    @if (!$returnableItems->contains(fn($r) => $r['returnable_quantity'] > 0.0001))
 
                         <div class="alert alert-info mb-0">
 
@@ -329,9 +295,7 @@
                             on this Goods Receipt.
 
                         </div>
-
                     @else
-
                         <div class="table-responsive">
 
                             <table class="table table-bordered table-hover">
@@ -340,6 +304,7 @@
                                     <tr>
                                         <th width="50">#</th>
                                         <th>PO Number</th>
+                                        <th>Product Model</th>
                                         <th>Item Code</th>
                                         <th>Item Name</th>
                                         <th class="text-right">Received</th>
@@ -366,6 +331,16 @@
                                             <td>{{ $loop->iteration }}</td>
 
                                             <td>{{ $receiptItem->purchaseOrderItem->purchaseOrder->po_number ?? '-' }}</td>
+
+                                            <td>
+                                                @if ($receiptItem->purchaseOrderItem?->productModel)
+                                                    <span class="badge badge-info">
+                                                        {{ $receiptItem->purchaseOrderItem->productModel->model_code }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-muted">Common</span>
+                                                @endif
+                                            </td>
 
                                             <td><strong>{{ $receiptItem->item->item_code ?? '-' }}</strong></td>
 
@@ -404,10 +379,12 @@
 
                                             <td>
                                                 @if ($canReturn)
-                                                    <input type="hidden" name="items[{{ $index }}][goods_receipt_item_id]"
+                                                    <input type="hidden"
+                                                        name="items[{{ $index }}][goods_receipt_item_id]"
                                                         value="{{ $receiptItem->id }}">
 
-                                                    <input type="number" name="items[{{ $index }}][return_quantity]"
+                                                    <input type="number"
+                                                        name="items[{{ $index }}][return_quantity]"
                                                         value="{{ old("items.$index.return_quantity") }}" min="0.001"
                                                         max="{{ number_format((float) $row['returnable_quantity'], 3, '.', '') }}"
                                                         step="0.001" class="form-control return-qty"
@@ -442,8 +419,7 @@
                     {{-- ============================================================
                     ESTIMATED RETURN VALUE
                     ============================================================ --}}
-                    @if($returnableItems->contains(fn($r) => $r['returnable_quantity'] > 0.0001))
-
+                    @if ($returnableItems->contains(fn($r) => $r['returnable_quantity'] > 0.0001))
                         <div class="row justify-content-end mt-3">
 
                             <div class="col-md-4">
@@ -471,7 +447,6 @@
                             </div>
 
                         </div>
-
                     @endif
 
 
@@ -482,8 +457,7 @@
                             Remarks
                         </label>
 
-                        <textarea name="remarks" rows="3" class="form-control"
-                            placeholder="Optional remarks...">{{ old('remarks') }}</textarea>
+                        <textarea name="remarks" rows="3" class="form-control" placeholder="Optional remarks...">{{ old('remarks') }}</textarea>
 
                     </div>
 
@@ -492,18 +466,14 @@
 
                 <div class="card-footer text-right">
 
-                    <a href="{{ route(
-        'goods-receipts.show',
-        $goodsReceipt
-    ) }}" class="btn btn-secondary">
+                    <a href="{{ route('goods-receipts.show', $goodsReceipt) }}" class="btn btn-secondary">
 
                         Cancel
 
                     </a>
 
 
-                    @if($returnableItems->contains(fn($r) => $r['returnable_quantity'] > 0.0001))
-
+                    @if ($returnableItems->contains(fn($r) => $r['returnable_quantity'] > 0.0001))
                         <button type="submit" class="btn btn-danger">
 
                             <i class="fas fa-save mr-1"></i>
@@ -511,7 +481,6 @@
                             Save Purchase Return Draft
 
                         </button>
-
                     @endif
 
                 </div>
@@ -526,10 +495,8 @@
 
 
 @push('scripts')
-
     <script>
-
-        $(document).ready(function () {
+        $(document).ready(function() {
 
             /*
             |--------------------------------------------------------------------------
@@ -541,7 +508,7 @@
 
                 let total = 0;
 
-                $('.return-qty').each(function () {
+                $('.return-qty').each(function() {
 
                     const quantity =
                         parseFloat(
@@ -582,7 +549,5 @@
             calculateReturnValue();
 
         });
-
     </script>
-
 @endpush

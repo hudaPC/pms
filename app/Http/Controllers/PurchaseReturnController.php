@@ -67,6 +67,7 @@ class PurchaseReturnController extends Controller
             'items.item.unit',
             'items.goodsReceiptItem',
             'items.purchaseOrderItem.purchaseOrder',
+            'items.purchaseOrderItem.productModel',
         ]);
 
 
@@ -112,6 +113,7 @@ class PurchaseReturnController extends Controller
             'purchaseOrders',
             'items.item.unit',
             'items.purchaseOrderItem.purchaseOrder',
+            'items.purchaseOrderItem.productModel',
         ]);
 
 

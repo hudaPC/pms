@@ -252,6 +252,7 @@
                                     #
                                 </th>
                                 <th>PO Number</th>
+                                 <th>Product Model</th>
 
                                 <th>
                                     Item Code
@@ -296,7 +297,15 @@
                                     </td>
                                     <td>{{ $item->purchaseOrderItem->purchaseOrder->po_number ?? '-' }}</td>
 
-
+                                    <td>
+                                        @if ($item->purchaseOrderItem?->productModel)
+                                            <span class="badge badge-info">
+                                                {{ $item->purchaseOrderItem->productModel->model_code }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted">Common</span>
+                                        @endif
+                                    </td>
                                     <td>
 
                                         <strong>
@@ -360,7 +369,7 @@
 
                                 <tr>
 
-                                    <td colspan="9" class="text-center text-muted py-4">
+                                    <td colspan="10" class="text-center text-muted py-4">
 
                                         No return items found.
 

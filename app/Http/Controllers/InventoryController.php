@@ -1,10 +1,11 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Item;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
+use App\Models\ProductModelItem;
 
 class InventoryController extends Controller
 {
@@ -102,9 +103,12 @@ class InventoryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if (!empty($productModelId)) {
+                if (!empty($productModelId)) {
 
-            $query->where('product_model_id', $productModelId);
+            $query->whereHas('productModelItems', function ($query) use ($productModelId) {
+
+                $query->where('product_model_id', $productModelId);
+            });
         }
 
 
@@ -203,13 +207,14 @@ class InventoryController extends Controller
         ");
         }
 
+
         /*
         |--------------------------------------------------------------------------
-        | Results (all items, no pagination)
+        | Results
         |--------------------------------------------------------------------------
         */
 
-        $items = $query
+                $items = $query
             ->orderBy('item_code')
             ->get();
 
@@ -220,7 +225,7 @@ class InventoryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $items->transform(
+                $items->transform(
             function ($item) {
 
                 $currentStock =
@@ -289,23 +294,91 @@ class InventoryController extends Controller
         |--------------------------------------------------------------------------
         | Apply Planning Status Filter
         |--------------------------------------------------------------------------
+        |
+        | Since planning status depends on calculated current stock,
+        | filter the paginator collection after calculation.
+        |
         */
 
         if ($planningStatus !== 'all') {
 
-            $items = $items
+                        $items = $items
                 ->filter(function ($item) use ($planningStatus) {
 
                     return $item->planning_status === $planningStatus;
                 })
                 ->values();
+            
         }
+
+
+                /*
+        |--------------------------------------------------------------------------
+        | Group By Product Model + Paginate (15 Product Models per page)
+        |--------------------------------------------------------------------------
+        */
+
+               $itemsById = $items->keyBy('id');
+
+        $bomLines = ProductModelItem::with('productModel')
+            ->whereIn('item_id', $itemsById->keys()->all())
+            ->get();
+
+        if (!empty($productModelId)) {
+
+            $bomLines = $bomLines->where('product_model_id', $productModelId);
+        }
+
+        $groupedItems = $bomLines
+            ->groupBy(function ($line) {
+                return $line->productModel->model_code ?? 'No Product Model';
+            })
+            ->map(function ($lines) use ($itemsById) {
+
+                return $lines
+                    ->map(function ($line) use ($itemsById) {
+                        return $itemsById[$line->item_id];
+                    })
+                    ->unique('id')
+                    ->sortBy('item_code')
+                    ->values();
+            });
+
+        // Items that are not in any Product Model BOM
+        if (empty($productModelId)) {
+
+            $noModelItems = $items
+                ->whereNotIn('id', $bomLines->pluck('item_id')->unique()->all())
+                ->values();
+
+            if ($noModelItems->isNotEmpty()) {
+
+                $groupedItems->put('No Product Model', $noModelItems);
+            }
+        }
+
+        $groupedItems = $groupedItems->sortKeys();
+       // dd($items->count(), $groupedItems->map->count());
+        $perPage = 13;
+
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+
+        $groups = new LengthAwarePaginator(
+            $groupedItems->slice(($currentPage - 1) * $perPage, $perPage),
+            $groupedItems->count(),
+            $perPage,
+            $currentPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
 
 
         return view(
             'inventory.index',
             compact(
-                'items',
+                'groups',
                 'search',
                 'stockStatus',
                 'planningStatus',
@@ -314,6 +387,7 @@ class InventoryController extends Controller
             )
         );
     }
+    
 
 
     /*

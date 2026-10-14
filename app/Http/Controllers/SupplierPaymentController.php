@@ -85,7 +85,27 @@ class SupplierPaymentController extends Controller
     | Create Payment
     |--------------------------------------------------------------------------
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Payment Voucher PDF (by payment reference, grouped by GRN)
+    |--------------------------------------------------------------------------
+    */
 
+    public function pdf(SupplierPayment $supplierPayment)
+    {
+        $supplierPayment->load(['supplier', 'goodsReceipts.purchaseOrders']);
+
+        $groups = $supplierPayment->goodsReceipts->sortBy('grn_number')->values();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'supplier-payments.pdf',
+            compact('supplierPayment', 'groups')
+        )->setPaper('a4', 'portrait');
+
+        return $pdf->download(
+            'Payment-' . \Illuminate\Support\Str::slug($supplierPayment->reference) . '.pdf'
+        );
+    }
     public function create(GoodsReceipt $goodsReceipt)
     {
         abort_if(

@@ -19,9 +19,13 @@
                 </p>
             </div>
             <div>
-                        <a href="{{ route('reporting.grn-usage.pdf', [$goodsReceipt, 'download' => 1]) }}"
+            <a href="{{ route('reporting.grn-usage.pdf', [$goodsReceipt, 'download' => 1]) }}"
             class="btn btn-danger mr-2">
             <i class="fas fa-file-pdf mr-1"></i> Download PDF
+        </a>
+                <a href="{{ route('reporting.grn-usage.summary-pdf', [$goodsReceipt, 'download' => 1]) }}"
+            class="btn btn-outline-danger mr-2">
+            <i class="fas fa-file-alt mr-1"></i> Summary PDF
         </a>
                 <a href="{{ url('reporting/grn-usage') }}" class="btn btn-secondary mr-2">
                     <i class="fas fa-arrow-left mr-1"></i> Back to GRN Usage

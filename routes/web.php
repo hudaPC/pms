@@ -640,6 +640,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
         '/supplier-payments',
         [SupplierPaymentController::class, 'index']
     )->name('supplier-payments.index');
+        Route::get(
+        '/supplier-payments/{supplierPayment}/pdf',
+        [SupplierPaymentController::class, 'pdf']
+    )->name('supplier-payments.pdf');
 
     Route::get(
         '/goods-receipts/{goodsReceipt}/payments/create',
@@ -740,6 +744,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     Route::get('reporting/grn-usage/{goodsReceipt}/pdf', [GoodsReceiptController::class, 'usagePdf'])
         ->name('reporting.grn-usage.pdf');
+            Route::get('reporting/grn-usage/{goodsReceipt}/summary-pdf', [GoodsReceiptController::class, 'usageSummaryPdf'])
+        ->name('reporting.grn-usage.summary-pdf');
     Route::get('/reporting/holding-time', [GoodsReceiptController::class, 'holdingTime'])
         ->name('reporting.holding-time');
 

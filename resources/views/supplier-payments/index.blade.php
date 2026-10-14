@@ -371,7 +371,13 @@
 
 
                                     {{-- Action --}}
-                                    <td class="text-center text-nowrap">
+                                          <td class="text-center text-nowrap">
+
+                                        <a href="{{ route('supplier-payments.pdf', $payment) }}"
+                                            class="btn btn-sm btn-danger mb-1"
+                                            title="Download PDF for {{ $payment->reference }}">
+                                            <i class="fas fa-file-pdf mr-1"></i> PDF
+                                        </a>
 
                                         @forelse ($payment->goodsReceipts as $grn)
                                             <a href="{{ route('goods-receipts.show', $grn) }}"

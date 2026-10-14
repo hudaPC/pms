@@ -982,6 +982,60 @@ class GoodsReceiptController extends Controller
             ? $pdf->download($fileName)
             : $pdf->stream($fileName);
     }
+        /**
+     * Summary PDF: GRN heading, grouped by Product Model.
+     */
+    public function usageSummaryPdf(Request $request, GoodsReceipt $goodsReceipt)
+    {
+        $rows = $this->usageRows($goodsReceipt);
+
+        $groups = $rows
+            ->groupBy(fn($r) => $r['line']->purchaseOrderItem?->productModel?->model_code ?? 'Common')
+            ->sortBy(fn($modelRows, $key) => $key === 'Common' ? 'zzzz' : $key)
+            ->map(function ($modelRows) {
+
+                // Same item under several POs of one model becomes one row
+                $items = $modelRows
+                    ->groupBy(fn($r) => $r['line']->item_id)
+                    ->map(function ($g) {
+                        $line = $g->first()['line'];
+
+                        return [
+                            'item_code' => $line->item->item_code ?? '-',
+                            'item_name' => $line->item->item_name ?? '-',
+                            'received'  => (float) $g->sum('received'),
+                            'used'      => (float) $g->sum('used'),
+                            'returned'  => (float) $g->sum('returned'),
+                            'balance'   => (float) $g->sum('remaining'),
+                        ];
+                    })
+                    ->sortBy('item_code')
+                    ->values();
+
+                return [
+                    'model_name' => $modelRows->first()['line']->purchaseOrderItem?->productModel?->model_name,
+                    'items'      => $items,
+                    'received'   => (float) $items->sum('received'),
+                    'used'       => (float) $items->sum('used'),
+                    'returned'   => (float) $items->sum('returned'),
+                    'balance'    => (float) $items->sum('balance'),
+                ];
+            });
+
+        $goodsReceipt->loadMissing('purchaseOrders');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'reporting.grn-usage-summary-pdf',
+            compact('goodsReceipt', 'groups')
+        )->setPaper('a4', 'portrait');
+
+        $fileName = 'GRN-Summary-' . \Illuminate\Support\Str::slug($goodsReceipt->grn_number) . '.pdf';
+
+        // ?download=1 saves the file, otherwise it opens in the browser
+        return $request->boolean('download')
+            ? $pdf->download($fileName)
+            : $pdf->stream($fileName);
+    }
 
     private function usageRows(GoodsReceipt $goodsReceipt)
     {

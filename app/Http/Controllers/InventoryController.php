@@ -50,6 +50,7 @@ class InventoryController extends Controller
         $query = Item::with([
             'unit',
             'purchaseSettings',
+            'productModel',
         ])
             ->where('status', true)
 

@@ -269,7 +269,7 @@
 
                             <i class="fas fa-info-circle mr-1"></i>
 
-                            Enter 0 if nothing was actually used. Available to issue:
+                                  Enter 0 if nothing was actually used (the usage will be voided). Available to issue:
                             <strong>
                                 {{ number_format($currentAvailableStock, 0) }}
                                 {{ $item->unit->name ?? '' }}

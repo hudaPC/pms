@@ -1543,7 +1543,49 @@ class UsageLogController extends Controller
             ],
 
         ]);
+        /*
+        |--------------------------------------------------------------------------
+        | Quantity 0 = nothing was used: void the record and restore the stock
+        |--------------------------------------------------------------------------
+        */
 
+        if ((float) $validated['quantity'] <= 0.000001) {
+
+            $voidReason = 'Quantity corrected to zero (usage entered by mistake)';
+
+            DB::transaction(function () use ($item, $usageLog, $voidReason) {
+
+                // $usageLog->quantity is still the old quantity here
+                $usageLog->update([
+                    'status'      => 'void',
+                    'voided_at'   => now(),
+                    'void_reason' => $voidReason,
+                ]);
+
+                StockMovement::updateOrCreate(
+                    [
+                        'source_type' => 'usage_log_reversal',
+                        'source_id'   => $usageLog->id,
+                    ],
+                    [
+                        'item_id'       => $item->id,
+                        'movement_date' => now()->toDateString(),
+                        'movement_type' => 'usage_reversal',
+                        'direction'     => 'in',
+                        'quantity'      => $usageLog->quantity,
+                        'reference'     => 'VOID-' . ($usageLog->reference ?? 'USAGE-' . $usageLog->id),
+                        'remarks'       => 'Void reason: ' . $voidReason
+                            . '. Reversal of usage: ' . ($usageLog->reference ?? 'Usage #' . $usageLog->id),
+                    ]
+                );
+            });
+
+            $message = 'Quantity set to zero, so the usage record was voided and the stock has been restored.';
+
+            return $request->input('redirect_to') === 'material-usage'
+                ? redirect()->route('material-usage.index')->with('success', $message)
+                : redirect()->route('items.usage-logs.index', $item)->with('success', $message);
+        }
 
         /*
     |--------------------------------------------------------------------------

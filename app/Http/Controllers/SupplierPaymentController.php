@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use App\Models\SupplierPaymentItem;
 use App\Models\GoodsReceipt;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
@@ -95,11 +95,44 @@ class SupplierPaymentController extends Controller
     {
         $supplierPayment->load(['supplier', 'goodsReceipts.purchaseOrders']);
 
-        $groups = $supplierPayment->goodsReceipts->sortBy('grn_number')->values();
+                $paymentDay = $supplierPayment->payment_date->toDateString();
+
+        // Paid / balance as at this payment (earlier payments + this one only)
+        $groups = $supplierPayment->goodsReceipts
+            ->sortBy('grn_number')
+            ->values()
+            ->map(function ($grn) use ($supplierPayment, $paymentDay) {
+
+                $paidUpToNow = (float) SupplierPaymentItem::query()
+                    ->where('goods_receipt_id', $grn->id)
+                    ->whereHas('payment', function ($q) use ($supplierPayment, $paymentDay) {
+                        $q->where('status', 'active')
+                            ->where(function ($when) use ($supplierPayment, $paymentDay) {
+                                $when->whereDate('payment_date', '<', $paymentDay)
+                                    ->orWhere(function ($same) use ($supplierPayment, $paymentDay) {
+                                        $same->whereDate('payment_date', $paymentDay)
+                                            ->where('id', '<=', $supplierPayment->id);
+                                    });
+                            });
+                    })
+                    ->sum('amount');
+
+                $grn->paid_as_of = $paidUpToNow;
+                $grn->balance_as_of = max(0, (float) $grn->total_amount - $paidUpToNow);
+
+                return $grn;
+            });
+
+               // Company heading image, embedded as base64 so DomPDF can show it reliably
+        $headingPath = public_path('images/heading.jpg');
+
+        $headingImageData = file_exists($headingPath)
+            ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($headingPath))
+            : null;
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
             'supplier-payments.pdf',
-            compact('supplierPayment', 'groups')
+            compact('supplierPayment', 'groups', 'headingImageData')
         )->setPaper('a4', 'portrait');
 
         return $pdf->download(

@@ -14,7 +14,7 @@
             color: #000;
         }
 
-        .title { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+                .title { font-size: 16px; font-weight: bold; margin-bottom: 6px; text-align: center; }
 
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #444; padding: 4px 5px; vertical-align: top; }
@@ -64,6 +64,12 @@
             'other' => 'Other',
         ];
     @endphp
+
+        @if ($headingImageData)
+        <div style="margin-bottom: 8px;">
+            <img src="{{ $headingImageData }}" alt="Company heading" style="width: 100%;">
+        </div>
+    @endif
 
     <div class="title">
         Supplier Payment Voucher
@@ -124,16 +130,16 @@
                 <tr>
                     <th class="text-right" style="width: 25%;">Receipt Total</th>
                     <th class="text-right" style="width: 25%;">Paid in this Payment</th>
-                    <th class="text-right" style="width: 25%;">Total Paid So Far</th>
-                    <th class="text-right" style="width: 25%;">Balance</th>
+                    <th class="text-right" style="width: 25%;">Total Paid (up to this payment)</th>
+                    <th class="text-right" style="width: 25%;">Balance (after this payment)</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td class="text-right">{{ number_format((float) $grn->total_amount, 4) }}</td>
                     <td class="text-right green">{{ number_format((float) $grn->pivot->amount, 4) }}</td>
-                    <td class="text-right">{{ number_format((float) $grn->paid_amount, 4) }}</td>
-                    <td class="text-right red">{{ number_format((float) $grn->balance_amount, 4) }}</td>
+                    <td class="text-right">{{ number_format((float) $grn->paid_as_of, 4) }}</td>
+                    <td class="text-right red">{{ number_format((float) $grn->balance_as_of, 4) }}</td>
                 </tr>
             </tbody>
         </table>

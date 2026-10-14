@@ -256,7 +256,7 @@
 
                             <input type="number" name="quantity" id="quantity"
                                 value="{{ old('quantity', $usageLog->quantity) }}"
-                                class="form-control @error('quantity') is-invalid @enderror" min="0.001" step="0.001"
+                                class="form-control @error('quantity') is-invalid @enderror" min="0" step="0.001"
                                 max="{{ $currentAvailableStock }}" placeholder="Example: 100" required>
 
                             <span class="input-group-text">
@@ -269,7 +269,7 @@
 
                             <i class="fas fa-info-circle mr-1"></i>
 
-                            Available to issue:
+                            Enter 0 if nothing was actually used. Available to issue:
                             <strong>
                                 {{ number_format($currentAvailableStock, 0) }}
                                 {{ $item->unit->name ?? '' }}
@@ -329,7 +329,8 @@
 
                         </label>
 
-                        <textarea name="remarks" id="remarks" rows="4" class="form-control @error('remarks') is-invalid @enderror"
+                        <textarea name="remarks" id="remarks" rows="4"
+                            class="form-control @error('remarks') is-invalid @enderror"
                             placeholder="Optional remarks">{{ old('remarks', $usageLog->remarks) }}</textarea>
 
                         @error('remarks')
@@ -374,7 +375,7 @@
 
     @push('scripts')
         <script>
-            $(document).ready(function() {
+            $(document).ready(function () {
 
                 const quantityInput = document.getElementById('quantity');
                 const stockAfterUsageHeading = document.getElementById('stockAfterUsageHeading');
@@ -510,21 +511,21 @@
                     if (!usageDateInput.value) return;
 
                     fetch(
-                            nextReferenceUrl +
-                            '?usage_date=' + usageDateInput.value +
-                            '&exclude=' + usageLogId, {
-                                headers: {
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
-                            }
-                        )
-                        .then(function(response) {
+                        nextReferenceUrl +
+                        '?usage_date=' + usageDateInput.value +
+                        '&exclude=' + usageLogId, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    }
+                    )
+                        .then(function (response) {
                             return response.json();
                         })
-                        .then(function(data) {
+                        .then(function (data) {
                             referenceInput.value = data.reference;
                         })
-                        .catch(function() {
+                        .catch(function () {
                             // silently ignore — user can still type reference manually
                         });
                 }
@@ -540,12 +541,12 @@
                 usageDateInput.addEventListener('change', refreshReference);
 
                 // If user edits reference manually, stop auto-overwriting it
-                referenceInput.addEventListener('input', function() {
+                referenceInput.addEventListener('input', function () {
                     referenceAutoFilled = false;
                 });
 
                 // Final guard: block submission even if the field was somehow left invalid
-                form.addEventListener('submit', function(e) {
+                form.addEventListener('submit', function (e) {
                     if (!validateQuantity()) {
                         e.preventDefault();
                         quantityInput.focus();

@@ -228,7 +228,7 @@ class UsageLogController extends Controller
                 $datesPerPage,
                 $currentPage,
                 [
-                    'path'  => $request->url(),
+                    'path' => $request->url(),
                     'query' => $request->query(),
                 ]
             );
@@ -345,7 +345,7 @@ class UsageLogController extends Controller
 
             if (!$model) {
                 $linked = $log->item?->productModelItems
-                    ?->pluck('productModel')
+                        ?->pluck('productModel')
                     ->filter()
                     ->unique('id')
                     ->values() ?? collect();
@@ -457,22 +457,22 @@ class UsageLogController extends Controller
                 return [
 
                     'id' =>
-                    $item->id,
+                        $item->id,
 
                     'item_code' =>
-                    $item->item_code,
+                        $item->item_code,
 
                     'item_name' =>
-                    $item->item_name,
+                        $item->item_name,
 
                     'unit' =>
-                    $item->unit->name ?? '',
+                        $item->unit->name ?? '',
 
                     'current_stock' =>
-                    (float) $item->current_stock,
+                        (float) $item->current_stock,
 
                     'product_model' =>
-                    $productModel->model_code,
+                        $productModel->model_code,
 
                 ];
             });
@@ -664,7 +664,7 @@ class UsageLogController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages([
 
                         "items.$index.item_id" =>
-                        'Row ' . ($index + 1)
+                            'Row ' . ($index + 1)
                             . ': The selected item is inactive or unavailable.',
 
                     ]);
@@ -689,7 +689,7 @@ class UsageLogController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages([
 
                         "items.$index.item_id" =>
-                        'Row ' . ($index + 1)
+                            'Row ' . ($index + 1)
                             . ': The selected item does not belong to the selected Product Model.',
 
                     ]);
@@ -740,7 +740,7 @@ class UsageLogController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages([
 
                         'items' =>
-                        'Insufficient stock for '
+                            'Insufficient stock for '
                             . $item->item_code
                             . ' - '
                             . $item->item_name
@@ -807,7 +807,7 @@ class UsageLogController extends Controller
                     ) {
                         throw \Illuminate\Validation\ValidationException::withMessages([
                             "items.$index.goods_receipt_item_id" =>
-                            'Row ' . ($index + 1)
+                                'Row ' . ($index + 1)
                                 . ': The selected Goods Receipt is not valid for this item.',
                         ]);
                     }
@@ -823,7 +823,7 @@ class UsageLogController extends Controller
                     if ($requestedThousandths > $remainingThousandths) {
                         throw \Illuminate\Validation\ValidationException::withMessages([
                             'items' =>
-                            'Goods Receipt ' . $line->goodsReceipt->grn_number
+                                'Goods Receipt ' . $line->goodsReceipt->grn_number
                                 . ' has only ' . number_format($remainingThousandths / 1000, 3)
                                 . ' left for this item. Total requested: '
                                 . number_format($requestedThousandths / 1000, 3) . '.',
@@ -917,32 +917,32 @@ class UsageLogController extends Controller
                 $usageLog = UsageLog::create([
 
                     'item_id' =>
-                    $row['item_id'],
+                        $row['item_id'],
                     'product_model_id' =>
-                    $row['product_model_id'],
+                        $row['product_model_id'],
 
                     'source' =>
-                    'manual',
+                        'manual',
 
                     'production_plan_id' =>
-                    null,
+                        null,
                     'goods_receipt_item_id' =>
-                    $row['goods_receipt_item_id'] ?? null,
+                        $row['goods_receipt_item_id'] ?? null,
 
                     'usage_date' =>
-                    $validated['usage_date'],
+                        $validated['usage_date'],
 
                     'quantity' =>
-                    $row['quantity'],
+                        $row['quantity'],
 
                     'reference' =>
-                    $reference,
+                        $reference,
 
                     'remarks' =>
-                    $validated['remarks'] ?? null,
+                        $validated['remarks'] ?? null,
 
                     'status' =>
-                    'active',
+                        'active',
 
                 ]);
 
@@ -954,31 +954,31 @@ class UsageLogController extends Controller
                 StockMovement::create([
 
                     'item_id' =>
-                    $usageLog->item_id,
+                        $usageLog->item_id,
 
                     'movement_date' =>
-                    $usageLog->usage_date,
+                        $usageLog->usage_date,
 
                     'movement_type' =>
-                    'usage',
+                        'usage',
 
                     'direction' =>
-                    'out',
+                        'out',
 
                     'quantity' =>
-                    $usageLog->quantity,
+                        $usageLog->quantity,
 
                     'source_type' =>
-                    'usage_log',
+                        'usage_log',
 
                     'source_id' =>
-                    $usageLog->id,
+                        $usageLog->id,
 
                     'reference' =>
-                    $usageLog->reference,
+                        $usageLog->reference,
 
                     'remarks' =>
-                    $usageLog->remarks,
+                        $usageLog->remarks,
 
                 ]);
             }
@@ -996,7 +996,7 @@ class UsageLogController extends Controller
             ->with(
                 'success',
                 count($materialRows)
-                    . ' material item(s) issued successfully.'
+                . ' material item(s) issued successfully.'
             );
     }
 
@@ -1228,7 +1228,7 @@ class UsageLogController extends Controller
                 ->withErrors([
 
                     'quantity' =>
-                    'Usage quantity cannot exceed current available stock of '
+                        'Usage quantity cannot exceed current available stock of '
                         . number_format(
                             $currentAvailableStock,
                             3
@@ -1254,7 +1254,7 @@ class UsageLogController extends Controller
                 ->withErrors([
 
                     'quantity' =>
-                    'Usage quantity cannot exceed current available stock of '
+                        'Usage quantity cannot exceed current available stock of '
                         . number_format(
                             $currentAvailableStock,
                             3
@@ -1284,27 +1284,27 @@ class UsageLogController extends Controller
             $usageLog = UsageLog::create([
 
                 'item_id' =>
-                $item->id,
+                    $item->id,
 
                 'source' =>
-                'manual',
+                    'manual',
 
                 'production_plan_id' =>
-                null,
+                    null,
                 'goods_receipt_item_id' =>
-                $row['goods_receipt_item_id'] ?? null,
+                    $row['goods_receipt_item_id'] ?? null,
 
                 'usage_date' =>
-                $validated['usage_date'],
+                    $validated['usage_date'],
 
                 'quantity' =>
-                $validated['quantity'],
+                    $validated['quantity'],
 
                 'reference' =>
-                $validated['reference'] ?? null,
+                    $validated['reference'] ?? null,
 
                 'remarks' =>
-                $validated['remarks'] ?? null,
+                    $validated['remarks'] ?? null,
 
             ]);
 
@@ -1321,31 +1321,31 @@ class UsageLogController extends Controller
             StockMovement::create([
 
                 'item_id' =>
-                $item->id,
+                    $item->id,
 
                 'movement_date' =>
-                $usageLog->usage_date,
+                    $usageLog->usage_date,
 
                 'movement_type' =>
-                'usage',
+                    'usage',
 
                 'direction' =>
-                'out',
+                    'out',
 
                 'quantity' =>
-                $usageLog->quantity,
+                    $usageLog->quantity,
 
                 'source_type' =>
-                'usage_log',
+                    'usage_log',
 
                 'source_id' =>
-                $usageLog->id,
+                    $usageLog->id,
 
                 'reference' =>
-                $usageLog->reference,
+                    $usageLog->reference,
 
                 'remarks' =>
-                $usageLog->remarks,
+                    $usageLog->remarks,
 
             ]);
         });
@@ -1528,7 +1528,7 @@ class UsageLogController extends Controller
             'quantity' => [
                 'required',
                 'numeric',
-                'min:0.001',
+                'min:0',
             ],
 
             'reference' => [
@@ -1588,7 +1588,7 @@ class UsageLogController extends Controller
                 ->withErrors([
 
                     'quantity' =>
-                    'Usage quantity cannot exceed available stock of '
+                        'Usage quantity cannot exceed available stock of '
                         . number_format(
                             $availableBeforeUsage,
                             3
@@ -1615,7 +1615,7 @@ class UsageLogController extends Controller
                         ->withInput()
                         ->withErrors([
                             'quantity' =>
-                            'Usage quantity cannot exceed the quantity left on Goods Receipt '
+                                'Usage quantity cannot exceed the quantity left on Goods Receipt '
                                 . $grnLine->goodsReceipt->grn_number
                                 . ': ' . number_format($availableOnGrn, 3) . '.',
                         ]);
@@ -1652,32 +1652,32 @@ class UsageLogController extends Controller
             StockMovement::updateOrCreate(
                 [
                     'source_type' =>
-                    'usage_log',
+                        'usage_log',
 
                     'source_id' =>
-                    $usageLog->id,
+                        $usageLog->id,
                 ],
                 [
                     'item_id' =>
-                    $item->id,
+                        $item->id,
 
                     'movement_date' =>
-                    $usageLog->usage_date,
+                        $usageLog->usage_date,
 
                     'movement_type' =>
-                    'usage',
+                        'usage',
 
                     'direction' =>
-                    'out',
+                        'out',
 
                     'quantity' =>
-                    $usageLog->quantity,
+                        $usageLog->quantity,
 
                     'reference' =>
-                    $usageLog->reference,
+                        $usageLog->reference,
 
                     'remarks' =>
-                    $usageLog->remarks,
+                        $usageLog->remarks,
                 ]
             );
         });
@@ -1811,25 +1811,25 @@ class UsageLogController extends Controller
         $reasonLabels = [
 
             'wrong_quantity' =>
-            'Wrong quantity entered',
+                'Wrong quantity entered',
 
             'wrong_item' =>
-            'Wrong item selected',
+                'Wrong item selected',
 
             'duplicate_entry' =>
-            'Duplicate usage entry',
+                'Duplicate usage entry',
 
             'entered_by_mistake' =>
-            'Usage entered by mistake',
+                'Usage entered by mistake',
 
             'production_cancelled' =>
-            'Production/issue cancelled',
+                'Production/issue cancelled',
 
             'incorrect_date' =>
-            'Incorrect usage date',
+                'Incorrect usage date',
 
             'other' =>
-            'Other',
+                'Other',
 
         ];
 
@@ -1852,7 +1852,7 @@ class UsageLogController extends Controller
                 ->withErrors([
 
                     'void_reason_other' =>
-                    'Please enter the void reason when Other is selected.',
+                        'Please enter the void reason when Other is selected.',
 
                 ]);
         }
@@ -1897,13 +1897,13 @@ class UsageLogController extends Controller
             $usageLog->update([
 
                 'status' =>
-                'void',
+                    'void',
 
                 'voided_at' =>
-                now(),
+                    now(),
 
                 'void_reason' =>
-                $finalVoidReason,
+                    $finalVoidReason,
 
             ]);
 
@@ -1917,36 +1917,36 @@ class UsageLogController extends Controller
             StockMovement::updateOrCreate(
                 [
                     'source_type' =>
-                    'usage_log_reversal',
+                        'usage_log_reversal',
 
                     'source_id' =>
-                    $usageLog->id,
+                        $usageLog->id,
                 ],
                 [
                     'item_id' =>
-                    $item->id,
+                        $item->id,
 
                     'movement_date' =>
-                    now()->toDateString(),
+                        now()->toDateString(),
 
                     'movement_type' =>
-                    'usage_reversal',
+                        'usage_reversal',
 
                     'direction' =>
-                    'in',
+                        'in',
 
                     'quantity' =>
-                    $usageLog->quantity,
+                        $usageLog->quantity,
 
                     'reference' =>
-                    'VOID-'
+                        'VOID-'
                         . (
                             $usageLog->reference
                             ?? 'USAGE-' . $usageLog->id
                         ),
 
                     'remarks' =>
-                    'Void reason: '
+                        'Void reason: '
                         . $finalVoidReason
                         . '. Reversal of usage: '
                         . (

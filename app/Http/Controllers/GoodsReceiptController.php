@@ -966,7 +966,7 @@ class GoodsReceiptController extends Controller
         return view('reporting.grn-usage', compact('goodsReceipt', 'rows'));
     }
 
-    public function usagePdf(GoodsReceipt $goodsReceipt)
+        public function usagePdf(Request $request, GoodsReceipt $goodsReceipt)
     {
         $rows = $this->usageRows($goodsReceipt);
 
@@ -975,9 +975,12 @@ class GoodsReceiptController extends Controller
             compact('goodsReceipt', 'rows')
         )->setPaper('a4', 'portrait');
 
-        return $pdf->stream(
-            'GRN-Usage-' . \Illuminate\Support\Str::slug($goodsReceipt->grn_number) . '.pdf'
-        );
+        $fileName = 'GRN-Usage-' . \Illuminate\Support\Str::slug($goodsReceipt->grn_number) . '.pdf';
+
+        // ?download=1 saves the file, otherwise it opens in the browser
+        return $request->boolean('download')
+            ? $pdf->download($fileName)
+            : $pdf->stream($fileName);
     }
 
     private function usageRows(GoodsReceipt $goodsReceipt)

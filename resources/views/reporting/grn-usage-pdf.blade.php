@@ -162,7 +162,8 @@
     @forelse ($groupedRows as $poNumber => $poRows)
 
         {{-- PO heading --}}
-        <div class="po-title">
+                 <div class="po-title" @if (!$loop->first) style="page-break-before: always; margin-top: 0;" @endif>
+            GRN: {{ $goodsReceipt->grn_number }} &nbsp;|&nbsp;
             PO: {{ $poNumber }}
             &nbsp;({{ $poRows->count() }} {{ \Illuminate\Support\Str::plural('item', $poRows->count()) }})
         </div>

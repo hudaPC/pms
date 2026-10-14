@@ -203,17 +203,15 @@ class InventoryController extends Controller
         ");
         }
 
-
         /*
         |--------------------------------------------------------------------------
-        | Results
+        | Results (all items, no pagination)
         |--------------------------------------------------------------------------
         */
 
         $items = $query
             ->orderBy('item_code')
-            ->paginate(20)
-            ->withQueryString();
+            ->get();
 
 
         /*
@@ -222,7 +220,7 @@ class InventoryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $items->getCollection()->transform(
+        $items->transform(
             function ($item) {
 
                 $currentStock =
@@ -291,24 +289,16 @@ class InventoryController extends Controller
         |--------------------------------------------------------------------------
         | Apply Planning Status Filter
         |--------------------------------------------------------------------------
-        |
-        | Since planning status depends on calculated current stock,
-        | filter the paginator collection after calculation.
-        |
         */
 
         if ($planningStatus !== 'all') {
 
-            $items->setCollection(
-                $items->getCollection()
-                    ->filter(function ($item) use ($planningStatus) {
+            $items = $items
+                ->filter(function ($item) use ($planningStatus) {
 
-                        return
-                            $item->planning_status
-                            === $planningStatus;
-                    })
-                    ->values()
-            );
+                    return $item->planning_status === $planningStatus;
+                })
+                ->values();
         }
 
 

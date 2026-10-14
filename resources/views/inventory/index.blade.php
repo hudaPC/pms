@@ -99,6 +99,7 @@
                             </div>
 
                         </div>
+
                         {{-- Planning Status --}}
                         <div class="col-md-3">
 
@@ -208,221 +209,211 @@
             </div>
 
         </div>
-        {{-- Inventory Table --}}
-        <div class="card shadow-sm">
 
-            <div class="card-header">
 
-                <h3 class="card-title">
+        {{-- Inventory Grouped By Product Model --}}
+        @php
+            $groups = $items
+                ->groupBy(function ($item) {
+                    return $item->productModel->model_code ?? 'No Product Model';
+                })
+                ->sortKeys();
 
-                    <i class="fas fa-boxes mr-2"></i>
+            // Open all groups when searching/filtering, otherwise start collapsed
+            $expandAll = $search !== '' || !empty($productModelId) || !empty($itemId);
+        @endphp
 
-                    Stock Summary
+        <div class="d-flex justify-content-between align-items-center mb-3">
 
-                </h3>
+            <h4 class="mb-0">
+                <i class="fas fa-boxes mr-2"></i>
+                Stock Summary
+            </h4>
 
+            <div>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="expandAllBtn">
+                    <i class="fas fa-plus mr-1"></i> Expand All
+                </button>
+
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="collapseAllBtn">
+                    <i class="fas fa-minus mr-1"></i> Collapse All
+                </button>
             </div>
 
+        </div>
 
-            <div class="card-body">
 
-                <div class="table-responsive">
+        @forelse($groups as $modelName => $groupItems)
 
-                    <table class="table table-bordered table-hover table-sm">
+            <div class="card shadow-sm model-card {{ $expandAll ? '' : 'collapsed-card' }}">
 
-                        <thead class="thead-light">
+                                <div class="card-header">
 
-                            <tr>
+                    <h3 class="card-title d-flex align-items-center">
 
-                                <th>#</th>
+                        <button type="button" class="btn btn-tool mr-2" data-card-widget="collapse">
+                            <i class="fas {{ $expandAll ? 'fa-minus' : 'fa-plus' }}"></i>
+                        </button>
 
-                                <th>Item Code</th>
+                        <i class="fas fa-cube mr-2"></i>
 
-                                <th>Item Name</th>
+                        {{ $modelName }}
 
-                                <th>Unit</th>
+                        <span class="badge badge-primary ml-2">
+                            {{ $groupItems->count() }} items
+                        </span>
 
-                                <th class="text-right">
-                                    Total IN
-                                </th>
-
-                                <th class="text-right">
-                                    Total OUT
-                                </th>
-
-                                <th class="text-right">
-                                    Current Stock
-                                </th>
-                                <th>
-                                    Planning Status
-                                </th>
-
-                                <th>
-                                    Last Movement
-                                </th>
-
-                                <th width="120">
-                                    Action
-                                </th>
-
-                            </tr>
-
-                        </thead>
-
-
-                        <tbody>
-
-                            @forelse($items as $item)
-                                @php
-
-                                    $totalIn = (float) ($item->total_stock_in ?? 0);
-
-                                    $totalOut = (float) ($item->total_stock_out ?? 0);
-
-                                    $currentStock = $totalIn - $totalOut;
-                                @endphp
-
-
-                                <tr>
-
-                                    <td>
-                                        {{ $items->firstItem() + $loop->index }}
-                                    </td>
-
-
-                                    <td>
-
-                                        <strong>
-                                            {{ $item->item_code }}
-                                        </strong>
-
-                                    </td>
-
-
-                                    <td>
-                                        {{ $item->item_name }}
-                                    </td>
-
-
-                                    <td>
-                                        {{ $item->unit->name ?? '-' }}
-                                    </td>
-
-
-                                    <td class="text-right text-success">
-
-                                        {{ number_format($totalIn, 3) }}
-
-                                    </td>
-
-
-                                    <td class="text-right text-danger">
-
-                                        {{ number_format($totalOut, 3) }}
-
-                                    </td>
-
-
-                                    <td class="text-right">
-
-                                        <strong class="{{ $currentStock < 0 ? 'text-danger' : '' }}">
-
-                                            {{ number_format($currentStock, 3) }}
-
-                                        </strong>
-
-                                    </td>
-                                    <td>
-
-                                        @if ($item->planning_status === 'below_minimum')
-                                            <span class="badge badge-danger">
-                                                Below Minimum
-                                            </span>
-                                        @elseif($item->planning_status === 'below_safety')
-                                            <span class="badge badge-warning">
-                                                Below Safety
-                                            </span>
-                                        @elseif($item->planning_status === 'above_maximum')
-                                            <span class="badge badge-info">
-                                                Above Maximum
-                                            </span>
-                                        @elseif($item->planning_status === 'ok')
-                                            <span class="badge badge-success">
-                                                OK
-                                            </span>
-                                        @else
-                                            <span class="badge badge-secondary">
-                                                Not Configured
-                                            </span>
-                                        @endif
-
-                                    </td>
-
-
-                                    <td>
-
-                                        @if ($item->last_movement_date)
-                                            {{ \Carbon\Carbon::parse($item->last_movement_date)->format('d-M-Y') }}
-                                        @else
-                                            <span class="text-muted">
-                                                No movement
-                                            </span>
-                                        @endif
-
-                                    </td>
-
-
-                                    <td>
-
-                                        <a href="{{ route('inventory.ledger', $item) }}" class="btn btn-sm btn-info">
-
-                                            <i class="fas fa-list mr-1"></i>
-
-                                            Ledger
-
-                                        </a>
-
-                                    </td>
-
-                                </tr>
-
-
-                            @empty
-
-                                <tr>
-
-                                    <td colspan="10" class="text-center text-muted py-5">
-
-                                        No inventory items found.
-
-                                    </td>
-
-                                </tr>
-                            @endforelse
-
-                        </tbody>
-
-                    </table>
+                    </h3>
 
                 </div>
 
-            </div>
+
+                <div class="card-body p-0">
+
+                    <div class="table-responsive">
+
+                        <table class="table table-bordered table-hover table-sm mb-0">
+
+                            <thead class="thead-light">
+
+                                <tr>
+                                    <th>#</th>
+                                    <th>Item Code</th>
+                                    <th>Item Name</th>
+                                    <th>Unit</th>
+                                    <th class="text-right">Total IN</th>
+                                    <th class="text-right">Total OUT</th>
+                                    <th class="text-right">Current Stock</th>
+                                    <th>Planning Status</th>
+                                    <th>Last Movement</th>
+                                    <th width="120">Action</th>
+                                </tr>
+
+                            </thead>
 
 
-            {{-- Pagination --}}
-            @if ($items->hasPages())
-                <div class="card-footer clearfix">
+                            <tbody>
 
-                    <div class="float-right">
+                                @foreach ($groupItems as $item)
+                                    @php
 
-                        {{ $items->links('pagination::bootstrap-4') }}
+                                        $totalIn = (float) ($item->total_stock_in ?? 0);
+
+                                        $totalOut = (float) ($item->total_stock_out ?? 0);
+
+                                        $currentStock = $totalIn - $totalOut;
+                                    @endphp
+
+                                    <tr>
+
+                                        <td>
+                                            {{ $loop->iteration }}
+                                        </td>
+
+                                        <td>
+                                            <strong>
+                                                {{ $item->item_code }}
+                                            </strong>
+                                        </td>
+
+                                        <td>
+                                            {{ $item->item_name }}
+                                        </td>
+
+                                        <td>
+                                            {{ $item->unit->name ?? '-' }}
+                                        </td>
+
+                                        <td class="text-right text-success">
+                                            {{ number_format($totalIn, 3) }}
+                                        </td>
+
+                                        <td class="text-right text-danger">
+                                            {{ number_format($totalOut, 3) }}
+                                        </td>
+
+                                        <td class="text-right">
+                                            <strong class="{{ $currentStock < 0 ? 'text-danger' : '' }}">
+                                                {{ number_format($currentStock, 3) }}
+                                            </strong>
+                                        </td>
+
+                                        <td>
+
+                                            @if ($item->planning_status === 'below_minimum')
+                                                <span class="badge badge-danger">
+                                                    Below Minimum
+                                                </span>
+                                            @elseif($item->planning_status === 'below_safety')
+                                                <span class="badge badge-warning">
+                                                    Below Safety
+                                                </span>
+                                            @elseif($item->planning_status === 'above_maximum')
+                                                <span class="badge badge-info">
+                                                    Above Maximum
+                                                </span>
+                                            @elseif($item->planning_status === 'ok')
+                                                <span class="badge badge-success">
+                                                    OK
+                                                </span>
+                                            @else
+                                                <span class="badge badge-secondary">
+                                                    Not Configured
+                                                </span>
+                                            @endif
+
+                                        </td>
+
+                                        <td>
+
+                                            @if ($item->last_movement_date)
+                                                {{ \Carbon\Carbon::parse($item->last_movement_date)->format('d-M-Y') }}
+                                            @else
+                                                <span class="text-muted">
+                                                    No movement
+                                                </span>
+                                            @endif
+
+                                        </td>
+
+                                        <td>
+
+                                            <a href="{{ route('inventory.ledger', $item) }}"
+                                                class="btn btn-sm btn-info">
+
+                                                <i class="fas fa-list mr-1"></i>
+
+                                                Ledger
+
+                                            </a>
+
+                                        </td>
+
+                                    </tr>
+                                @endforeach
+
+                            </tbody>
+
+                        </table>
 
                     </div>
 
                 </div>
-            @endif
 
-        </div>
+            </div>
+
+        @empty
+
+            <div class="card shadow-sm">
+                <div class="card-body text-center text-muted py-5">
+                    No inventory items found.
+                </div>
+            </div>
+
+        @endforelse
+
+
+        
 
     </div>
 
@@ -536,6 +527,21 @@
                     },
                     cache: true
                 }
+            });
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Expand All / Collapse All
+            |--------------------------------------------------------------------------
+            */
+
+            $('#expandAllBtn').on('click', function () {
+                $('.model-card').CardWidget('expand');
+            });
+
+            $('#collapseAllBtn').on('click', function () {
+                $('.model-card').CardWidget('collapse');
             });
 
         });

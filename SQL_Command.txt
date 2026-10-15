@@ -338,3 +338,33 @@ SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME
 FROM information_schema.KEY_COLUMN_USAGE
 WHERE REFERENCED_TABLE_SCHEMA = 'pms'
   AND REFERENCED_TABLE_NAME IN ('supplier_invoices','supplier_invoice_items');
+
+********************************
+SELECT id, item_id, quantity FROM usage_logs WHERE quantity <> FLOOR(quantity);
+
+
+
+SELECT u.id, u.item_id, u.quantity AS usage_qty, u.status, u.source,
+       u.goods_receipt_item_id, gri.received_quantity AS grn_line_received,
+       sm.id AS movement_id, sm.quantity AS movement_qty
+FROM usage_logs u
+LEFT JOIN stock_movements sm
+       ON sm.source_type = 'usage_log' AND sm.source_id = u.id
+LEFT JOIN goods_receipt_items gri
+       ON gri.id = u.goods_receipt_item_id
+WHERE u.id IN (77, 78);
+
+
+
+START TRANSACTION;
+
+UPDATE usage_logs
+SET quantity = ROUND(quantity, 0)
+WHERE id IN (77, 78) AND status = 'active' AND source = 'manual';
+
+UPDATE stock_movements
+SET quantity = ROUND(quantity, 0)
+WHERE source_type = 'usage_log' AND source_id IN (77, 78);
+
+COMMIT;
+

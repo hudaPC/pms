@@ -213,8 +213,8 @@
 
                         <tbody>
 
-                            @forelse($usageLogs as $usageLog)
-                                <tr>
+                                @forelse($usageLogs as $usageLog)
+                                <tr class="{{ $usageLog->status === 'void' ? 'text-muted bg-light' : '' }}">
 
                                     <td>
                                         {{ $usageLogs->firstItem() + $loop->index }}
@@ -388,7 +388,7 @@
 
                                 <tr>
 
-                                    <td colspan="6" class="text-center text-muted py-5">
+                                    <td colspan="10" class="text-center text-muted py-5">
 
                                         <i class="fas fa-inbox fa-2x mb-2"></i>
 

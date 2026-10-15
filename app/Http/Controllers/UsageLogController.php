@@ -1180,8 +1180,8 @@ class UsageLogController extends Controller
 
             'quantity' => [
                 'required',
-                'numeric',
-                'min:0.001',
+                'integer',
+                'min:1',
             ],
 
             'reference' => [

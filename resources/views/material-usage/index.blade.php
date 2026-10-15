@@ -354,7 +354,7 @@
                                 @foreach ($dateLogs as $usageLog)
                                     @php $rowNo++; @endphp
 
-                                    <tr class="date-child grp-{{ $dateKey }} d-none">
+                                    <tr class="date-child grp-{{ $dateKey }} d-none {{ $usageLog->status === 'void' ? 'text-muted' : '' }}">
 
                                         <td class="text-center text-muted">
                                             {{ $usageLog->usage_date?->format('d-M-Y') }}
@@ -405,8 +405,15 @@
                                             @endif
                                         </td>
 
-                                        <td class="text-right">
-                                            {{ number_format((float) $usageLog->quantity, 3) }}
+                                                                                <td class="text-right">
+                                            @if ($usageLog->status === 'void')
+                                                <span style="text-decoration: line-through; color: red;"
+                                                    title="Voided: this quantity is not counted">
+                                                    {{ number_format((float) $usageLog->quantity, 3) }}
+                                                </span>
+                                            @else
+                                                {{ number_format((float) $usageLog->quantity, 3) }}
+                                            @endif
                                             <small class="text-muted">{{ $usageLog->item?->unit?->name }}</small>
                                         </td>
 
@@ -436,7 +443,8 @@
 
                                         <td>
                                             @if ($usageLog->status === 'void')
-                                                <span class="badge badge-danger">Voided</span>
+                                                    <span class="badge badge-danger"
+                                                    title="{{ $usageLog->void_reason }}">Voided</span>
                                             @else
                                                 <span class="badge badge-success">Active</span>
                                             @endif

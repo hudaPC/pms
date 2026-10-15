@@ -256,7 +256,7 @@
 
                             <input type="number" name="quantity" id="quantity"
                                 value="{{ old('quantity', $usageLog->quantity) }}"
-                                class="form-control @error('quantity') is-invalid @enderror" min="0" step="0.001"
+                                class="form-control @error('quantity') is-invalid @enderror" min="0" step="1"
                                 max="{{ $currentAvailableStock }}" placeholder="Example: 100" required>
 
                             <span class="input-group-text">

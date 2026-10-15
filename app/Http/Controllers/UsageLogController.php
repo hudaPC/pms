@@ -583,9 +583,8 @@ class UsageLogController extends Controller
 
             'items.*.quantity' => [
                 'required',
-                'numeric',
-                'min:0.001',
-                'decimal:0,3',
+                'integer',
+                'min:1',
             ],
             'items.*.goods_receipt_item_id' => [
                 'required',
@@ -593,7 +592,9 @@ class UsageLogController extends Controller
                 'exists:goods_receipt_items,id',
             ],
 
-
+        ], [
+            'items.*.quantity.integer' => 'Issue quantity must be a whole number (no decimals).',
+            'items.*.quantity.min' => 'Issue quantity must be at least 1.',
         ]);
 
 
@@ -1161,8 +1162,6 @@ class UsageLogController extends Controller
     public function store(Request $request, Item $item)
     {
 
-
-
         return redirect()
             ->route('material-usage.create')
             ->with('error', 'Please record usage from Add Material Usage so it is linked to a Goods Receipt (FIFO).');
@@ -1527,7 +1526,7 @@ class UsageLogController extends Controller
 
             'quantity' => [
                 'required',
-                'numeric',
+                'integer',
                 'min:0',
             ],
 
@@ -1557,24 +1556,24 @@ class UsageLogController extends Controller
 
                 // $usageLog->quantity is still the old quantity here
                 $usageLog->update([
-                    'status'      => 'void',
-                    'voided_at'   => now(),
+                    'status' => 'void',
+                    'voided_at' => now(),
                     'void_reason' => $voidReason,
                 ]);
 
                 StockMovement::updateOrCreate(
                     [
                         'source_type' => 'usage_log_reversal',
-                        'source_id'   => $usageLog->id,
+                        'source_id' => $usageLog->id,
                     ],
                     [
-                        'item_id'       => $item->id,
+                        'item_id' => $item->id,
                         'movement_date' => now()->toDateString(),
                         'movement_type' => 'usage_reversal',
-                        'direction'     => 'in',
-                        'quantity'      => $usageLog->quantity,
-                        'reference'     => 'VOID-' . ($usageLog->reference ?? 'USAGE-' . $usageLog->id),
-                        'remarks'       => 'Void reason: ' . $voidReason
+                        'direction' => 'in',
+                        'quantity' => $usageLog->quantity,
+                        'reference' => 'VOID-' . ($usageLog->reference ?? 'USAGE-' . $usageLog->id),
+                        'remarks' => 'Void reason: ' . $voidReason
                             . '. Reversal of usage: ' . ($usageLog->reference ?? 'Usage #' . $usageLog->id),
                     ]
                 );

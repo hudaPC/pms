@@ -191,7 +191,7 @@
             // Data from server
             // ------------------------------------------------------------------
             const productModels =
-                                        {{ Illuminate\Support\Js::from(
+                                            {{ Illuminate\Support\Js::from(
         $productModels->map(
             fn($model) => [
                 'id' => $model->id,
@@ -670,7 +670,7 @@
                 if (rest > 0.0005) allocations[allocations.length - 1].qty += rest;
 
                 const r3 = function (n) {
-                    return (Math.round(n * 1000) / 1000).toFixed(3);
+                    return String(Math.round(n));
                 };
 
                 row.find('.grn-select').val(String(allocations[0].id));
@@ -912,9 +912,10 @@
                 const quantityInput = $('<input>', {
                     type: 'number',
                     class: 'form-control quantity-input',
-                    step: '0.001',
-                    min: '0.001',
-                    placeholder: '0.000',
+                    step: '1',
+                    min: '1',
+                    placeholder: '0',
+                    inputmode: 'numeric',
                     required: true
                 });
                 quantityInput.attr('name', 'items[' + index + '][quantity]');
@@ -1047,6 +1048,13 @@
                 }
 
                 refreshFifo(currentRow.find('.item-select').val());
+            });
+
+            // Whole numbers only: block ".", ",", "e", "+" and "-" in the quantity box
+            materialItemsBody.on('keydown', '.quantity-input', function (e) {
+                if (['.', ',', 'e', 'E', '+', '-'].indexOf(e.key) !== -1) {
+                    e.preventDefault();
+                }
             });
 
             // When the operator finishes typing, split the quantity across GRNs (FIFO)

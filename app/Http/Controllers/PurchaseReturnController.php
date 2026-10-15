@@ -188,7 +188,7 @@ class PurchaseReturnController extends Controller
                         'already_returned' =>
                             $alreadyReturned,
 
-                            'returnable_quantity' =>
+                        'returnable_quantity' =>
                             $returnableQuantity,
 
                         'used_quantity' =>
@@ -196,7 +196,7 @@ class PurchaseReturnController extends Controller
 
                     ];
                 })
-                ->sortBy(fn ($row) => $row['receipt_item']->purchaseOrderItem->purchaseOrder->po_number ?? '')
+                ->sortBy(fn($row) => $row['receipt_item']->purchaseOrderItem->purchaseOrder->po_number ?? '')
                 ->values();
 
 
@@ -329,8 +329,8 @@ class PurchaseReturnController extends Controller
 
                 'items.*.return_quantity' => [
                     'nullable',
-                    'numeric',
-                    'min:0.001',
+                    'integer',
+                    'min:1',
                 ],
 
                 'items.*.reason' => [

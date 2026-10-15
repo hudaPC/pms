@@ -157,8 +157,8 @@
 
                             <input type="number" name="required_quantity" id="required_quantity"
                                 value="{{ old('required_quantity') }}"
-                                class="form-control @error('required_quantity') is-invalid @enderror" min="0.001"
-                                step="0.001" placeholder="Example: 100" required>
+                                class="form-control @error('required_quantity') is-invalid @enderror" min="1"
+                                step="1" placeholder="Example: 100" required>
 
                             @error('required_quantity')
                                 <div class="invalid-feedback">

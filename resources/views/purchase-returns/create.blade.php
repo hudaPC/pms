@@ -385,9 +385,9 @@
 
                                                     <input type="number"
                                                         name="items[{{ $index }}][return_quantity]"
-                                                        value="{{ old("items.$index.return_quantity") }}" min="0.001"
+                                                        value="{{ old("items.$index.return_quantity") }}" min="1"
                                                         max="{{ number_format((float) $row['returnable_quantity'], 3, '.', '') }}"
-                                                        step="0.001" class="form-control return-qty"
+                                                        step="1" class="form-control return-qty"
                                                         data-price="{{ number_format($unitPrice, 4, '.', '') }}">
                                                 @else
                                                     <input type="number" class="form-control" disabled>

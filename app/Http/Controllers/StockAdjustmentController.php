@@ -177,8 +177,8 @@ class StockAdjustmentController extends Controller
 
             'quantity' => [
                 'required',
-                'numeric',
-                'min:0.001',
+                'integer',
+                'min:1',
             ],
 
             'reference' => [
@@ -451,8 +451,8 @@ class StockAdjustmentController extends Controller
 
             'quantity' => [
                 'required',
-                'numeric',
-                'min:0.001',
+                'integer',
+                'min:1',
             ],
 
             'reference' => [

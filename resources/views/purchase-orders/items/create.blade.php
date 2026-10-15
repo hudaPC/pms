@@ -147,11 +147,11 @@
                 </small>
             </td>
             <td>
-                <input type="number" step="0.001" min="0.001" name="ordered_quantity[]"
+                <input type="number" step="1" min="1" name="ordered_quantity[]"
                     class="form-control ordered-qty-input" required>
             </td>
             <td>
-                <input type="number" step="0.0001" min="0" name="unit_price[]" class="form-control unit-price-input">
+                <input type="number" step="0.001" min="0" name="unit_price[]" class="form-control unit-price-input">
             </td>
             <td>
                 <input type="text" name="remarks[]" class="form-control remarks-input">

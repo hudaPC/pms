@@ -69,10 +69,9 @@ class ProductionPlanController extends Controller
 
             'required_quantity' => [
                 'required',
-                'numeric',
-                'min:0.001',
+                'integer',
+                'min:1',
             ],
-
             'remarks' => [
                 'nullable',
                 'string',
@@ -205,8 +204,8 @@ class ProductionPlanController extends Controller
                 ->with(
                     'error',
                     $productionPlan->status === 'completed'
-                        ? 'Completed Production Plans cannot be edited.'
-                        : 'Cancelled Production Plans cannot be edited.'
+                    ? 'Completed Production Plans cannot be edited.'
+                    : 'Cancelled Production Plans cannot be edited.'
                 );
         }
 
@@ -313,8 +312,8 @@ class ProductionPlanController extends Controller
                 ->with(
                     'error',
                     $productionPlan->status === 'completed'
-                        ? 'Completed Production Plans cannot be updated.'
-                        : 'Cancelled Production Plans cannot be updated.'
+                    ? 'Completed Production Plans cannot be updated.'
+                    : 'Cancelled Production Plans cannot be updated.'
                 );
         }
 
@@ -341,7 +340,7 @@ class ProductionPlanController extends Controller
                 ->withInput()
                 ->withErrors([
                     'status' =>
-                    'A Planned Production Plan cannot be completed directly. '
+                        'A Planned Production Plan cannot be completed directly. '
                         . 'Please confirm the Production Plan first.',
                 ]);
         }
@@ -362,7 +361,7 @@ class ProductionPlanController extends Controller
                 ->withInput()
                 ->withErrors([
                     'status' =>
-                    'A Confirmed Production Plan cannot be changed back to Planned.',
+                        'A Confirmed Production Plan cannot be changed back to Planned.',
                 ]);
         }
 
@@ -386,8 +385,8 @@ class ProductionPlanController extends Controller
 
             'required_quantity' => [
                 'required',
-                'numeric',
-                'min:0.001',
+                'integer',
+                'min:1',
             ],
 
             'reference' => [
@@ -467,7 +466,7 @@ class ProductionPlanController extends Controller
                     ->withInput()
                     ->withErrors([
                         'status' =>
-                        'Production Plan cannot be cancelled because Purchase Order '
+                            'Production Plan cannot be cancelled because Purchase Order '
                             . $activeProductionPurchaseOrder->po_number
                             . ' is still active. Cancel the Purchase Order first, then cancel the Production Plan.',
                     ]);
@@ -493,7 +492,7 @@ class ProductionPlanController extends Controller
                     ->withInput()
                     ->withErrors([
                         'requirement_date' =>
-                        'Requirement Date cannot be changed because a Purchase Order has already been created for this Production Plan.',
+                            'Requirement Date cannot be changed because a Purchase Order has already been created for this Production Plan.',
                     ]);
             }
         }
@@ -526,7 +525,7 @@ class ProductionPlanController extends Controller
                     ->withInput()
                     ->withErrors([
                         'product_model_id' =>
-                        'Product Model cannot be changed after the Production Plan has been confirmed.',
+                            'Product Model cannot be changed after the Production Plan has been confirmed.',
                     ]);
             }
 
@@ -540,8 +539,8 @@ class ProductionPlanController extends Controller
             if (
                 abs(
                     (float) $validated['required_quantity']
-                        -
-                        (float) $productionPlan->required_quantity
+                    -
+                    (float) $productionPlan->required_quantity
                 ) > 0.000001
             ) {
 
@@ -549,7 +548,7 @@ class ProductionPlanController extends Controller
                     ->withInput()
                     ->withErrors([
                         'required_quantity' =>
-                        'Required Quantity cannot be changed after the Production Plan has been confirmed.',
+                            'Required Quantity cannot be changed after the Production Plan has been confirmed.',
                     ]);
             }
         }
@@ -566,15 +565,15 @@ class ProductionPlanController extends Controller
                 'production_plan_id',
                 $productionPlan->id
             )
-            ->where(
-                'source',
-                'production-plan'
-            )
-            ->where(
-                'status',
-                'active'
-            )
-            ->exists();
+                ->where(
+                    'source',
+                    'production-plan'
+                )
+                ->where(
+                    'status',
+                    'active'
+                )
+                ->exists();
 
 
         if ($hasMaterialIssue) {
@@ -590,7 +589,7 @@ class ProductionPlanController extends Controller
                     ->withInput()
                     ->withErrors([
                         'status' =>
-                        'Production Plan cannot be cancelled because material has already been issued. Void the Production Material Issue first, then cancel the Production Plan.',
+                            'Production Plan cannot be cancelled because material has already been issued. Void the Production Material Issue first, then cancel the Production Plan.',
                     ]);
             }
 
@@ -610,7 +609,7 @@ class ProductionPlanController extends Controller
                     ->withInput()
                     ->withErrors([
                         'product_model_id' =>
-                        'Product Model cannot be changed because material has already been issued for this Production Plan.',
+                            'Product Model cannot be changed because material has already been issued for this Production Plan.',
                     ]);
             }
 
@@ -624,8 +623,8 @@ class ProductionPlanController extends Controller
             if (
                 abs(
                     (float) $validated['required_quantity']
-                        -
-                        (float) $productionPlan->required_quantity
+                    -
+                    (float) $productionPlan->required_quantity
                 ) > 0.000001
             ) {
 
@@ -633,7 +632,7 @@ class ProductionPlanController extends Controller
                     ->withInput()
                     ->withErrors([
                         'required_quantity' =>
-                        'Required Quantity cannot be changed because material has already been issued for this Production Plan.',
+                            'Required Quantity cannot be changed because material has already been issued for this Production Plan.',
                     ]);
             }
         }
@@ -670,7 +669,7 @@ class ProductionPlanController extends Controller
                     ->withInput()
                     ->withErrors([
                         'status' =>
-                        'Production Plan cannot be completed because no Product Model was found.',
+                            'Production Plan cannot be completed because no Product Model was found.',
                     ]);
             }
 
@@ -723,7 +722,7 @@ class ProductionPlanController extends Controller
             */
 
                 $alreadyIssued =
-                    (float)
+                    (float) 
                     UsageLog::where(
                         'production_plan_id',
                         $productionPlan->id
@@ -768,7 +767,7 @@ class ProductionPlanController extends Controller
                         ->withInput()
                         ->withErrors([
                             'status' =>
-                            'Production Plan cannot be completed. '
+                                'Production Plan cannot be completed. '
                                 . $item->item_code
                                 . ' still has '
                                 . number_format(
@@ -802,8 +801,8 @@ class ProductionPlanController extends Controller
             ->with(
                 'success',
                 $validated['status'] === 'completed'
-                    ? 'Production plan completed successfully.'
-                    : 'Production plan updated successfully.'
+                ? 'Production plan completed successfully.'
+                : 'Production plan updated successfully.'
             );
     }
 
@@ -983,92 +982,92 @@ class ProductionPlanController extends Controller
                 $componentRequirements[] = [
 
                     'model_item' =>
-                    $modelItem,
+                        $modelItem,
 
                     'item' =>
-                    $item,
+                        $item,
 
                     'bom_quantity' =>
-                    $bomQuantity,
+                        $bomQuantity,
 
                     'production_quantity' =>
-                    $productionQuantity,
+                        $productionQuantity,
 
                     'required_quantity' =>
-                    $requiredQuantity,
+                        $requiredQuantity,
 
                     'has_purchase_settings' =>
-                    false,
+                        false,
 
                     'current_stock' =>
-                    (float) $item->current_stock,
+                        (float) $item->current_stock,
 
                     'on_order_quantity' =>
-                    0,
+                        0,
 
                     'inventory_position' =>
-                    (float) $item->current_stock,
+                        (float) $item->current_stock,
 
                     'shortage_quantity' =>
-                    max(
-                        0,
-                        $requiredQuantity
+                        max(
+                            0,
+                            $requiredQuantity
                             -
                             (float) $item->current_stock
-                    ),
+                        ),
 
                     'surplus_quantity' =>
-                    max(
-                        0,
-                        (float) $item->current_stock
+                        max(
+                            0,
+                            (float) $item->current_stock
                             -
                             $requiredQuantity
-                    ),
+                        ),
 
                     'stock_status' =>
-                    'settings_missing',
+                        'settings_missing',
 
                     'preferred_supplier' =>
-                    null,
+                        null,
 
                     'preferred_supplier_name' =>
-                    null,
+                        null,
 
                     'supplier_item_code' =>
-                    null,
+                        null,
 
                     'supplier_unit_price' =>
-                    null,
+                        null,
 
                     'supplier_lead_time_days' =>
-                    null,
+                        null,
 
                     'minimum_order_qty' =>
-                    0,
+                        0,
 
                     'order_quantity' =>
-                    0,
+                        0,
 
                     'minimum_stock' =>
-                    0,
+                        0,
 
                     'maximum_stock' =>
-                    null,
+                        null,
 
                     'item_lead_time_days' =>
-                    0,
+                        0,
 
                     'effective_lead_time_days' =>
-                    0,
+                        0,
 
                     'base_purchase_quantity' =>
-                    0,
+                        0,
 
                     'recommended_purchase_quantity' =>
-                    0,
+                        0,
 
                     'planning' =>
-                    $planning,
+                        $planning,
                 ];
 
                 continue;
@@ -1110,8 +1109,8 @@ class ProductionPlanController extends Controller
                 max(
                     0,
                     $requiredQuantity
-                        -
-                        $inventoryPosition
+                    -
+                    $inventoryPosition
                 );
 
 
@@ -1125,8 +1124,8 @@ class ProductionPlanController extends Controller
                 max(
                     0,
                     $inventoryPosition
-                        -
-                        $requiredQuantity
+                    -
+                    $requiredQuantity
                 );
 
 
@@ -1218,15 +1217,15 @@ class ProductionPlanController extends Controller
 
             $requirementDate =
                 $productionPlan->requirement_date
-                ->copy()
-                ->startOfDay();
+                    ->copy()
+                    ->startOfDay();
 
             $productionOrderDate =
                 $requirementDate
-                ->copy()
-                ->subDays(
-                    (int) $planning['lead_time_days']
-                );
+                    ->copy()
+                    ->subDays(
+                        (int) $planning['lead_time_days']
+                    );
 
             $today =
                 now()->startOfDay();
@@ -1264,24 +1263,24 @@ class ProductionPlanController extends Controller
             $componentRequirements[] = [
 
                 'model_item' =>
-                $modelItem,
+                    $modelItem,
 
                 'item' =>
-                $item,
+                    $item,
 
                 'bom_quantity' =>
-                $bomQuantity,
+                    $bomQuantity,
 
                 'production_quantity' =>
-                $productionQuantity,
+                    $productionQuantity,
 
                 'required_quantity' =>
-                $requiredQuantity,
+                    $requiredQuantity,
 
                 'has_purchase_settings' =>
-                true,
+                    true,
                 'is_production_order_due_today' =>
-                $isProductionOrderDueToday,
+                    $isProductionOrderDueToday,
 
 
                 /*
@@ -1291,22 +1290,22 @@ class ProductionPlanController extends Controller
             */
 
                 'current_stock' =>
-                $currentStock,
+                    $currentStock,
 
                 'on_order_quantity' =>
-                $onOrderQuantity,
+                    $onOrderQuantity,
 
                 'inventory_position' =>
-                $inventoryPosition,
+                    $inventoryPosition,
 
                 'shortage_quantity' =>
-                $shortageQuantity,
+                    $shortageQuantity,
 
                 'surplus_quantity' =>
-                $surplusQuantity,
+                    $surplusQuantity,
 
                 'stock_status' =>
-                $stockStatus,
+                    $stockStatus,
 
 
                 /*
@@ -1316,25 +1315,25 @@ class ProductionPlanController extends Controller
             */
 
                 'preferred_supplier' =>
-                $preferredSupplier,
+                    $preferredSupplier,
 
                 'preferred_supplier_name' =>
-                $preferredSupplierName,
+                    $preferredSupplierName,
 
                 'supplier_item_code' =>
-                $planning['supplier_item_code'],
+                    $planning['supplier_item_code'],
 
                 'supplier_unit_price' =>
-                $planning['supplier_unit_price'],
+                    $planning['supplier_unit_price'],
 
                 'supplier_lead_time_days' =>
-                $planning['lead_time_source']
+                    $planning['lead_time_source']
                     === 'preferred_supplier'
                     ? $planning['lead_time_days']
                     : null,
 
                 'minimum_order_qty' =>
-                $minimumOrderQty,
+                    $minimumOrderQty,
 
 
                 /*
@@ -1344,23 +1343,23 @@ class ProductionPlanController extends Controller
             */
 
                 'order_quantity' =>
-                $planning['order_quantity'],
+                    $planning['order_quantity'],
 
                 'minimum_stock' =>
-                $planning['minimum_stock'],
+                    $planning['minimum_stock'],
 
                 'maximum_stock' =>
-                $planning['maximum_stock'],
+                    $planning['maximum_stock'],
 
                 'item_lead_time_days' =>
-                $planning['settings']
-                    ->lead_time_days !== null
+                    $planning['settings']
+                        ->lead_time_days !== null
                     ? (int) $planning['settings']
                         ->lead_time_days
                     : 0,
 
                 'effective_lead_time_days' =>
-                $planning['lead_time_days'],
+                    $planning['lead_time_days'],
 
 
                 /*
@@ -1370,28 +1369,28 @@ class ProductionPlanController extends Controller
             */
 
                 'base_purchase_quantity' =>
-                $basePurchaseQuantity,
+                    $basePurchaseQuantity,
 
                 'planning_recovery_quantity' =>
-                $planningRecoveryQuantity,
+                    $planningRecoveryQuantity,
 
                 'recommended_purchase_quantity' =>
-                $recommendedPurchaseQuantity,
+                    $recommendedPurchaseQuantity,
 
                 'production_requirement_date' =>
-                $requirementDate,
+                    $requirementDate,
 
                 'production_order_date' =>
-                $productionOrderDate,
+                    $productionOrderDate,
 
                 'effective_production_order_date' =>
-                $effectiveProductionOrderDate,
+                    $effectiveProductionOrderDate,
 
                 'is_production_order_overdue' =>
-                $isProductionOrderOverdue,
+                    $isProductionOrderOverdue,
 
                 'planning' =>
-                $planning,
+                    $planning,
             ];
         }
 
@@ -1512,12 +1511,12 @@ class ProductionPlanController extends Controller
 
                 $earliestOrderDate =
                     $requirements
-                    ->pluck('production_order_date')
-                    ->filter()
-                    ->sortBy(function ($date) {
-                        return $date->timestamp;
-                    })
-                    ->first();
+                        ->pluck('production_order_date')
+                        ->filter()
+                        ->sortBy(function ($date) {
+                            return $date->timestamp;
+                        })
+                        ->first();
 
 
                 /*
@@ -1534,13 +1533,13 @@ class ProductionPlanController extends Controller
                     $earliestOrderDate
                     ? (
                         $earliestOrderDate
-                        ->copy()
-                        ->startOfDay()
-                        ->lt(now()->startOfDay())
+                            ->copy()
+                            ->startOfDay()
+                            ->lt(now()->startOfDay())
                         ? now()->startOfDay()
                         : $earliestOrderDate
-                        ->copy()
-                        ->startOfDay()
+                            ->copy()
+                            ->startOfDay()
                     )
                     : now()->startOfDay();
 
@@ -1573,30 +1572,30 @@ class ProductionPlanController extends Controller
                 return [
 
                     'supplier' =>
-                    $supplier,
+                        $supplier,
 
                     'requirements' =>
-                    $requirements->values(),
+                        $requirements->values(),
 
                     'item_count' =>
-                    $requirements->count(),
+                        $requirements->count(),
 
                     'earliest_order_date' =>
-                    $earliestOrderDate,
+                        $earliestOrderDate,
 
                     'effective_order_date' =>
-                    $effectiveOrderDate,
+                        $effectiveOrderDate,
 
                     'is_overdue' =>
-                    $earliestOrderDate
+                        $earliestOrderDate
                         &&
                         $earliestOrderDate
-                        ->copy()
-                        ->startOfDay()
-                        ->lt(now()->startOfDay()),
+                            ->copy()
+                            ->startOfDay()
+                            ->lt(now()->startOfDay()),
 
                     'estimated_total' =>
-                    $estimatedTotal,
+                        $estimatedTotal,
                 ];
             })
 
@@ -1621,7 +1620,7 @@ class ProductionPlanController extends Controller
             $perPage,
             $currentPage,
             [
-                'path'  => Paginator::resolveCurrentPath(),
+                'path' => Paginator::resolveCurrentPath(),
                 'query' => request()->query(),
             ]
         );
@@ -1701,7 +1700,7 @@ class ProductionPlanController extends Controller
 */
 
         $productionQuantity =
-            (float)
+            (float) 
             $productionPlan->required_quantity;
 
 
@@ -1737,7 +1736,7 @@ class ProductionPlanController extends Controller
     */
 
             $bomQuantity =
-                (float)
+                (float) 
                 $modelItem->quantity;
 
 
@@ -1759,7 +1758,7 @@ class ProductionPlanController extends Controller
     */
 
             $alreadyIssued =
-                (float)
+                (float) 
                 UsageLog::where(
                     'production_plan_id',
                     $productionPlan->id
@@ -1791,8 +1790,8 @@ class ProductionPlanController extends Controller
                 max(
                     0,
                     $requiredQuantity
-                        -
-                        $alreadyIssued
+                    -
+                    $alreadyIssued
                 );
 
 
@@ -1803,7 +1802,7 @@ class ProductionPlanController extends Controller
     */
 
             $currentStock =
-                (float)
+                (float) 
                 $item->current_stock;
 
 
@@ -1813,10 +1812,10 @@ class ProductionPlanController extends Controller
                 ->with(['goodsReceipt', 'purchaseOrderItem.purchaseOrder'])
                 ->get()
                 ->map(fn($line) => [
-                    'id'        => $line->id,
-                    'grn'       => $line->goodsReceipt->grn_number,
-                    'po'        => $line->purchaseOrderItem->purchaseOrder->po_number ?? '-',
-                    'date'      => optional($line->goodsReceipt->receipt_date)->format('Y-m-d'),
+                    'id' => $line->id,
+                    'grn' => $line->goodsReceipt->grn_number,
+                    'po' => $line->purchaseOrderItem->purchaseOrder->po_number ?? '-',
+                    'date' => optional($line->goodsReceipt->receipt_date)->format('Y-m-d'),
                     'available' => round($line->remainingQuantity(), 3),
                 ])
                 ->filter(fn($g) => $g['available'] > 0)
@@ -1887,40 +1886,40 @@ class ProductionPlanController extends Controller
             $materialIssueRows[] = [
 
                 'item' =>
-                $item,
+                    $item,
 
                 'item_code' =>
-                $item->item_code,
+                    $item->item_code,
 
                 'item_name' =>
-                $item->item_name,
+                    $item->item_name,
 
                 'unit' =>
-                $item->unit,
+                    $item->unit,
 
                 'bom_quantity' =>
-                $bomQuantity,
+                    $bomQuantity,
 
                 'required_quantity' =>
-                $requiredQuantity,
+                    $requiredQuantity,
 
                 'already_issued' =>
-                $alreadyIssued,
+                    $alreadyIssued,
 
                 'remaining_to_issue' =>
-                $remainingToIssue,
+                    $remainingToIssue,
 
                 'current_stock' =>
-                $currentStock,
+                    $currentStock,
 
                 'suggested_issue_quantity' =>
-                $suggestedIssueQuantity,
+                    $suggestedIssueQuantity,
 
                 'can_fully_issue' =>
-                $canFullyIssue,
+                    $canFullyIssue,
 
                 'issue_status' =>
-                $issueStatus,
+                    $issueStatus,
                 'grns' => $grns,
             ];
         }
@@ -1937,31 +1936,31 @@ class ProductionPlanController extends Controller
 
         $fullyIssuedItems =
             collect($materialIssueRows)
-            ->where('issue_status', 'fully-issued')
-            ->count();
+                ->where('issue_status', 'fully-issued')
+                ->count();
 
         $partiallyIssuedItems =
             collect($materialIssueRows)
-            ->where('issue_status', 'partially-issued')
-            ->count();
+                ->where('issue_status', 'partially-issued')
+                ->count();
 
         $notIssuedItems =
             collect($materialIssueRows)
-            ->where('issue_status', 'not-issued')
-            ->count();
+                ->where('issue_status', 'not-issued')
+                ->count();
 
         $insufficientStockItems =
             collect($materialIssueRows)
-            ->filter(function ($row) {
-                return $row['remaining_to_issue'] > 0 && !$row['can_fully_issue'];
-            })
-            ->count();
+                ->filter(function ($row) {
+                    return $row['remaining_to_issue'] > 0 && !$row['can_fully_issue'];
+                })
+                ->count();
 
         $hasRemainingMaterials =
             collect($materialIssueRows)
-            ->contains(function ($row) {
-                return $row['remaining_to_issue'] > 0.000001;
-            });
+                ->contains(function ($row) {
+                    return $row['remaining_to_issue'] > 0.000001;
+                });
 
 
         /*
@@ -2065,7 +2064,7 @@ class ProductionPlanController extends Controller
                 if ($remainingQuantity > ($currentStock + 0.000001)) {
                     throw ValidationException::withMessages([
                         'material_issue' =>
-                        'Material issue cannot be posted. ' . $item->item_code . ' - ' . $item->item_name
+                            'Material issue cannot be posted. ' . $item->item_code . ' - ' . $item->item_name
                             . ' requires ' . number_format($remainingQuantity, 3) . ' ' . ($item->unit->name ?? 'units')
                             . ', but current physical stock is only ' . number_format($currentStock, 3) . '.',
                     ]);
@@ -2088,28 +2087,28 @@ class ProductionPlanController extends Controller
                 $reference = 'PROD-ISSUE-' . $productionPlan->id . '-' . $item->item_code . '-' . now()->format('YmdHis');
 
                 $usageLog = UsageLog::create([
-                    'item_id'            => $item->id,
-                    'product_model_id'   => $productionPlan->product_model_id,
-                    'source'             => 'production-plan',
+                    'item_id' => $item->id,
+                    'product_model_id' => $productionPlan->product_model_id,
+                    'source' => 'production-plan',
                     'production_plan_id' => $productionPlan->id,
-                    'usage_date'         => $issueDate,
-                    'quantity'           => $quantity,
-                    'reference'          => $reference,
-                    'remarks'            => 'Material issued for Production Plan '
+                    'usage_date' => $issueDate,
+                    'quantity' => $quantity,
+                    'reference' => $reference,
+                    'remarks' => 'Material issued for Production Plan '
                         . ($productionPlan->reference ?? '#' . $productionPlan->id) . '.',
-                    'status'             => 'active',
+                    'status' => 'active',
                 ]);
 
                 StockMovement::create([
-                    'item_id'       => $item->id,
+                    'item_id' => $item->id,
                     'movement_date' => $issueDate,
                     'movement_type' => 'usage',
-                    'direction'     => 'out',
-                    'quantity'      => $quantity,
-                    'source_type'   => 'usage_log',
-                    'source_id'     => $usageLog->id,
-                    'reference'     => $reference,
-                    'remarks'       => 'Production material issue for '
+                    'direction' => 'out',
+                    'quantity' => $quantity,
+                    'source_type' => 'usage_log',
+                    'source_id' => $usageLog->id,
+                    'reference' => $reference,
+                    'remarks' => 'Production material issue for '
                         . ($productionPlan->reference ?? 'Production Plan #' . $productionPlan->id) . '.',
                 ]);
             }
@@ -2163,16 +2162,16 @@ class ProductionPlanController extends Controller
 
         $activeIssueCount =
             $usageLogs
-            ->where('status', 'active')
-            ->count();
+                ->where('status', 'active')
+                ->count();
 
         $voidIssueCount =
             $usageLogs
-            ->where('status', 'void')
-            ->count();
+                ->where('status', 'void')
+                ->count();
 
         $totalActiveQuantity =
-            (float)
+            (float) 
             $usageLogs
                 ->where('status', 'active')
                 ->sum('quantity');
@@ -2304,7 +2303,7 @@ class ProductionPlanController extends Controller
                     'source_id' => $usageLog->id,
 
                     'reference' =>
-                    'PROD-ISSUE-VOID-'
+                        'PROD-ISSUE-VOID-'
                         . $productionPlan->id
                         . '-'
                         . $usageLog->id
@@ -2312,7 +2311,7 @@ class ProductionPlanController extends Controller
                         . now()->format('YmdHis'),
 
                     'remarks' =>
-                    'Production Material Issue reversal. '
+                        'Production Material Issue reversal. '
                         . 'Production Plan: '
                         . ($productionPlan->reference ?? $productionPlan->id)
                         . '. Reason: '

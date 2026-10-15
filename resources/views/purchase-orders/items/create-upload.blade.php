@@ -173,7 +173,7 @@
                 <small class="form-text text-warning excel-mismatch-warning" style="display:none;"></small>
             </td>
             <td>
-                <input type="number" step="0.001" min="0.001" name="ordered_quantity[]"
+                <input type="number" step="1" min="1" name="ordered_quantity[]"
                     class="form-control ordered-qty-input" required>
             </td>
             <td>

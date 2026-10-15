@@ -712,7 +712,7 @@ class PurchaseOrderItemController extends Controller
             'item_id.*'           => ['required', 'exists:items,id'],
 
             'ordered_quantity'    => ['required', 'array'],
-            'ordered_quantity.*'  => ['required', 'numeric', 'min:0.001'],
+            'ordered_quantity.*'  => ['required', 'integer', 'min:1'],
 
             'unit_price'          => ['array'],
             'unit_price.*'        => ['nullable', 'numeric', 'min:0'],
@@ -984,10 +984,10 @@ class PurchaseOrderItemController extends Controller
 
         $validated = $request->validate([
 
-            'ordered_quantity' => [
+           'ordered_quantity' => [
                 'required',
-                'numeric',
-                'min:0.001',
+                'integer',
+                'min:1',
             ],
 
             'unit_price' => [

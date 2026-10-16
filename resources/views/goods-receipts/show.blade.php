@@ -7,6 +7,15 @@
     <div class="container py-4">
 
         {{-- Page Header --}}
+                @if ($errors->any() && !$errors->has('void_reason'))
+            <div class="alert alert-danger">
+                <ul class="mb-0">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <div class="d-flex justify-content-between align-items-center mb-4">
 
             <div>
@@ -401,7 +410,8 @@
 
             @php
                 // PO items already entered on this GRN
-                $receivedPoItemIds = $goodsReceipt->items->pluck('purchase_order_item_id')->toArray();
+                                $receivedPoItemIds = $goodsReceipt->items->pluck('purchase_order_item_id')->toArray();
+                $receivedByPoItem = $goodsReceipt->items->keyBy('purchase_order_item_id');
             @endphp
 
             <div class="card-body p-0">
@@ -456,89 +466,142 @@
                                 {{-- Expandable items row --}}
                                 <tr>
                                     <td colspan="6" class="p-0 border-0">
-                                        <div class="collapse" id="po-items-{{ $po->id }}">
+                                                                                <div class="collapse" id="po-items-{{ $po->id }}">
                                             <div class="p-3">
 
-                                                <table class="table table-bordered table-hover table-sm mb-0">
-                                                    <thead class="thead-light">
-                                                        <tr>
-                                                            <th>#</th>
-                                                            <th>Product Model</th>
-                                                            <th>Item Code</th>
-                                                            <th>Item Name</th>
-                                                            <th>Ordered Qty</th>
-                                                            <th>Previously Received</th>
-                                                            <th>Outstanding</th>
-                                                            <th>Unit</th>
-                                                            <th width="130">Action</th>
-                                                        </tr>
-                                                    </thead>
+                                                @php
+                                                    $canReceive = $goodsReceipt->status !== 'voided';
 
-                                                    <tbody>
-                                                        @forelse ($po->items as $poItem)
-                                                            @php
-                                                                $ordered = (float) $poItem->ordered_quantity;
-                                                                $received = (float) $poItem->received_quantity;
-                                                                $outstanding = max(0, $ordered - $received);
-                                                                $alreadyEnteredOnThisGrn = in_array($poItem->id, $receivedPoItemIds);
-                                                            @endphp
+                                                    $receivableCount = $po->items
+                                                        ->filter(
+                                                            fn($i) => !in_array($i->id, $receivedPoItemIds) &&
+                                                                (float) $i->ordered_quantity > (float) $i->received_quantity,
+                                                        )
+                                                        ->count();
+                                                @endphp
 
+                                                <form action="{{ route('goods-receipts.items.bulk-store', $goodsReceipt) }}"
+                                                    method="POST" class="po-bulk-form">
+                                                    @csrf
+
+                                                    <table class="table table-bordered table-hover table-sm mb-2">
+                                                        <thead class="thead-light">
                                                             <tr>
-                                                                <td>{{ $loop->iteration }}</td>
-
-                                                                <td>
-                                                                    @if ($poItem->productModel)
-                                                                        <span class="badge badge-info">
-                                                                            {{ $poItem->productModel->model_code }}
-                                                                        </span>
-                                                                    @else
-                                                                        <span class="text-muted">Common</span>
-                                                                    @endif
-                                                                </td>
-
-                                                                <td>{{ $poItem->item->item_code ?? '-' }}</td>
-                                                                <td>{{ $poItem->item->item_name ?? '-' }}</td>
-                                                                <td>{{ number_format($ordered, 3) }}</td>
-                                                                <td>{{ number_format($received, 3) }}</td>
-
-                                                                <td>
-                                                                    @if ($outstanding > 0)
-                                                                        <strong>{{ number_format($outstanding, 3) }}</strong>
-                                                                    @else
-                                                                        <span class="badge badge-success">Fully Received</span>
-                                                                    @endif
-                                                                </td>
-
-                                                                <td>{{ $poItem->item->unit->name ?? '-' }}</td>
-
-                                                                <td>
-                                                                    @if ($goodsReceipt->status === 'voided')
-                                                                        <span class="badge badge-danger">
-                                                                            <i class="fas fa-lock mr-1"></i> Locked
-                                                                        </span>
-                                                                    @elseif($alreadyEnteredOnThisGrn)
-                                                                        <span class="badge badge-success">
-                                                                            <i class="fas fa-check mr-1"></i> Entered
-                                                                        </span>
-                                                                    @elseif($outstanding > 0)
-                                                                        <a href="{{ route('goods-receipts.items.create', [$goodsReceipt, $poItem]) }}"
-                                                                            class="btn btn-sm btn-primary">
-                                                                            <i class="fas fa-download mr-1"></i> Receive
-                                                                        </a>
-                                                                    @else
-                                                                        <span class="badge badge-success">Fully Received</span>
-                                                                    @endif
-                                                                </td>
+                                                                <th>#</th>
+                                                                <th>Product Model</th>
+                                                                <th>Item Code</th>
+                                                                <th>Item Name</th>
+                                                                <th class="text-right">Ordered Qty</th>
+                                                                <th class="text-right">Previously Received</th>
+                                                                <th class="text-right">Outstanding</th>
+                                                                <th>Unit</th>
+                                                                <th style="width: 200px;">Receive Qty</th>
                                                             </tr>
-                                                        @empty
-                                                            <tr>
-                                                                <td colspan="9" class="text-center text-muted py-3">
-                                                                    No items found for this Purchase Order.
-                                                                </td>
-                                                            </tr>
-                                                        @endforelse
-                                                    </tbody>
-                                                </table>
+                                                        </thead>
+
+                                                        <tbody>
+                                                            @forelse ($po->items as $poItem)
+                                                                @php
+                                                                    $ordered = (float) $poItem->ordered_quantity;
+                                                                    $received = (float) $poItem->received_quantity;
+                                                                    $outstanding = max(0, $ordered - $received);
+                                                                    $receiptLine = $receivedByPoItem->get($poItem->id);
+                                                                @endphp
+
+                                                                <tr>
+                                                                    <td>{{ $loop->iteration }}</td>
+
+                                                                    <td>
+                                                                        @if ($poItem->productModel)
+                                                                            <span class="badge badge-info">
+                                                                                {{ $poItem->productModel->model_code }}
+                                                                            </span>
+                                                                        @else
+                                                                            <span class="text-muted">Common</span>
+                                                                        @endif
+                                                                    </td>
+
+                                                                    <td>{{ $poItem->item->item_code ?? '-' }}</td>
+                                                                    <td>{{ $poItem->item->item_name ?? '-' }}</td>
+                                                                    <td class="text-right">{{ number_format($ordered, 3) }}</td>
+                                                                    <td class="text-right">{{ number_format($received, 3) }}</td>
+
+                                                                    <td class="text-right">
+                                                                        @if ($outstanding > 0)
+                                                                            <strong>{{ number_format($outstanding, 3) }}</strong>
+                                                                        @else
+                                                                            <span class="badge badge-success">Fully Received</span>
+                                                                        @endif
+                                                                    </td>
+
+                                                                    <td>{{ $poItem->item->unit->name ?? '-' }}</td>
+
+                                                                    <td>
+                                                                        @if (!$canReceive)
+                                                                            <span class="badge badge-danger">
+                                                                                <i class="fas fa-lock mr-1"></i> Locked
+                                                                            </span>
+                                                                        @elseif ($receiptLine)
+                                                                            @php
+                                                                                $minQty = (int) ceil(
+                                                                                    (float) $receiptLine->activeUsedQuantity() +
+                                                                                        (float) $receiptLine->postedReturnedQuantity(),
+                                                                                );
+                                                                                $maxQty = (int) round(
+                                                                                    $ordered - $received + (float) $receiptLine->received_quantity,
+                                                                                );
+                                                                            @endphp
+
+                                                                            <span class="badge badge-success mr-1">
+                                                                                <i class="fas fa-check mr-1"></i>
+                                                                                Entered {{ number_format((float) $receiptLine->received_quantity, 0) }}
+                                                                            </span>
+
+                                                                            <button type="button"
+                                                                                class="btn btn-sm btn-outline-warning btn-edit-received"
+                                                                                data-action="{{ route('goods-receipts.items.update', [$goodsReceipt, $receiptLine]) }}"
+                                                                                data-po="{{ $po->po_number }}"
+                                                                                data-item="{{ $poItem->item->item_code ?? '' }} - {{ $poItem->item->item_name ?? '' }}"
+                                                                                data-current="{{ (int) round((float) $receiptLine->received_quantity) }}"
+                                                                                data-min="{{ $minQty }}"
+                                                                                data-max="{{ $maxQty }}">
+                                                                                <i class="fas fa-edit"></i> Edit
+                                                                            </button>
+                                                                        @elseif ($outstanding > 0)
+                                                                            <input type="number"
+                                                                                name="quantities[{{ $poItem->id }}]"
+                                                                                min="0" max="{{ (int) round($outstanding) }}"
+                                                                                step="1"
+                                                                                data-outstanding="{{ (int) round($outstanding) }}"
+                                                                                class="form-control form-control-sm text-right bulk-qty"
+                                                                                placeholder="0">
+                                                                        @else
+                                                                            <span class="badge badge-success">Fully Received</span>
+                                                                        @endif
+                                                                    </td>
+                                                                </tr>
+                                                            @empty
+                                                                <tr>
+                                                                    <td colspan="9" class="text-center text-muted py-3">
+                                                                        No items found for this Purchase Order.
+                                                                    </td>
+                                                                </tr>
+                                                            @endforelse
+                                                        </tbody>
+                                                    </table>
+
+                                                    @if ($canReceive && $receivableCount > 0)
+                                                        <div class="text-right">
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-outline-secondary btn-fill-outstanding">
+                                                                <i class="fas fa-magic mr-1"></i> Fill outstanding
+                                                            </button>
+                                                            <button type="submit" class="btn btn-sm btn-success">
+                                                                <i class="fas fa-save mr-1"></i> Save Received Quantities
+                                                            </button>
+                                                        </div>
+                                                    @endif
+                                                </form>
 
                                             </div>
                                         </div>
@@ -820,9 +883,84 @@
         </div>
 
     </div>
+        {{-- Edit received quantity --}}
+    <div class="modal fade" id="editReceivedModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <form method="POST" id="editReceivedForm">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title"><i class="fas fa-edit mr-1"></i> Edit Received Quantity</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="mb-2"><strong>PO:</strong> <span id="editRcvPo"></span></div>
+                        <div class="mb-3"><strong>Item:</strong> <span id="editRcvItem"></span></div>
+
+                        <div class="form-group mb-0">
+                            <label>Received Quantity <span class="text-danger">*</span></label>
+                            <input type="number" name="received_quantity" id="editRcvQty" class="form-control"
+                                step="1" min="1" required>
+                            <small class="form-text text-muted" id="editRcvHint"></small>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-save mr-1"></i> Update
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     @push('scripts')
         <script>
             $(document).ready(function () {
+                            // Edit a received quantity
+                $(document).on('click', '.btn-edit-received', function () {
+                    const b = $(this);
+                    const minQty = Math.max(1, parseInt(b.data('min'), 10) || 1);
+                    const maxQty = parseInt(b.data('max'), 10) || minQty;
+
+                    $('#editReceivedForm').attr('action', b.data('action'));
+                    $('#editRcvPo').text(b.data('po'));
+                    $('#editRcvItem').text(b.data('item'));
+                    $('#editRcvQty').attr({ min: minQty, max: maxQty }).val(b.data('current'));
+                    $('#editRcvHint').text('Allowed: ' + minQty + ' to ' + maxQty +
+                        ' (the lowest is what is already used or returned).');
+
+                    $('#editReceivedModal').modal('show');
+                });
+
+                // Fill every box of this PO with its outstanding quantity
+                $(document).on('click', '.btn-fill-outstanding', function () {
+                    $(this).closest('form').find('.bulk-qty').each(function () {
+                        $(this).val($(this).data('outstanding'));
+                    });
+                });
+
+                // One-click save: need at least one quantity, and stop double clicks
+                $(document).on('submit', '.po-bulk-form', function (e) {
+                    let filled = 0;
+                    $(this).find('.bulk-qty').each(function () {
+                        if (parseInt($(this).val(), 10) > 0) filled++;
+                    });
+
+                    if (filled === 0) {
+                        e.preventDefault();
+                        alert('Enter a received quantity for at least one item.');
+                        return;
+                    }
+
+                    $(this).find('button[type=submit]').prop('disabled', true);
+                });
 
                 /*
                 |--------------------------------------------------------------------------

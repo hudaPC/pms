@@ -611,6 +611,16 @@ Route::middleware(['auth', 'admin'])->group(function () {
         [GoodsReceiptItemController::class, 'store']
     )->name('goods-receipts.items.store');
 
+        Route::post(
+        '/goods-receipts/{goodsReceipt}/items-bulk',
+        [GoodsReceiptItemController::class, 'bulkStore']
+    )->name('goods-receipts.items.bulk-store');
+
+    Route::put(
+        '/goods-receipts/{goodsReceipt}/items/{goodsReceiptItem}',
+        [GoodsReceiptItemController::class, 'update']
+    )->name('goods-receipts.items.update');
+
     Route::post(
         '/goods-receipts/{goodsReceipt}/void',
         [GoodsReceiptController::class, 'void']

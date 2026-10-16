@@ -206,15 +206,14 @@
         </div>
 
 
-        @if($purchaseOrders->hasPages())
-
-            <div class="card-footer">
-
-                {{ $purchaseOrders->links() }}
-
-            </div>
-
-        @endif
+        {{-- Pagination --}}
+@if ($purchaseOrders->hasPages())
+    <div class="card-footer clearfix">
+        <div class="float-right">
+            {{ $purchaseOrders->links('pagination::bootstrap-4') }}
+        </div>
+    </div>
+@endif
 
     </div>
 

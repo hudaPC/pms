@@ -576,7 +576,7 @@ class GoodsReceiptItemController extends Controller
                     'quantity'      => $qty,
                     'source_type'   => 'goods_receipt_item',
                     'source_id'     => $line->id,
-                    'movement_date' => $receipt->receipt_date,
+                     'movement_date' => now()->toDateString(),
                     'reference'     => $receipt->grn_number,
                     'remarks'       => null,
                 ]);
@@ -735,7 +735,7 @@ class GoodsReceiptItemController extends Controller
                     'movement_type' => 'purchase_receipt',
                     'direction'     => 'in',
                     'quantity'      => $newQuantity,
-                    'movement_date' => $receipt->receipt_date,
+                     'movement_date' => now()->toDateString(),
                     'reference'     => $receipt->grn_number,
                     'remarks'       => $line->remarks,
                 ]

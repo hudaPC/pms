@@ -905,7 +905,7 @@
                         <div class="form-group mb-0">
                             <label>Received Quantity <span class="text-danger">*</span></label>
                             <input type="number" name="received_quantity" id="editRcvQty" class="form-control"
-                                step="1" min="1" required>
+                               step="1" min="0" required>
                             <small class="form-text text-muted" id="editRcvHint"></small>
                         </div>
                     </div>
@@ -932,9 +932,12 @@
                     $('#editReceivedForm').attr('action', b.data('action'));
                     $('#editRcvPo').text(b.data('po'));
                     $('#editRcvItem').text(b.data('item'));
-                    $('#editRcvQty').attr({ min: minQty, max: maxQty }).val(b.data('current'));
-                    $('#editRcvHint').text('Allowed: ' + minQty + ' to ' + maxQty +
-                        ' (the lowest is what is already used or returned).');
+                       $('#editRcvQty').attr({ min: minQty <= 1 ? 0 : minQty, max: maxQty }).val(b.data('current'));
+                                        const lowest = minQty <= 1 ? 0 : minQty;
+                    $('#editRcvHint').text('Allowed: ' + lowest + ' to ' + maxQty +
+                        (lowest === 0
+                            ? ' (0 removes this line and puts the stock back).'
+                            : ' (the lowest is what is already used or returned).'));
 
                     $('#editReceivedModal').modal('show');
                 });

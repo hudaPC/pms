@@ -661,47 +661,56 @@ class PurchaseOrderController extends Controller
         compact('purchaseOrder')
     );
 }
-    public function pdf(PurchaseOrder $purchaseOrder)
-    {
-        $purchaseOrder->setRelation(
-    'items',
-    $purchaseOrder->items->sortBy(function ($line) {
-        $parts = explode('-', $line->item->item_code ?? '');
+   public function pdf(PurchaseOrder $purchaseOrder)
+{
+    $purchaseOrder->load([
+        'supplier',
+        'items.item.category',
+        'items.productModel',
+    ]);
 
-        // Sort by the G-number (e.g. G001) first, then by the model part (e.g. M0029L)
-        return ($parts[1] ?? '') . '|' . ($parts[0] ?? '');
-    }, SORT_NATURAL)->values()
-);
-        $totalQty = $purchaseOrder->items->sum('ordered_quantity');
+    // Sort: product model first, then G-number, then item prefix
+    $purchaseOrder->setRelation(
+        'items',
+        $purchaseOrder->items->sortBy(function ($line) {
+            $parts = explode('-', $line->item->item_code ?? '');
 
-        $totalPrice = $purchaseOrder->items->sum(function ($item) {
-            return (float) $item->ordered_quantity * (float) ($item->unit_price ?? 0);
-        });
+            return ($line->productModel->model_code ?? '')
+                . '|' . ($parts[1] ?? '')
+                . '|' . ($parts[0] ?? '');
+        }, SORT_NATURAL)->values()
+    );
 
-       $totalPriceInWords = $this->amountToWords($totalPrice);
+    $totalQty = $purchaseOrder->items->sum('ordered_quantity');
 
-        // Convert the heading image to base64 so DomPDF can embed it reliably
-        $headingPath = public_path('images/heading.jpg');
+    $totalPrice = $purchaseOrder->items->sum(function ($item) {
+        return (float) $item->ordered_quantity * (float) ($item->unit_price ?? 0);
+    });
 
-        $headingImageData = file_exists($headingPath)
-            ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($headingPath))
-            : null;
+    $totalPriceInWords = $this->amountToWords($totalPrice);
 
-        $pdf = Pdf::setOptions(['isPhpEnabled' => true]);
+    // Convert the heading image to base64 so DomPDF can embed it reliably
+    $headingPath = public_path('images/heading.jpg');
 
-        $pdf = Pdf::loadView('purchase-orders.pdf', compact(
-            'purchaseOrder',
-            'totalQty',
-            'totalPrice',
-            'totalPriceInWords',
-            'headingImageData'
-        ))->setPaper('a4', 'portrait');
-        $pdf->setOption('isPhpEnabled', true);
+    $headingImageData = file_exists($headingPath)
+        ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($headingPath))
+        : null;
 
-        $safeFileName = str_replace(['/', '\\'], '-', $purchaseOrder->po_number);
+    $pdf = Pdf::setOptions(['isPhpEnabled' => true]);
 
-        return $pdf->download('PO-' . $safeFileName . '.pdf');
-    }
+    $pdf = Pdf::loadView('purchase-orders.pdf', compact(
+        'purchaseOrder',
+        'totalQty',
+        'totalPrice',
+        'totalPriceInWords',
+        'headingImageData'
+    ))->setPaper('a4', 'portrait');
+    $pdf->setOption('isPhpEnabled', true);
+
+    $safeFileName = str_replace(['/', '\\'], '-', $purchaseOrder->po_number);
+
+    return $pdf->download('PO-' . $safeFileName . '.pdf');
+}
 
 
     private function amountToWords(float $amount): string

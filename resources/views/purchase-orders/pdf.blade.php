@@ -228,8 +228,7 @@
                         <td style="width: 11%;">
                             {{ $purchaseOrder->expected_delivery_date
                 ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
-                : '-'
-                                            }}
+                : '-' }}
                         </td>
                         <td style="width: 8%;">{{ number_format($poItem->ordered_quantity, 0) }}</td>
                         <td style="width: 10%;">$ {{ number_format($poItem->unit_price ?? 0, 2) }}</td>

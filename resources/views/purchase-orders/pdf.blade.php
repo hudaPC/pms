@@ -129,7 +129,7 @@
 
             {{-- COMPANY HEADING IMAGE --}}
             <tr>
-                <td colspan="9" class="po-header-cell">
+                <td colspan="8" class="po-header-cell">
                     @if ($headingImageData)
                         <img src="{{ $headingImageData }}" class="heading-img">
                     @else
@@ -142,14 +142,14 @@
 
             {{-- TITLE --}}
             <tr>
-                <td colspan="9" class="po-header-cell">
+                <td colspan="8" class="po-header-cell">
                     <div class="po-title">PURCHASE ORDER</div>
                 </td>
             </tr>
 
             {{-- SUPPLIER / PO INFO --}}
             <tr>
-                <td colspan="9" class="po-header-cell">
+                <td colspan="8" class="po-header-cell">
 
                     <table class="info-table">
                         <tr>
@@ -182,7 +182,7 @@
                 $categoryCode = $firstItem?->item?->category?->code;
             @endphp
             <tr>
-                <td colspan="9" class="po-header-cell"
+                <td colspan="8" class="po-header-cell"
                     style="text-align: left; font-size: 11px; font-weight: bold; padding: 0 0 4px 0;">
                     @if ($categoryCode === 'GM')
                         GLASS MATERIAL FOR LENS
@@ -196,15 +196,14 @@
 
             {{-- ITEM COLUMN HEADERS --}}
             <tr class="items-header">
-                <th style="width: 5%;">SL NO</th>
                 <th style="width: 14%;">Model Name</th>
-                <th style="width: 13%;">Item Code</th>
-                <th style="width: 5%;">Ver</th>
-                <th style="width: 23%;">Item Name</th>
-                <th style="width: 11%;">Del. Date</th>
-                <th style="width: 10%;">Order Qty</th>
+                <th style="width: 14%;">Item Code</th>
+                <th style="width: 6%;">Ver</th>
+                <th style="width: 26%;">Item Name</th>
+                <th style="width: 12%;">Del. Date</th>
+                <th style="width: 9%;">Order Qty</th>
                 <th style="width: 9%;">Unit Price</th>
-                <th style="width: 11%;">Total Price</th>
+                <th style="width: 10%;">Total Price</th>
             </tr>
         </thead>
         <tbody>
@@ -218,21 +217,20 @@
 
                     <tr class="item-row">
 
-                        <td style="width: 5%;">{{ $loop->iteration }}</td>
-                        <td style="width: 12%;">{{ $poItem->productModel->model_code ?? '-' }}</td>
-                        <td style="width: 13%;">
+                        <td style="width: 14%;">{{ $poItem->productModel->model_code ?? '-' }}</td>
+                        <td style="width: 14%;">
                             {{ preg_replace('/-(AL|GM|AP)$/', '', $poItem->item->item_code ?? '-') }}
                         </td>
-                        <td style="width: 5%;">{{ $poItem->productModelItem->revision ?? '-' }}</td>
-                        <td style="width: 23%;">{{ $poItem->item->item_name ?? '-' }}</td>
-                        <td style="width: 11%;">
+                        <td style="width: 6%;">{{ $poItem->productModelItem->revision ?? '-' }}</td>
+                        <td style="width: 26%;">{{ $poItem->item->item_name ?? '-' }}</td>
+                        <td style="width: 12%;">
                             {{ $purchaseOrder->expected_delivery_date
                 ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
                 : '-' }}
                         </td>
-                        <td style="width: 8%;">{{ number_format($poItem->ordered_quantity, 0) }}</td>
-                        <td style="width: 10%;">$ {{ number_format($poItem->unit_price ?? 0, 2) }}</td>
-                        <td style="width: 12%;">$ {{ number_format($lineTotal, 2) }}</td>
+                        <td style="width: 9%;">{{ number_format($poItem->ordered_quantity, 0) }}</td>
+                        <td style="width: 9%;">$ {{ number_format($poItem->unit_price ?? 0, 2) }}</td>
+                        <td style="width: 10%;">$ {{ number_format($lineTotal, 2) }}</td>
 
                     </tr>
 
@@ -241,7 +239,7 @@
 
             {{-- SUMMARY ROW: totals + words + signature (stays with the repeated header) --}}
             <tr class="summary-row">
-                <td colspan="9" class="summary-cell">
+                <td colspan="8" class="summary-cell">
 
                     <table class="footer-table">
                         <tr>

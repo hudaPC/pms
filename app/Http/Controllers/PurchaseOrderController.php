@@ -663,10 +663,15 @@ class PurchaseOrderController extends Controller
 }
     public function pdf(PurchaseOrder $purchaseOrder)
     {
-        $purchaseOrder->load([
-        'supplier',
-        'items.item.category',
-    ]);
+        $purchaseOrder->setRelation(
+    'items',
+    $purchaseOrder->items->sortBy(function ($line) {
+        $parts = explode('-', $line->item->item_code ?? '');
+
+        // Sort by the G-number (e.g. G001) first, then by the model part (e.g. M0029L)
+        return ($parts[1] ?? '') . '|' . ($parts[0] ?? '');
+    }, SORT_NATURAL)->values()
+);
         $totalQty = $purchaseOrder->items->sum('ordered_quantity');
 
         $totalPrice = $purchaseOrder->items->sum(function ($item) {

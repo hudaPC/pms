@@ -129,7 +129,7 @@
 
             {{-- COMPANY HEADING IMAGE --}}
             <tr>
-                <td colspan="8" class="po-header-cell">
+                <td colspan="9" class="po-header-cell">
                     @if ($headingImageData)
                         <img src="{{ $headingImageData }}" class="heading-img">
                     @else
@@ -142,14 +142,14 @@
 
             {{-- TITLE --}}
             <tr>
-                <td colspan="8" class="po-header-cell">
+                <td colspan="9" class="po-header-cell">
                     <div class="po-title">PURCHASE ORDER</div>
                 </td>
             </tr>
 
             {{-- SUPPLIER / PO INFO --}}
             <tr>
-                <td colspan="8" class="po-header-cell">
+                <td colspan="9" class="po-header-cell">
 
                     <table class="info-table">
                         <tr>

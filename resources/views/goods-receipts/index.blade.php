@@ -149,7 +149,7 @@
                                                             {{ $purchaseOrder->order_date
                                     ? $purchaseOrder->order_date->format('d-M-Y')
                                     : '-'
-                                                                                                                                                                                }}
+                                                                                                                                                                                                            }}
 
                                                         </td>
 
@@ -160,7 +160,7 @@
                                                             {{ $purchaseOrder->expected_delivery_date
                                     ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
                                     : '-'
-                                                                                                                                                                                }}
+                                                                                                                                                                                                            }}
 
                                                         </td>
 
@@ -362,7 +362,7 @@
 
                                                             {{ $goodsReceipts->firstItem()
                                     + $loop->index
-                                                                                                                                                                                }}
+                                                                                                                                                                                                            }}
 
                                                         </td>
 
@@ -396,7 +396,7 @@
                                     ->purchaseOrder
                                     ->supplier
                                     ->name ?? '-'
-                                                                                                                                                                                }}
+                                                                                                                                                                                                            }}
 
                                                         </td>
 
@@ -409,7 +409,7 @@
                                         ->receipt_date
                                         ->format('d-M-Y')
                                     : '-'
-                                                                                                                                                                                }}
+                                                                                                                                                                                                            }}
 
                                                         </td>
 
@@ -420,7 +420,7 @@
                                                             {{ $goodsReceipt
                                     ->supplier_reference
                                     ?? '-'
-                                                                                                                                                                                }}
+                                                                                                                                                                                                            }}
 
                                                         </td>
 
@@ -487,15 +487,14 @@
             </div>
 
 
+
             {{-- Pagination --}}
             @if ($goodsReceipts->hasPages())
-
-                <div class="card-footer">
-
-                    {{ $goodsReceipts->links() }}
-
+                <div class="card-footer clearfix">
+                    <div class="float-right">
+                        {{ $goodsReceipts->links('pagination::bootstrap-4') }}
+                    </div>
                 </div>
-
             @endif
 
         </div>

@@ -111,149 +111,118 @@
 
                         <tbody>
 
-                            @forelse (
-                                                        $pendingPurchaseOrders
-                                                        as $purchaseOrder
-                                                    )
+                            @forelse ($pendingPurchaseOrders
+                                                            as $purchaseOrder)
+                                <tr>
 
-                                                    <tr>
-
-                                                        <td>
-                                                            {{ $loop->iteration }}
-                                                        </td>
+                                    <td>
+                                        {{ $loop->iteration }}
+                                    </td>
 
 
-                                                        {{-- PO Number --}}
-                                                        <td>
+                                    {{-- PO Number --}}
+                                    <td>
 
-                                                            <strong>
+                                        <strong>
 
-                                                                {{ $purchaseOrder->po_number }}
+                                            {{ $purchaseOrder->po_number }}
 
-                                                            </strong>
+                                        </strong>
 
-                                                        </td>
-
-
-                                                        {{-- Supplier --}}
-                                                        <td>
-
-                                                            {{ $purchaseOrder->supplier->name ?? '-' }}
-
-                                                        </td>
+                                    </td>
 
 
-                                                        {{-- Order Date --}}
-                                                        <td>
+                                    {{-- Supplier --}}
+                                    <td>
 
-                                                            {{ $purchaseOrder->order_date
-                                    ? $purchaseOrder->order_date->format('d-M-Y')
-                                    : '-'
-                                                                                                                                                                                                            }}
+                                        {{ $purchaseOrder->supplier->name ?? '-' }}
 
-                                                        </td>
+                                    </td>
 
 
-                                                        {{-- Expected Delivery --}}
-                                                        <td>
+                                    {{-- Order Date --}}
+                                    <td>
 
-                                                            {{ $purchaseOrder->expected_delivery_date
-                                    ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
-                                    : '-'
-                                                                                                                                                                                                            }}
+                                        {{ $purchaseOrder->order_date ? $purchaseOrder->order_date->format('d-M-Y') : '-' }}
 
-                                                        </td>
+                                    </td>
 
 
-                                                        {{-- Ordered Qty --}}
-                                                        <td class="text-right">
+                                    {{-- Expected Delivery --}}
+                                    <td>
 
-                                                            {{ number_format(
-                                    (float) $purchaseOrder
-                                        ->total_ordered_quantity,
-                                    3
-                                ) }}
+                                        {{ $purchaseOrder->expected_delivery_date ? $purchaseOrder->expected_delivery_date->format('d-M-Y') : '-' }}
 
-                                                        </td>
+                                    </td>
 
 
-                                                        {{-- Received Qty --}}
-                                                        <td class="text-right">
+                                    {{-- Ordered Qty --}}
+                                    <td class="text-right">
 
-                                                            {{ number_format(
-                                    (float) $purchaseOrder
-                                        ->total_received_quantity,
-                                    3
-                                ) }}
+                                        {{ number_format((float) $purchaseOrder->total_ordered_quantity, 3) }}
 
-                                                        </td>
+                                    </td>
 
 
-                                                        {{-- Pending Receipt --}}
-                                                        <td class="text-right">
+                                    {{-- Received Qty --}}
+                                    <td class="text-right">
 
-                                                            <span class="badge badge-warning">
+                                        {{ number_format((float) $purchaseOrder->total_received_quantity, 3) }}
 
-                                                                {{ number_format(
-                                    (float) $purchaseOrder
-                                        ->pending_receipt_quantity,
-                                    3
-                                ) }}
-
-                                                                Pending
-
-                                                            </span>
-
-                                                        </td>
+                                    </td>
 
 
-                                                        {{-- PO Status --}}
-                                                        <td class="text-center">
+                                    {{-- Pending Receipt --}}
+                                    <td class="text-right">
 
-                                                            @if (
-                                                                    $purchaseOrder->status
-                                                                    === 'partially_received'
-                                                                )
+                                        <span class="badge badge-warning">
 
-                                                                <span class="badge badge-warning">
+                                            {{ number_format((float) $purchaseOrder->pending_receipt_quantity, 3) }}
 
-                                                                    Partially Received
+                                            Pending
 
-                                                                </span>
+                                        </span>
 
-                                                            @else
-
-                                                                <span class="badge badge-primary">
-
-                                                                    Confirmed
-
-                                                                </span>
-
-                                                            @endif
-
-                                                        </td>
+                                    </td>
 
 
-                                                        {{-- Action --}}
-                                                        <td>
+                                    {{-- PO Status --}}
+                                    <td class="text-center">
 
-                                                            <a href="{{ route(
-                                    'goods-receipts.create',
-                                    [
-                                        'purchase_order_id'
-                                        => $purchaseOrder->id,
-                                    ]
-                                ) }}" class="btn btn-sm btn-success">
+                                        @if ($purchaseOrder->status === 'partially_received')
+                                            <span class="badge badge-warning">
 
-                                                                <i class="fas fa-truck-loading mr-1"></i>
+                                                Partially Received
 
-                                                                Receive Goods
+                                            </span>
+                                        @else
+                                            <span class="badge badge-primary">
 
-                                                            </a>
+                                                Confirmed
 
-                                                        </td>
+                                            </span>
+                                        @endif
 
-                                                    </tr>
+                                    </td>
+
+
+                                    {{-- Action --}}
+                                    <td>
+
+                                        <a href="{{ route('goods-receipts.create', [
+                                            'purchase_order_id' => $purchaseOrder->id,
+                                        ]) }}"
+                                            class="btn btn-sm btn-success">
+
+                                            <i class="fas fa-truck-loading mr-1"></i>
+
+                                            Receive Goods
+
+                                        </a>
+
+                                    </td>
+
+                                </tr>
 
                             @empty
 
@@ -268,7 +237,6 @@
                                     </td>
 
                                 </tr>
-
                             @endforelse
 
                         </tbody>
@@ -356,113 +324,112 @@
 
                             @forelse ($goodsReceipts as $goodsReceipt)
 
-                                                    <tr>
+                                <tr>
 
-                                                        <td>
+                                    <td>
 
-                                                            {{ $goodsReceipts->firstItem()
-                                    + $loop->index
-                                                                                                                                                                                                            }}
+                                        {{ $goodsReceipts->firstItem() + $loop->index }}
 
-                                                        </td>
+                                    </td>
 
 
-                                                        {{-- GRN --}}
-                                                        <td>
+                                    {{-- GRN --}}
+                                    <td>
 
-                                                            <strong>
+                                        <strong>
 
-                                                                {{ $goodsReceipt->grn_number }}
+                                            {{ $goodsReceipt->grn_number }}
 
-                                                            </strong>
+                                        </strong>
 
-                                                        </td>
-
-
-                                                        {{-- PO --}}
-                                                        <td>
-                                                            @forelse ($goodsReceipt->purchaseOrders as $po)
-                                                                <span class="badge badge-light border">{{ $po->po_number }}</span>
-                                                            @empty
-                                                                {{ $goodsReceipt->purchaseOrder->po_number ?? '-' }}
-                                                            @endforelse
-                                                        </td>
+                                    </td>
 
 
-                                                        {{-- Supplier --}}
-                                                        <td>
-
-                                                            {{ $goodsReceipt
-                                    ->purchaseOrder
-                                    ->supplier
-                                    ->name ?? '-'
-                                                                                                                                                                                                            }}
-
-                                                        </td>
+                                    {{-- PO --}}
+                                    <td>
+                                        @forelse ($goodsReceipt->purchaseOrders as $po)
+                                            <span class="badge badge-light border">{{ $po->po_number }}</span>
+                                        @empty
+                                            {{ $goodsReceipt->purchaseOrder->po_number ?? '-' }}
+                                        @endforelse
+                                    </td>
 
 
-                                                        {{-- Receipt Date --}}
-                                                        <td>
+                                    {{-- Supplier --}}
+                                    <td>
 
-                                                            {{ $goodsReceipt->receipt_date
-                                    ? $goodsReceipt
-                                        ->receipt_date
-                                        ->format('d-M-Y')
-                                    : '-'
-                                                                                                                                                                                                            }}
+                                        {{ $goodsReceipt->purchaseOrder->supplier->name ?? '-' }}
 
-                                                        </td>
+                                    </td>
 
 
-                                                        {{-- Supplier Reference --}}
-                                                        <td>
+                                    {{-- Receipt Date --}}
+                                    <td>
 
-                                                            {{ $goodsReceipt
-                                    ->supplier_reference
-                                    ?? '-'
-                                                                                                                                                                                                            }}
+                                        {{ $goodsReceipt->receipt_date ? $goodsReceipt->receipt_date->format('d-M-Y') : '-' }}
 
-                                                        </td>
+                                    </td>
 
 
-                                                        {{-- Items --}}
-                                                        <td class="text-center">
+                                    {{-- Supplier Reference --}}
+                                    <td>
 
-                                                            {{ $goodsReceipt->items_count }}
+                                        {{ $goodsReceipt->supplier_reference ?? '-' }}
 
-                                                        </td>
+                                    </td>
 
 
-                                                        {{-- Qty Received On This GRN --}}
-                                                        <td class="text-right">
-                                                            <strong class="text-success">
-                                                                {{ number_format((float) ($goodsReceipt->total_received_quantity ?? 0), 3) }}
-                                                            </strong>
-                                                        </td>
+                                    {{-- Items --}}
+                                    <td class="text-center">
 
-                                                        {{-- Total Price --}}
-                                                        <td class="text-right">
-                                                            <strong class="text-primary">
-                                                                $ {{ number_format((float) ($goodsReceipt->total_price ?? 0), 3) }}
-                                                            </strong>
-                                                        </td>
-                                                        {{-- Action --}}
-                                                        <td>
+                                        {{ $goodsReceipt->items_count }}
 
-                                                            <a href="{{ route(
-                                    'goods-receipts.show',
-                                    $goodsReceipt
-                                ) }}" class="btn btn-sm btn-info">
+                                    </td>
 
-                                                                <i class="fas fa-eye mr-1"></i>
 
-                                                                View
+                                    {{-- Qty Received On This GRN --}}
+                                    <td class="text-right">
+                                        <strong class="text-success">
+                                            {{ number_format((float) ($goodsReceipt->total_received_quantity ?? 0), 3) }}
+                                        </strong>
+                                    </td>
 
-                                                            </a>
+                                    {{-- Total Price --}}
+                                    <td class="text-right">
+                                        <strong class="text-primary">
+                                            $ {{ number_format((float) ($goodsReceipt->total_price ?? 0), 3) }}
+                                        </strong>
+                                    </td>
 
-                                                        </td>
+                                    {{-- Action --}}
+                                    <td class="text-nowrap">
 
-                                                    </tr>
+                                        {{-- View Button --}}
+                                        <a href="{{ route('goods-receipts.show', $goodsReceipt) }}"
+                                            class="btn btn-sm btn-info" title="View Goods Receipt">
+
+                                            <i class="fas fa-eye"></i>
+
+                                        </a>
+
+                                        {{-- Edit Button --}}
+                                        @if (
+                                            $goodsReceipt->status !== 'voided' &&
+                                                !$goodsReceipt->items()->exists() &&
+                                                !$goodsReceipt->payments()->where('supplier_payments.status', 'active')->exists() &&
+                                                !$goodsReceipt->purchaseReturns()->exists())
+                                            <a href="{{ route('goods-receipts.edit', $goodsReceipt) }}"
+                                                class="btn btn-sm btn-warning" title="Edit Goods Receipt">
+
+                                                <i class="fas fa-edit"></i>
+
+                                            </a>
+                                        @endif
+
+                                    </td>
+
+
+                                </tr>
 
                             @empty
 

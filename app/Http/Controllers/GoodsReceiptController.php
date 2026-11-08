@@ -12,6 +12,7 @@ use App\Models\PurchaseReturn;
 use App\Models\GoodsReceiptItem;
 use App\Models\UsageLog;
 use App\Models\ProductModel;
+use App\Services\GoodsReceiptReversalService;
 
 
 class GoodsReceiptController extends Controller
@@ -347,6 +348,183 @@ class GoodsReceiptController extends Controller
             compact('goodsReceipt', 'availablePurchaseOrders')
         );
     }
+    
+/*
+|--------------------------------------------------------------------------
+| Edit Goods Receipt
+|--------------------------------------------------------------------------
+*/
+public function edit(GoodsReceipt $goodsReceipt)
+{
+    // A voided GRN cannot be edited
+    if ($goodsReceipt->status === 'voided') {
+        return redirect()
+            ->route('goods-receipts.show', $goodsReceipt)
+            ->withErrors([
+                'purchase_order_id' => 'A voided GRN cannot be edited.',
+            ]);
+    }
+
+    // Do not change PO after receiving goods
+    if ($goodsReceipt->items()->exists()) {
+        return redirect()
+            ->route('goods-receipts.show', $goodsReceipt)
+            ->withErrors([
+                'purchase_order_id' =>
+                    'This GRN already contains received items. Use the GRN reversal process.',
+            ]);
+    }
+
+    // Protect active supplier payments
+    if ($goodsReceipt->payments()
+        ->where('supplier_payments.status', 'active')
+        ->exists()) {
+
+        return redirect()
+            ->route('goods-receipts.show', $goodsReceipt)
+            ->withErrors([
+                'purchase_order_id' =>
+                    'Void the active supplier payment before changing the Purchase Order.',
+            ]);
+    }
+
+    // Protect existing purchase returns
+    if ($goodsReceipt->purchaseReturns()->exists()) {
+        return redirect()
+            ->route('goods-receipts.show', $goodsReceipt)
+            ->withErrors([
+                'purchase_order_id' =>
+                    'This GRN has Purchase Return records and cannot be edited.',
+            ]);
+    }
+
+    $goodsReceipt->load('purchaseOrder');
+
+    // Available Purchase Orders
+    $purchaseOrders = PurchaseOrder::with('supplier')
+        ->whereIn('status', [
+            'confirmed',
+            'partially_received',
+        ])
+        ->orderBy('expected_delivery_date')
+        ->get();
+
+    return view(
+        'goods-receipts.edit',
+        compact('goodsReceipt', 'purchaseOrders')
+    );
+}
+
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Update Goods Receipt
+|--------------------------------------------------------------------------
+*/
+public function update(Request $request, GoodsReceipt $goodsReceipt)
+{
+    $validated = $request->validate([
+        'purchase_order_id' => [
+            'required',
+            'exists:purchase_orders,id',
+        ],
+    ]);
+
+    DB::transaction(function () use ($validated, $goodsReceipt) {
+
+        // Lock GRN
+        $receipt = GoodsReceipt::query()
+            ->whereKey($goodsReceipt->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        // Prevent changes to voided GRN
+        if ($receipt->status === 'voided') {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'purchase_order_id' => 'A voided GRN cannot be edited.',
+            ]);
+        }
+
+        // No received items allowed
+        if ($receipt->items()->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'purchase_order_id' =>
+                    'Cannot change PO because goods have already been received.',
+            ]);
+        }
+
+        // No active supplier payments
+        if ($receipt->payments()
+            ->where('supplier_payments.status', 'active')
+            ->exists()) {
+
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'purchase_order_id' =>
+                    'Void active supplier payments before changing the PO.',
+            ]);
+        }
+
+        // No existing purchase returns
+        if ($receipt->purchaseReturns()->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'purchase_order_id' =>
+                    'This GRN has Purchase Return records and cannot be edited.',
+            ]);
+        }
+
+        // Lock selected Purchase Order
+        $purchaseOrder = PurchaseOrder::query()
+            ->whereKey($validated['purchase_order_id'])
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        // Only eligible Purchase Orders
+        if (!in_array($purchaseOrder->status, [
+            'confirmed',
+            'partially_received',
+        ])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'purchase_order_id' =>
+                    'Only confirmed or partially received Purchase Orders can be selected.',
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Primary Purchase Order
+        |--------------------------------------------------------------------------
+        */
+        $receipt->purchase_order_id = $purchaseOrder->id;
+
+        $receipt->supplier_id = $purchaseOrder->supplier_id;
+
+        $receipt->save();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Synchronize Purchase Order Pivot
+        |--------------------------------------------------------------------------
+        |
+        | Replace previous PO associations with the selected PO.
+        |
+        */
+        $receipt->purchaseOrders()->sync([
+            $purchaseOrder->id,
+        ]);
+
+    });
+
+    return redirect()
+        ->route('goods-receipts.show', $goodsReceipt)
+        ->with(
+            'success',
+            'Goods Receipt Purchase Order updated successfully.'
+        );
+}
+
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -486,214 +664,40 @@ class GoodsReceiptController extends Controller
 |
 */
 
-    public function void(Request $request, GoodsReceipt $goodsReceipt)
-    {
-        // 1. Validate
-        $validated = $request->validate([
-            'void_reason' => ['required', 'string', 'max:1000'],
-        ]);
+    
+/**
+ * Void / Reverse Goods Receipt.
+ */
+public function void(
+    Request $request,
+    GoodsReceipt $goodsReceipt,
+    GoodsReceiptReversalService $reversalService
+) {
+    // Validate reversal reason
+    $validated = $request->validate([
+        'void_reason' => ['required', 'string', 'max:1000'],
+    ]);
 
-        // 2. Already voided
-        if ($goodsReceipt->status === 'voided') {
-            return back()->withErrors([
-                'void_reason' => 'This Goods Receipt has already been voided.',
-            ]);
-        }
+    // Perform reversal inside a database transaction
+    DB::transaction(function () use (
+        $goodsReceipt,
+        $validated,
+        $reversalService
+    ) {
+        $reversalService->reverse(
+            $goodsReceipt,
+            $validated['void_reason']
+        );
+    });
 
-        // 3. Everything happens inside one transaction
-        DB::transaction(function () use ($goodsReceipt, $validated) {
+    return redirect()
+        ->route('goods-receipts.show', $goodsReceipt)
+        ->with(
+            'success',
+            'Goods Receipt voided successfully. Stock and Purchase Order quantities were reversed.'
+        );
+}
 
-            // Lock the GRN
-            $lockedGoodsReceipt = GoodsReceipt::query()
-                ->whereKey($goodsReceipt->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            // Double void protection
-            if ($lockedGoodsReceipt->status === 'voided') {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'void_reason' => 'This Goods Receipt has already been voided.',
-                ]);
-            }
-
-            // Load GRN items
-            $receiptItems = $lockedGoodsReceipt->items()->get();
-
-            // Empty GRN protection
-            if ($receiptItems->isEmpty()) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'void_reason' => 'This Goods Receipt has no received items to reverse.',
-                ]);
-            }
-                        // Active supplier payment protection
-                        $activePaymentCount = $lockedGoodsReceipt->payments()
-                ->where('supplier_payments.status', 'active')
-                ->count();
-
-            if ($activePaymentCount > 0) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'void_reason' =>
-                        'This Goods Receipt cannot be voided because it has '
-                        . $activePaymentCount
-                        . ' active supplier payment(s). Void those payments first.',
-                ]);
-            }
-
-            // Posted Purchase Return protection
-            $postedPurchaseReturns = PurchaseReturn::where('goods_receipt_id', $lockedGoodsReceipt->id)
-                ->where('status', 'posted')
-                ->get();
-
-            if ($postedPurchaseReturns->isNotEmpty()) {
-                $returnNumbers = $postedPurchaseReturns->pluck('return_number')->implode(', ');
-
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'void_reason' =>
-                        'This Goods Receipt cannot be voided because it has '
-                        . $postedPurchaseReturns->count()
-                        . ' posted Purchase Return(s): '
-                        . $returnNumbers
-                        . '. Cancel the related Purchase Return(s) first.',
-                ]);
-            }
-
-            // EDIT 9A: Lock every Purchase Order touched by this GRN
-            $purchaseOrderIds = PurchaseOrderItem::query()
-                ->whereIn('id', $receiptItems->pluck('purchase_order_item_id'))
-                ->pluck('purchase_order_id')
-                ->unique()
-                ->values();
-
-            $purchaseOrders = PurchaseOrder::query()
-                ->whereIn('id', $purchaseOrderIds)
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
-
-            // Reverse every GRN item
-            foreach ($receiptItems as $receiptItem) {
-
-                // Lock the PO item
-                $purchaseOrderItem = PurchaseOrderItem::query()
-                    ->whereKey($receiptItem->purchase_order_item_id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
-
-                // EDIT 9B: PO item must belong to one of the locked POs
-                if (!$purchaseOrders->has($purchaseOrderItem->purchase_order_id)) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'void_reason' => 'A receipt item does not belong to a Purchase Order on this GRN.',
-                    ]);
-                }
-
-                // Receipt quantity
-                $receiptQuantity = (float) $receiptItem->received_quantity;
-
-                if ($receiptQuantity <= 0) {
-                    continue;
-                }
-
-                // Current PO received quantity
-                $currentReceivedQuantity = (float) $purchaseOrderItem->received_quantity;
-
-                // Quantity already used from this GRN line cannot be reversed
-                $usedFromThisLine = $receiptItem->activeUsedQuantity();
-
-                if ($usedFromThisLine > 0.0001) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'void_reason' =>
-                            'This Goods Receipt cannot be voided because '
-                            . number_format($usedFromThisLine, 3)
-                            . ' of one of its items has already been used in Material Usage. '
-                            . 'Void that usage first.',
-                    ]);
-                }
-
-
-                // Basic quantity safety
-                if ($receiptQuantity > $currentReceivedQuantity) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'void_reason' =>
-                            'The GRN cannot be voided because its received quantity '
-                            . 'is greater than the current PO received quantity.',
-                    ]);
-                }
-
-                // Prevent duplicate reversal movement
-                $reversalExists = StockMovement::where('source_type', 'goods_receipt_reversal')
-                    ->where('source_id', $receiptItem->id)
-                    ->where('direction', 'out')
-                    ->exists();
-
-                if ($reversalExists) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'void_reason' => 'A stock reversal already exists for one of the GRN items.',
-                    ]);
-                }
-
-                // Reduce PO received quantity
-                $purchaseOrderItem->received_quantity = max(
-                    0,
-                    $currentReceivedQuantity - $receiptQuantity
-                );
-                $purchaseOrderItem->save();
-
-                // Create stock reversal OUT
-                StockMovement::create([
-                    'item_id' => $receiptItem->item_id,
-                    'movement_date' => now()->toDateString(),
-                    'movement_type' => 'purchase_receipt',
-                    'direction' => 'out',
-                    'quantity' => $receiptQuantity,
-                    'source_type' => 'goods_receipt_reversal',
-                    'source_id' => $receiptItem->id,
-                    'reference' => 'VOID-' . $lockedGoodsReceipt->grn_number,
-                    'remarks' => 'GRN void reversal. Reason: ' . $validated['void_reason'],
-                ]);
-            }
-
-            // EDIT 9C: Recalculate the status of every PO touched by this GRN
-            foreach ($purchaseOrders as $purchaseOrder) {
-
-                $purchaseOrder->load('items');
-
-                $hasOutstandingItems = $purchaseOrder->items->contains(
-                    fn($item) => (float) $item->received_quantity < (float) $item->ordered_quantity
-                );
-
-                $hasAnyReceived = $purchaseOrder->items->contains(
-                    fn($item) => (float) $item->received_quantity > 0
-                );
-
-                if (!$hasOutstandingItems) {
-                    $purchaseOrder->status = 'received';
-                } elseif ($hasAnyReceived) {
-                    $purchaseOrder->status = 'partially_received';
-                } else {
-                    $purchaseOrder->status = 'confirmed';
-                }
-
-                $purchaseOrder->save();
-            }
-
-            // Mark the GRN as voided
-            $lockedGoodsReceipt->status = 'voided';
-            $lockedGoodsReceipt->voided_at = now();
-            $lockedGoodsReceipt->void_reason = $validated['void_reason'];
-            $lockedGoodsReceipt->total_amount = 0;
-            $lockedGoodsReceipt->balance_amount = 0;
-            $lockedGoodsReceipt->payment_status = 'voided';
-            $lockedGoodsReceipt->save();
-        });
-
-        // 4. Redirect
-        return redirect()
-            ->route('goods-receipts.show', $goodsReceipt)
-            ->with(
-                'success',
-                'Goods Receipt voided successfully. Stock and Purchase Order quantities were reversed.'
-            );
-    }
 
 
     public function modelUsage(Request $request)
@@ -1115,4 +1119,5 @@ class GoodsReceiptController extends Controller
             ->route('goods-receipts.show', $goodsReceipt)
             ->with('success', $purchaseOrder->po_number . ' added. You can now receive its items.');
     }
+
 }

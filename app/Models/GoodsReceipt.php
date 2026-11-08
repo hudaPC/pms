@@ -24,6 +24,11 @@ class GoodsReceipt extends Model
         'voided_at',
         'void_reason',
 
+        // Correction tracking
+        'corrected_from_grn_id',
+        'correction_reason',
+        'corrected_at',
+
         // Payment tracking
         'total_amount',
         'paid_amount',
@@ -33,6 +38,7 @@ class GoodsReceipt extends Model
 
     protected $casts = [
         'receipt_date' => 'date',
+        'corrected_at' => 'datetime',
         'total_amount' => 'decimal:4',
         'paid_amount' => 'decimal:4',
         'balance_amount' => 'decimal:4',
@@ -64,7 +70,7 @@ class GoodsReceipt extends Model
         return $this->hasMany(PurchaseReturn::class);
     }
 
-      public function paymentItems(): HasMany
+    public function paymentItems(): HasMany
     {
         return $this->hasMany(SupplierPaymentItem::class);
     }
@@ -75,6 +81,29 @@ class GoodsReceipt extends Model
             ->withPivot('amount')
             ->withTimestamps();
     }
+
+    /**
+     * Original GRN from which this replacement GRN was created.
+     */
+    public function originalReceipt(): BelongsTo
+    {
+        return $this->belongsTo(
+            GoodsReceipt::class,
+            'corrected_from_grn_id'
+        );
+    }
+
+    /**
+     * Replacement GRNs created from this original GRN.
+     */
+    public function correctedReceipts(): HasMany
+    {
+        return $this->hasMany(
+            GoodsReceipt::class,
+            'corrected_from_grn_id'
+        );
+    }
+
     /**
      * Recalculate total, paid, balance and payment status.
      * Total = sum of (received quantity x PO unit price).
@@ -92,7 +121,7 @@ class GoodsReceipt extends Model
                 'goods_receipt_items.received_quantity * COALESCE(purchase_order_items.unit_price, 0)'
             ));
 
-               $paid = (float) $this->paymentItems()
+        $paid = (float) $this->paymentItems()
             ->whereHas('payment', fn($q) => $q->where('status', 'active'))
             ->sum('amount');
 
@@ -114,14 +143,18 @@ class GoodsReceipt extends Model
         ]);
     }
 
-
     /**
      * Total active used quantity charged to this receipt.
      */
     public function usedQuantity(): float
     {
         return (float) UsageLog::query()
-            ->join('goods_receipt_items', 'goods_receipt_items.id', '=', 'usage_logs.goods_receipt_item_id')
+            ->join(
+                'goods_receipt_items',
+                'goods_receipt_items.id',
+                '=',
+                'usage_logs.goods_receipt_item_id'
+            )
             ->where('usage_logs.status', 'active')
             ->where('goods_receipt_items.goods_receipt_id', $this->id)
             ->sum('usage_logs.quantity');
@@ -133,21 +166,37 @@ class GoodsReceipt extends Model
     public function usedAmount(): float
     {
         return (float) UsageLog::query()
-            ->join('goods_receipt_items', 'goods_receipt_items.id', '=', 'usage_logs.goods_receipt_item_id')
-            ->join('purchase_order_items', 'purchase_order_items.id', '=', 'goods_receipt_items.purchase_order_item_id')
+            ->join(
+                'goods_receipt_items',
+                'goods_receipt_items.id',
+                '=',
+                'usage_logs.goods_receipt_item_id'
+            )
+            ->join(
+                'purchase_order_items',
+                'purchase_order_items.id',
+                '=',
+                'goods_receipt_items.purchase_order_item_id'
+            )
             ->where('usage_logs.status', 'active')
             ->where('goods_receipt_items.goods_receipt_id', $this->id)
-            ->sum(DB::raw('usage_logs.quantity * COALESCE(purchase_order_items.unit_price, 0)'));
+            ->sum(DB::raw(
+                'usage_logs.quantity * COALESCE(purchase_order_items.unit_price, 0)'
+            ));
     }
 
-        /**
-     * Amount that can be paid now: total received price minus what is already paid.
+    /**
+     * Amount that can be paid now.
      */
     public function payableAmount(): float
     {
-        return max(0, (float) $this->total_amount - (float) $this->paid_amount);
+        return max(
+            0,
+            (float) $this->total_amount - (float) $this->paid_amount
+        );
     }
-        /**
+
+    /**
      * Date from which this receipt may be paid (receipt date + 6 months).
      */
     public function eligibleFrom(): ?\Carbon\Carbon
@@ -166,4 +215,8 @@ class GoodsReceipt extends Model
 
         return $from !== null && $from->lte(now()->startOfDay());
     }
+    public function poCorrections(): HasMany
+{
+    return $this->hasMany(GoodsReceiptPoCorrection::class);
+}
 }

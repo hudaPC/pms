@@ -625,6 +625,11 @@ Route::middleware(['auth', 'admin'])->group(function () {
         '/goods-receipts/{goodsReceipt}/void',
         [GoodsReceiptController::class, 'void']
     )->name('goods-receipts.void');
+    
+    Route::post(
+    'goods-receipts/{goodsReceipt}/correct',
+    [GoodsReceiptController::class, 'correct']
+)->name('goods-receipts.correct');
 
     Route::post(
         'goods-receipts/{goodsReceipt}/purchase-orders',

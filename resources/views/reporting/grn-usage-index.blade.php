@@ -141,8 +141,17 @@
                     </table>
                 </div>
             </div>
-            @if ($goodsReceipts->hasPages())
+            <!-- @if ($goodsReceipts->hasPages())
                 <div class="card-footer">{{ $goodsReceipts->links() }}</div>
+            @endif -->
+
+            {{-- Pagination --}}
+            @if ($goodsReceipts->hasPages())
+                <div class="card-footer clearfix">
+                    <div class="float-right">
+                        {{ $goodsReceipts->links('pagination::bootstrap-4') }}
+                    </div>
+                </div>
             @endif
         </div>
 

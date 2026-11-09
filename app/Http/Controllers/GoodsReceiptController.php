@@ -47,80 +47,80 @@ class GoodsReceiptController extends Controller
                 'supplier',
                 'items.item',
             ])
-            ->whereIn(
-                'status',
-                [
-                    'confirmed',
-                    'partially_received',
-                ]
-            )
-            ->orderBy('expected_delivery_date')
-            ->orderBy('id')
-            ->get()
-            ->map(function ($purchaseOrder) {
+                ->whereIn(
+                    'status',
+                    [
+                        'confirmed',
+                        'partially_received',
+                    ]
+                )
+                ->orderBy('expected_delivery_date')
+                ->orderBy('id')
+                ->get()
+                ->map(function ($purchaseOrder) {
 
-                /*
-                            |--------------------------------------------------------------------------
-                            | Total Ordered
-                            |--------------------------------------------------------------------------
-                            */
+                    /*
+                                |--------------------------------------------------------------------------
+                                | Total Ordered
+                                |--------------------------------------------------------------------------
+                                */
 
-                $totalOrdered =
-                    (float) $purchaseOrder
-                        ->items
-                        ->sum('ordered_quantity');
-
-
-                /*
-                            |--------------------------------------------------------------------------
-                            | Total Received
-                            |--------------------------------------------------------------------------
-                            */
-
-                $totalReceived =
-                    (float) $purchaseOrder
-                        ->items
-                        ->sum('received_quantity');
+                    $totalOrdered =
+                        (float) $purchaseOrder
+                            ->items
+                            ->sum('ordered_quantity');
 
 
-                /*
-                            |--------------------------------------------------------------------------
-                            | Pending Receipt
-                            |--------------------------------------------------------------------------
-                            */
+                    /*
+                                |--------------------------------------------------------------------------
+                                | Total Received
+                                |--------------------------------------------------------------------------
+                                */
 
-                $pendingQuantity =
-                    max(
-                        0,
-                        $totalOrdered - $totalReceived
-                    );
-
-
-                /*
-                            |--------------------------------------------------------------------------
-                            | Attach Calculated Values
-                            |--------------------------------------------------------------------------
-                            */
-
-                $purchaseOrder->total_ordered_quantity =
-                    $totalOrdered;
-
-                $purchaseOrder->total_received_quantity =
-                    $totalReceived;
-
-                $purchaseOrder->pending_receipt_quantity =
-                    $pendingQuantity;
+                    $totalReceived =
+                        (float) $purchaseOrder
+                            ->items
+                            ->sum('received_quantity');
 
 
-                return $purchaseOrder;
-            })
-            ->filter(function ($purchaseOrder) {
+                    /*
+                                |--------------------------------------------------------------------------
+                                | Pending Receipt
+                                |--------------------------------------------------------------------------
+                                */
 
-                return
-                    $purchaseOrder
-                    ->pending_receipt_quantity > 0;
-            })
-            ->values();
+                    $pendingQuantity =
+                        max(
+                            0,
+                            $totalOrdered - $totalReceived
+                        );
+
+
+                    /*
+                                |--------------------------------------------------------------------------
+                                | Attach Calculated Values
+                                |--------------------------------------------------------------------------
+                                */
+
+                    $purchaseOrder->total_ordered_quantity =
+                        $totalOrdered;
+
+                    $purchaseOrder->total_received_quantity =
+                        $totalReceived;
+
+                    $purchaseOrder->pending_receipt_quantity =
+                        $pendingQuantity;
+
+
+                    return $purchaseOrder;
+                })
+                ->filter(function ($purchaseOrder) {
+
+                    return
+                        $purchaseOrder
+                            ->pending_receipt_quantity > 0;
+                })
+                ->values();
 
 
         /*
@@ -135,30 +135,24 @@ class GoodsReceiptController extends Controller
                 'purchaseOrder.supplier',
                 'purchaseOrders',
             ])
-            ->withCount('items')
-            ->withSum(
-                'items as total_received_quantity',
-                'received_quantity'
-            )
-            ->addSelect([
-                'total_price' => GoodsReceiptItem::query()
-                    ->join(
-                        'purchase_order_items',
-                        'purchase_order_items.id',
-                        '=',
-                        'goods_receipt_items.purchase_order_item_id'
-                    )
-                    ->whereColumn(
-                        'goods_receipt_items.goods_receipt_id',
-                        'goods_receipts.id'
-                    )
-                    ->selectRaw(
-                        'SUM(goods_receipt_items.received_quantity * purchase_order_items.unit_price)'
-                    ),
-            ])
-            ->latest('receipt_date')
-            ->latest('id')
-            ->paginate(20);
+                ->withCount('items')
+                ->withSum(
+                    'items as total_received_quantity',
+                    'received_quantity'
+                )
+                ->addSelect([
+                    'total_price' => GoodsReceiptItem::query()
+                        ->whereColumn(
+                            'goods_receipt_items.goods_receipt_id',
+                            'goods_receipts.id'
+                        )
+                        ->selectRaw(
+                            'SUM(goods_receipt_items.received_quantity * COALESCE(goods_receipt_items.unit_price, 0))'
+                        ),
+                ])
+                ->latest('receipt_date')
+                ->latest('id')
+                ->paginate(20);
 
 
         /*
@@ -328,19 +322,19 @@ class GoodsReceiptController extends Controller
     public function show(GoodsReceipt $goodsReceipt)
     {
         $goodsReceipt->load([
-    'purchaseOrder.supplier',
-    'purchaseOrder.items.item.unit',
-    'purchaseOrders.items.item.unit',
-    'purchaseOrders.items.productModel',
-    'items.item.unit',
-    'items.purchaseOrderItem.productModel',
-    'items.purchaseOrderItem.purchaseOrder:id,po_number',
+            'purchaseOrder.supplier',
+            'purchaseOrder.items.item.unit',
+            'purchaseOrders.items.item.unit',
+            'purchaseOrders.items.productModel',
+            'items.item.unit',
+            'items.purchaseOrderItem.productModel',
+            'items.purchaseOrderItem.purchaseOrder:id,po_number',
 
-    // PO correction history relationships
-    'poCorrections.fromPurchaseOrderItem.purchaseOrder',
-    'poCorrections.toPurchaseOrderItem.purchaseOrder',
-    'poCorrections.correctedBy',
-]);
+            // PO correction history relationships
+            'poCorrections.fromPurchaseOrderItem.purchaseOrder',
+            'poCorrections.toPurchaseOrderItem.purchaseOrder',
+            'poCorrections.correctedBy',
+        ]);
 
         // POs that can still be added to this GRN
         // (same supplier, not already added)
@@ -410,21 +404,22 @@ class GoodsReceiptController extends Controller
                 ->route('goods-receipts.show', $goodsReceipt)
                 ->withErrors([
                     'purchase_order_id' =>
-                    'This GRN already contains received items. Use the GRN reversal process.',
+                        'This GRN already contains received items. Use the GRN reversal process.',
                 ]);
         }
 
         // Protect active supplier payments
-        if ($goodsReceipt->payments()
-            ->where('supplier_payments.status', 'active')
-            ->exists()
+        if (
+            $goodsReceipt->payments()
+                ->where('supplier_payments.status', 'active')
+                ->exists()
         ) {
 
             return redirect()
                 ->route('goods-receipts.show', $goodsReceipt)
                 ->withErrors([
                     'purchase_order_id' =>
-                    'Void the active supplier payment before changing the Purchase Order.',
+                        'Void the active supplier payment before changing the Purchase Order.',
                 ]);
         }
 
@@ -434,7 +429,7 @@ class GoodsReceiptController extends Controller
                 ->route('goods-receipts.show', $goodsReceipt)
                 ->withErrors([
                     'purchase_order_id' =>
-                    'This GRN has Purchase Return records and cannot be edited.',
+                        'This GRN has Purchase Return records and cannot be edited.',
                 ]);
         }
 
@@ -491,19 +486,20 @@ class GoodsReceiptController extends Controller
             if ($receipt->items()->exists()) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'purchase_order_id' =>
-                    'Cannot change PO because goods have already been received.',
+                        'Cannot change PO because goods have already been received.',
                 ]);
             }
 
             // No active supplier payments
-            if ($receipt->payments()
-                ->where('supplier_payments.status', 'active')
-                ->exists()
+            if (
+                $receipt->payments()
+                    ->where('supplier_payments.status', 'active')
+                    ->exists()
             ) {
 
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'purchase_order_id' =>
-                    'Void active supplier payments before changing the PO.',
+                        'Void active supplier payments before changing the PO.',
                 ]);
             }
 
@@ -511,7 +507,7 @@ class GoodsReceiptController extends Controller
             if ($receipt->purchaseReturns()->exists()) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'purchase_order_id' =>
-                    'This GRN has Purchase Return records and cannot be edited.',
+                        'This GRN has Purchase Return records and cannot be edited.',
                 ]);
             }
 
@@ -522,13 +518,15 @@ class GoodsReceiptController extends Controller
                 ->firstOrFail();
 
             // Only eligible Purchase Orders
-            if (!in_array($purchaseOrder->status, [
-                'confirmed',
-                'partially_received',
-            ])) {
+            if (
+                !in_array($purchaseOrder->status, [
+                    'confirmed',
+                    'partially_received',
+                ])
+            ) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'purchase_order_id' =>
-                    'Only confirmed or partially received Purchase Orders can be selected.',
+                        'Only confirmed or partially received Purchase Orders can be selected.',
                 ]);
             }
 
@@ -636,7 +634,7 @@ class GoodsReceiptController extends Controller
                 ->withInput()
                 ->withErrors([
                     'purchase_order_id' =>
-                    'Goods can only be received against a confirmed or partially received Purchase Order.',
+                        'Goods can only be received against a confirmed or partially received Purchase Order.',
                 ]);
         }
 
@@ -650,22 +648,22 @@ class GoodsReceiptController extends Controller
         $goodsReceipt = GoodsReceipt::create([
 
             'grn_number' =>
-            $validated['grn_number'],
+                $validated['grn_number'],
 
             'purchase_order_id' =>
-            $purchaseOrder->id,
+                $purchaseOrder->id,
 
             'supplier_id' =>
-            $purchaseOrder->supplier_id,
+                $purchaseOrder->supplier_id,
 
             'receipt_date' =>
-            $validated['receipt_date'],
+                $validated['receipt_date'],
 
             'supplier_reference' =>
-            $validated['supplier_reference'] ?? null,
+                $validated['supplier_reference'] ?? null,
 
             'remarks' =>
-            $validated['remarks'] ?? null,
+                $validated['remarks'] ?? null,
 
         ]);
 
@@ -719,11 +717,7 @@ class GoodsReceiptController extends Controller
         ]);
 
         // Perform reversal inside a database transaction
-        DB::transaction(function () use (
-            $goodsReceipt,
-            $validated,
-            $reversalService
-        ) {
+        DB::transaction(function () use ($goodsReceipt, $validated, $reversalService) {
             $reversalService->reverse(
                 $goodsReceipt,
                 $validated['void_reason']
@@ -855,10 +849,10 @@ class GoodsReceiptController extends Controller
 
             $lines = $grn->items->map(function ($line) use ($receiptDate, $today) {
 
-                $active    = $line->usageLogs->where('status', 'active');
-                $received  = (float) $line->received_quantity;
-                $used      = (float) $active->sum('quantity');
-                $returned  = $line->postedReturnedQuantity();
+                $active = $line->usageLogs->where('status', 'active');
+                $received = (float) $line->received_quantity;
+                $used = (float) $active->sum('quantity');
+                $returned = $line->postedReturnedQuantity();
                 $remaining = max(0, $received - $used - $returned);
 
                 $lastUsage = $active->max('usage_date');
@@ -871,9 +865,9 @@ class GoodsReceiptController extends Controller
                     $endDate = $receiptDate->copy();
                 }
 
-                $diff   = $receiptDate->diff($endDate);
+                $diff = $receiptDate->diff($endDate);
                 $months = ($diff->y * 12) + $diff->m;
-                $days   = (int) $receiptDate->diffInDays($endDate);
+                $days = (int) $receiptDate->diffInDays($endDate);
 
                 $parts = [];
                 if ($months > 0) {
@@ -894,17 +888,17 @@ class GoodsReceiptController extends Controller
                 $model = $line->purchaseOrderItem?->productModel;
 
                 return [
-                    'item_code'   => $line->item->item_code ?? '-',
-                    'item_name'   => $line->item->item_name ?? '-',
-                    'model_key'   => $model->id ?? 0,
+                    'item_code' => $line->item->item_code ?? '-',
+                    'item_name' => $line->item->item_name ?? '-',
+                    'model_key' => $model->id ?? 0,
                     'model_label' => $model->model_code ?? 'Common',
-                    'received'    => $received,
-                    'used'        => $used,
-                    'remaining'   => $remaining,
-                    'status'      => $lineStatus,
-                    'days'        => $days,
-                    'label'       => implode(' ', $parts),
-                    'last_usage'  => $lastUsage ? \Carbon\Carbon::parse($lastUsage) : null,
+                    'received' => $received,
+                    'used' => $used,
+                    'remaining' => $remaining,
+                    'status' => $lineStatus,
+                    'days' => $days,
+                    'label' => implode(' ', $parts),
+                    'last_usage' => $lastUsage ? \Carbon\Carbon::parse($lastUsage) : null,
                 ];
             })->filter(function ($row) use ($minDays, $status) {
 
@@ -925,20 +919,20 @@ class GoodsReceiptController extends Controller
 
             $models = $lines->groupBy('model_key')->map(function ($rows) {
                 return [
-                    'model'    => $rows->first()['model_label'],
-                    'items'    => $rows->sortByDesc('days')->values(),
+                    'model' => $rows->first()['model_label'],
+                    'items' => $rows->sortByDesc('days')->values(),
                     'max_days' => $rows->max('days'),
-                    'unused'   => $rows->where('status', 'unused')->count(),
+                    'unused' => $rows->where('status', 'unused')->count(),
                 ];
             })->sortBy('model')->values();
 
             return [
-                'grn'          => $grn,
+                'grn' => $grn,
                 'receipt_date' => $receiptDate,
-                'models'       => $models,
-                'item_count'   => $lines->count(),
-                'unused'       => $lines->where('status', 'unused')->count(),
-                'max_days'     => $lines->max('days'),
+                'models' => $models,
+                'item_count' => $lines->count(),
+                'unused' => $lines->where('status', 'unused')->count(),
+                'max_days' => $lines->max('days'),
             ];
         })->filter()->values();
     }
@@ -959,8 +953,8 @@ class GoodsReceiptController extends Controller
         $groups = $this->holdingGroups($minDays, $status);
 
         $summary = [
-            'grns'   => $groups->count(),
-            'items'  => $groups->sum('item_count'),
+            'grns' => $groups->count(),
+            'items' => $groups->sum('item_count'),
             'unused' => $groups->sum('unused'),
             'oldest' => (int) ($groups->max('max_days') ?? 0),
         ];
@@ -991,13 +985,20 @@ class GoodsReceiptController extends Controller
             ->pluck('used', 'grn_id');
 
         // Value of active usage charged to each GRN (used qty x PO unit price)
+        // Value of active usage charged to each GRN (used qty x GRN snapshot unit price)
         $usedAmountByGrn = UsageLog::query()
-            ->join('goods_receipt_items', 'goods_receipt_items.id', '=', 'usage_logs.goods_receipt_item_id')
-            ->join('purchase_order_items', 'purchase_order_items.id', '=', 'goods_receipt_items.purchase_order_item_id')
+            ->join(
+                'goods_receipt_items',
+                'goods_receipt_items.id',
+                '=',
+                'usage_logs.goods_receipt_item_id'
+            )
             ->where('usage_logs.status', 'active')
             ->whereIn('goods_receipt_items.goods_receipt_id', $goodsReceipts->pluck('id'))
             ->groupBy('goods_receipt_items.goods_receipt_id')
-            ->selectRaw('goods_receipt_items.goods_receipt_id as grn_id, SUM(usage_logs.quantity * COALESCE(purchase_order_items.unit_price, 0)) as used_amount')
+            ->selectRaw(
+                'goods_receipt_items.goods_receipt_id as grn_id, SUM(usage_logs.quantity * COALESCE(goods_receipt_items.unit_price, 0)) as used_amount'
+            )
             ->pluck('used_amount', 'grn_id');
 
         return view('reporting.grn-usage-index', compact('goodsReceipts', 'usedByGrn', 'usedAmountByGrn'));
@@ -1042,27 +1043,27 @@ class GoodsReceiptController extends Controller
                 $items = $modelRows
                     ->groupBy(fn($r) => $r['line']->item_id)
                     ->map(function ($g) {
-                        $line = $g->first()['line'];
+                    $line = $g->first()['line'];
 
-                        return [
-                            'item_code' => $line->item->item_code ?? '-',
-                            'item_name' => $line->item->item_name ?? '-',
-                            'received'  => (float) $g->sum('received'),
-                            'used'      => (float) $g->sum('used'),
-                            'returned'  => (float) $g->sum('returned'),
-                            'balance'   => (float) $g->sum('remaining'),
-                        ];
-                    })
+                    return [
+                        'item_code' => $line->item->item_code ?? '-',
+                        'item_name' => $line->item->item_name ?? '-',
+                        'received' => (float) $g->sum('received'),
+                        'used' => (float) $g->sum('used'),
+                        'returned' => (float) $g->sum('returned'),
+                        'balance' => (float) $g->sum('remaining'),
+                    ];
+                })
                     ->sortBy('item_code')
                     ->values();
 
                 return [
                     'model_name' => $modelRows->first()['line']->purchaseOrderItem?->productModel?->model_name,
-                    'items'      => $items,
-                    'received'   => (float) $items->sum('received'),
-                    'used'       => (float) $items->sum('used'),
-                    'returned'   => (float) $items->sum('returned'),
-                    'balance'    => (float) $items->sum('balance'),
+                    'items' => $items,
+                    'received' => (float) $items->sum('received'),
+                    'used' => (float) $items->sum('used'),
+                    'returned' => (float) $items->sum('returned'),
+                    'balance' => (float) $items->sum('balance'),
                 ];
             });
 

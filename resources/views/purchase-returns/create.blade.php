@@ -311,7 +311,7 @@
                                         <th class="text-right">Used</th>
                                         <th class="text-right">Already Returned</th>
                                         <th class="text-right">Available To Return</th>
-                                        <th class="text-right">PO Unit Price</th>
+                                        <th class="text-right">GRN Unit Price</th>
                                         <th width="170">Return Qty</th>
                                         <th width="220">Line Reason</th>
                                     </tr>
@@ -322,7 +322,7 @@
                                     @foreach ($returnableItems as $index => $row)
                                         @php
                                             $receiptItem = $row['receipt_item'];
-                                            $unitPrice = (float) ($receiptItem->purchaseOrderItem->unit_price ?? 0);
+                                            $unitPrice = (float) ($receiptItem->unit_price ?? 0);
                                             $canReturn = $row['returnable_quantity'] > 0.0001;
                                         @endphp
 

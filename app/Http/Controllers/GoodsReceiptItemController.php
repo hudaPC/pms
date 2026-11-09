@@ -97,7 +97,7 @@ class GoodsReceiptItemController extends Controller
                 )
                 ->withErrors([
                     'received_quantity' =>
-                    'This Purchase Order item has already been fully received.',
+                        'This Purchase Order item has already been fully received.',
                 ]);
         }
 
@@ -266,7 +266,7 @@ class GoodsReceiptItemController extends Controller
 
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'received_quantity' =>
-                    'This Purchase Order item has already been fully received.',
+                        'This Purchase Order item has already been fully received.',
                 ]);
             }
 
@@ -275,7 +275,7 @@ class GoodsReceiptItemController extends Controller
 
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'received_quantity' =>
-                    'Received quantity cannot exceed the outstanding quantity of '
+                        'Received quantity cannot exceed the outstanding quantity of '
                         . number_format($outstandingQuantity, 3)
                         . '.',
                 ]);
@@ -303,7 +303,7 @@ class GoodsReceiptItemController extends Controller
 
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'received_quantity' =>
-                    'This item has already been entered on this Goods Receipt.',
+                        'This item has already been entered on this Goods Receipt.',
                 ]);
             }
 
@@ -317,19 +317,23 @@ class GoodsReceiptItemController extends Controller
             $goodsReceiptItem = GoodsReceiptItem::create([
 
                 'goods_receipt_id' =>
-                $goodsReceipt->id,
+                    $goodsReceipt->id,
 
                 'purchase_order_item_id' =>
-                $lockedPoItem->id,
+                    $lockedPoItem->id,
+
+                // Save the PO's agreed price as the GRN historical price.
+                'unit_price' =>
+                    $lockedPoItem->unit_price,
 
                 'item_id' =>
-                $lockedPoItem->item_id,
+                    $lockedPoItem->item_id,
 
                 'received_quantity' =>
-                $newReceiptQuantity,
+                    $newReceiptQuantity,
 
                 'remarks' =>
-                $validated['remarks'] ?? null,
+                    $validated['remarks'] ?? null,
 
             ]);
 
@@ -359,31 +363,31 @@ class GoodsReceiptItemController extends Controller
             StockMovement::create([
 
                 'item_id' =>
-                $lockedPoItem->item_id,
+                    $lockedPoItem->item_id,
 
                 'movement_type' =>
-                'purchase_receipt',
+                    'purchase_receipt',
 
                 'direction' =>
-                'in',
+                    'in',
 
                 'quantity' =>
-                $newReceiptQuantity,
+                    $newReceiptQuantity,
 
                 'source_type' =>
-                'goods_receipt_item',
+                    'goods_receipt_item',
 
                 'source_id' =>
-                $goodsReceiptItem->id,
+                    $goodsReceiptItem->id,
 
                 'movement_date' =>
-                now()->toDateString(),
+                    now()->toDateString(),
 
                 'reference' =>
-                $goodsReceipt->grn_number,
+                    $goodsReceipt->grn_number,
 
                 'remarks' =>
-                $validated['remarks'] ?? null,
+                    $validated['remarks'] ?? null,
 
             ]);
 
@@ -468,11 +472,11 @@ class GoodsReceiptItemController extends Controller
     public function bulkStore(Request $request, GoodsReceipt $goodsReceipt)
     {
         $validated = $request->validate([
-            'quantities'   => ['required', 'array'],
+            'quantities' => ['required', 'array'],
             'quantities.*' => ['nullable', 'integer', 'min:0'],
         ], [
             'quantities.*.integer' => 'Received quantity must be a whole number (no decimals).',
-            'quantities.*.min'     => 'Received quantity cannot be negative.',
+            'quantities.*.min' => 'Received quantity cannot be negative.',
         ]);
 
         // Keep only rows that got a quantity above zero
@@ -523,7 +527,7 @@ class GoodsReceiptItemController extends Controller
             foreach ($lines as $poItemId => $qty) {
 
                 $poItem = $poItems[$poItemId];
-                $label  = $poItem->item->item_code ?? ('Item #' . $poItem->id);
+                $label = $poItem->item->item_code ?? ('Item #' . $poItem->id);
 
                 if (!$allowedPoIds->contains($poItem->purchase_order_id)) {
                     throw \Illuminate\Validation\ValidationException::withMessages([
@@ -559,26 +563,30 @@ class GoodsReceiptItemController extends Controller
                 }
 
                 $line = GoodsReceiptItem::create([
-                    'goods_receipt_id'       => $receipt->id,
+                    'goods_receipt_id' => $receipt->id,
                     'purchase_order_item_id' => $poItem->id,
-                    'item_id'                => $poItem->item_id,
-                    'received_quantity'      => $qty,
-                    'remarks'                => null,
+
+                    // Preserve the agreed PO price at the time of receiving.
+                    'unit_price' => $poItem->unit_price,
+
+                    'item_id' => $poItem->item_id,
+                    'received_quantity' => $qty,
+                    'remarks' => null,
                 ]);
 
                 $poItem->received_quantity = (float) $poItem->received_quantity + $qty;
                 $poItem->save();
 
                 StockMovement::create([
-                    'item_id'       => $poItem->item_id,
+                    'item_id' => $poItem->item_id,
                     'movement_type' => 'purchase_receipt',
-                    'direction'     => 'in',
-                    'quantity'      => $qty,
-                    'source_type'   => 'goods_receipt_item',
-                    'source_id'     => $line->id,
+                    'direction' => 'in',
+                    'quantity' => $qty,
+                    'source_type' => 'goods_receipt_item',
+                    'source_id' => $line->id,
                     'movement_date' => now()->toDateString(),
-                    'reference'     => $receipt->grn_number,
-                    'remarks'       => null,
+                    'reference' => $receipt->grn_number,
+                    'remarks' => null,
                 ]);
             }
 
@@ -662,7 +670,7 @@ class GoodsReceiptItemController extends Controller
             ) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'received_quantity' =>
-                    'This GRN item has already undergone PO correction. Its received quantity cannot be edited or deleted.',
+                        'This GRN item has already undergone PO correction. Its received quantity cannot be edited or deleted.',
                 ]);
             }
 
@@ -695,7 +703,7 @@ class GoodsReceiptItemController extends Controller
 
             // 2) Cannot exceed what the PO still allows
             $otherReceipts = (float) $poItem->received_quantity - $old;
-            $maxAllowed    = (float) $poItem->ordered_quantity - $otherReceipts;
+            $maxAllowed = (float) $poItem->ordered_quantity - $otherReceipts;
 
             if ($newQuantity > $maxAllowed + 0.0001) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
@@ -706,7 +714,7 @@ class GoodsReceiptItemController extends Controller
             }
 
             // 3) The new receipt total cannot fall below what is already paid
-            $price    = (float) ($poItem->unit_price ?? 0);
+            $price = (float) ($line->unit_price ?? 0);
             $newTotal = (float) $receipt->total_amount + (($newQuantity - $old) * $price);
 
             if ($newTotal + 0.0001 < (float) $receipt->paid_amount) {
@@ -772,16 +780,16 @@ class GoodsReceiptItemController extends Controller
             StockMovement::updateOrCreate(
                 [
                     'source_type' => 'goods_receipt_item',
-                    'source_id'   => $line->id,
+                    'source_id' => $line->id,
                 ],
                 [
-                    'item_id'       => $line->item_id,
+                    'item_id' => $line->item_id,
                     'movement_type' => 'purchase_receipt',
                     'movement_date' => now()->toDateString(),
-                    'direction'     => 'in',
-                    'quantity'      => $newQuantity,
-                    'reference'     => $receipt->grn_number,
-                    'remarks'       => $line->remarks,
+                    'direction' => 'in',
+                    'quantity' => $newQuantity,
+                    'reference' => $receipt->grn_number,
+                    'remarks' => $line->remarks,
                 ]
             );
 

@@ -637,21 +637,13 @@ class PurchaseReturnController extends Controller
 
                         /*
                         |--------------------------------------------------------------------------
-                        | PO Unit Price
+                        | GRN Historical Unit Price
                         |--------------------------------------------------------------------------
                         */
 
-                        $unitPrice =
-                            (float) 
-                            $receiptItem
-                                ->purchaseOrderItem
-                                ->unit_price;
+                        $unitPrice = (float) ($receiptItem->unit_price ?? 0);
 
-
-                        $lineTotal =
-                            $returnQuantity
-                            *
-                            $unitPrice;
+                        $lineTotal = $returnQuantity * $unitPrice;
 
 
                         /*

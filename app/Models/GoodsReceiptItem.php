@@ -11,16 +11,18 @@ class GoodsReceiptItem extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'goods_receipt_id',
-        'purchase_order_item_id',
-        'item_id',
-        'received_quantity',
-        'remarks',
-    ];
+    'goods_receipt_id',
+    'purchase_order_item_id',
+    'item_id',
+    'unit_price',
+    'received_quantity',
+    'remarks',
+];
 
     protected $casts = [
-        'received_quantity' => 'decimal:3',
-    ];
+    'received_quantity' => 'decimal:3',
+    'unit_price' => 'decimal:4',
+];
 
     public function goodsReceipt(): BelongsTo
     {

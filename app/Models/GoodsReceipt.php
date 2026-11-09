@@ -108,40 +108,38 @@ class GoodsReceipt extends Model
      * Recalculate total, paid, balance and payment status.
      * Total = sum of (received quantity x PO unit price).
      */
-    public function recalculateTotals(): void
-    {
-        $total = (float) $this->items()
-            ->join(
-                'purchase_order_items',
-                'purchase_order_items.id',
-                '=',
-                'goods_receipt_items.purchase_order_item_id'
-            )
-            ->sum(DB::raw(
-                'goods_receipt_items.received_quantity * COALESCE(purchase_order_items.unit_price, 0)'
-            ));
+   
+public function recalculateTotals(): void
+{
+    // Calculate GRN total using the historical price saved
+    // when the goods were received.
+    $total = (float) $this->items()
+        ->sum(DB::raw(
+            'received_quantity * COALESCE(unit_price, 0)'
+        ));
 
-        $paid = (float) $this->paymentItems()
-            ->whereHas('payment', fn($q) => $q->where('status', 'active'))
-            ->sum('amount');
+    $paid = (float) $this->paymentItems()
+        ->whereHas('payment', fn($q) => $q->where('status', 'active'))
+        ->sum('amount');
 
-        $balance = max(0, $total - $paid);
+    $balance = max(0, $total - $paid);
 
-        if ($paid <= 0) {
-            $status = 'unpaid';
-        } elseif ($balance <= 0.0001) {
-            $status = 'paid';
-        } else {
-            $status = 'partially_paid';
-        }
-
-        $this->update([
-            'total_amount' => $total,
-            'paid_amount' => $paid,
-            'balance_amount' => $balance,
-            'payment_status' => $status,
-        ]);
+    if ($paid <= 0) {
+        $status = 'unpaid';
+    } elseif ($balance <= 0.0001) {
+        $status = 'paid';
+    } else {
+        $status = 'partially_paid';
     }
+
+    $this->update([
+        'total_amount' => $total,
+        'paid_amount' => $paid,
+        'balance_amount' => $balance,
+        'payment_status' => $status,
+    ]);
+}
+
 
     /**
      * Total active used quantity charged to this receipt.
@@ -163,6 +161,7 @@ class GoodsReceipt extends Model
     /**
      * Value of active usage (used quantity x PO unit price).
      */
+
     public function usedAmount(): float
     {
         return (float) UsageLog::query()
@@ -172,18 +171,13 @@ class GoodsReceipt extends Model
                 '=',
                 'usage_logs.goods_receipt_item_id'
             )
-            ->join(
-                'purchase_order_items',
-                'purchase_order_items.id',
-                '=',
-                'goods_receipt_items.purchase_order_item_id'
-            )
             ->where('usage_logs.status', 'active')
             ->where('goods_receipt_items.goods_receipt_id', $this->id)
             ->sum(DB::raw(
-                'usage_logs.quantity * COALESCE(purchase_order_items.unit_price, 0)'
+                'usage_logs.quantity * COALESCE(goods_receipt_items.unit_price, 0)'
             ));
     }
+
 
     /**
      * Amount that can be paid now.
@@ -216,7 +210,7 @@ class GoodsReceipt extends Model
         return $from !== null && $from->lte(now()->startOfDay());
     }
     public function poCorrections(): HasMany
-{
-    return $this->hasMany(GoodsReceiptPoCorrection::class);
-}
+    {
+        return $this->hasMany(GoodsReceiptPoCorrection::class);
+    }
 }

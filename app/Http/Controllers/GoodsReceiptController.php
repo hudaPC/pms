@@ -47,80 +47,80 @@ class GoodsReceiptController extends Controller
                 'supplier',
                 'items.item',
             ])
-                ->whereIn(
-                    'status',
-                    [
-                        'confirmed',
-                        'partially_received',
-                    ]
-                )
-                ->orderBy('expected_delivery_date')
-                ->orderBy('id')
-                ->get()
-                ->map(function ($purchaseOrder) {
+            ->whereIn(
+                'status',
+                [
+                    'confirmed',
+                    'partially_received',
+                ]
+            )
+            ->orderBy('expected_delivery_date')
+            ->orderBy('id')
+            ->get()
+            ->map(function ($purchaseOrder) {
 
-                    /*
+                /*
                                 |--------------------------------------------------------------------------
                                 | Total Ordered
                                 |--------------------------------------------------------------------------
                                 */
 
-                    $totalOrdered =
-                        (float) $purchaseOrder
-                            ->items
-                            ->sum('ordered_quantity');
+                $totalOrdered =
+                    (float) $purchaseOrder
+                        ->items
+                        ->sum('ordered_quantity');
 
 
-                    /*
+                /*
                                 |--------------------------------------------------------------------------
                                 | Total Received
                                 |--------------------------------------------------------------------------
                                 */
 
-                    $totalReceived =
-                        (float) $purchaseOrder
-                            ->items
-                            ->sum('received_quantity');
+                $totalReceived =
+                    (float) $purchaseOrder
+                        ->items
+                        ->sum('received_quantity');
 
 
-                    /*
+                /*
                                 |--------------------------------------------------------------------------
                                 | Pending Receipt
                                 |--------------------------------------------------------------------------
                                 */
 
-                    $pendingQuantity =
-                        max(
-                            0,
-                            $totalOrdered - $totalReceived
-                        );
+                $pendingQuantity =
+                    max(
+                        0,
+                        $totalOrdered - $totalReceived
+                    );
 
 
-                    /*
+                /*
                                 |--------------------------------------------------------------------------
                                 | Attach Calculated Values
                                 |--------------------------------------------------------------------------
                                 */
 
-                    $purchaseOrder->total_ordered_quantity =
-                        $totalOrdered;
+                $purchaseOrder->total_ordered_quantity =
+                    $totalOrdered;
 
-                    $purchaseOrder->total_received_quantity =
-                        $totalReceived;
+                $purchaseOrder->total_received_quantity =
+                    $totalReceived;
 
-                    $purchaseOrder->pending_receipt_quantity =
-                        $pendingQuantity;
+                $purchaseOrder->pending_receipt_quantity =
+                    $pendingQuantity;
 
 
-                    return $purchaseOrder;
-                })
-                ->filter(function ($purchaseOrder) {
+                return $purchaseOrder;
+            })
+            ->filter(function ($purchaseOrder) {
 
-                    return
-                        $purchaseOrder
-                            ->pending_receipt_quantity > 0;
-                })
-                ->values();
+                return
+                    $purchaseOrder
+                    ->pending_receipt_quantity > 0;
+            })
+            ->values();
 
 
         /*
@@ -135,24 +135,24 @@ class GoodsReceiptController extends Controller
                 'purchaseOrder.supplier',
                 'purchaseOrders',
             ])
-                ->withCount('items')
-                ->withSum(
-                    'items as total_received_quantity',
-                    'received_quantity'
-                )
-                ->addSelect([
-                    'total_price' => GoodsReceiptItem::query()
-                        ->whereColumn(
-                            'goods_receipt_items.goods_receipt_id',
-                            'goods_receipts.id'
-                        )
-                        ->selectRaw(
-                            'SUM(goods_receipt_items.received_quantity * COALESCE(goods_receipt_items.unit_price, 0))'
-                        ),
-                ])
-                ->latest('receipt_date')
-                ->latest('id')
-                ->paginate(20);
+            ->withCount('items')
+            ->withSum(
+                'items as total_received_quantity',
+                'received_quantity'
+            )
+            ->addSelect([
+                'total_price' => GoodsReceiptItem::query()
+                    ->whereColumn(
+                        'goods_receipt_items.goods_receipt_id',
+                        'goods_receipts.id'
+                    )
+                    ->selectRaw(
+                        'SUM(goods_receipt_items.received_quantity * COALESCE(goods_receipt_items.unit_price, 0))'
+                    ),
+            ])
+            ->latest('receipt_date')
+            ->latest('id')
+            ->paginate(20);
 
 
         /*
@@ -387,6 +387,7 @@ class GoodsReceiptController extends Controller
 | Edit Goods Receipt
 |--------------------------------------------------------------------------
 */
+
     public function edit(GoodsReceipt $goodsReceipt)
     {
         // A voided GRN cannot be edited
@@ -404,22 +405,21 @@ class GoodsReceiptController extends Controller
                 ->route('goods-receipts.show', $goodsReceipt)
                 ->withErrors([
                     'purchase_order_id' =>
-                        'This GRN already contains received items. Use the GRN reversal process.',
+                    'This GRN already contains received items. Use the GRN reversal process.',
                 ]);
         }
 
         // Protect active supplier payments
         if (
             $goodsReceipt->payments()
-                ->where('supplier_payments.status', 'active')
-                ->exists()
+            ->where('supplier_payments.status', 'active')
+            ->exists()
         ) {
-
             return redirect()
                 ->route('goods-receipts.show', $goodsReceipt)
                 ->withErrors([
                     'purchase_order_id' =>
-                        'Void the active supplier payment before changing the Purchase Order.',
+                    'Void the active supplier payment before changing the Purchase Order.',
                 ]);
         }
 
@@ -429,18 +429,28 @@ class GoodsReceiptController extends Controller
                 ->route('goods-receipts.show', $goodsReceipt)
                 ->withErrors([
                     'purchase_order_id' =>
-                        'This GRN has Purchase Return records and cannot be edited.',
+                    'This GRN has Purchase Return records and cannot be edited.',
                 ]);
         }
 
-        $goodsReceipt->load('purchaseOrder');
+        // Load current primary PO and all associated POs
+        $goodsReceipt->load([
+            'purchaseOrder',
+            'purchaseOrders',
+        ]);
 
-        // Available Purchase Orders
+        // Only show eligible POs belonging to the same supplier
         $purchaseOrders = PurchaseOrder::with('supplier')
-            ->whereIn('status', [
-                'confirmed',
-                'partially_received',
-            ])
+            ->where('supplier_id', $goodsReceipt->supplier_id)
+            ->where(function ($query) use ($goodsReceipt) {
+                $query->whereIn('status', [
+                    'confirmed',
+                    'partially_received',
+                ]);
+
+                // Keep the existing primary PO available in the dropdown
+                $query->orWhere('id', $goodsReceipt->purchase_order_id);
+            })
             ->orderBy('expected_delivery_date')
             ->get();
 
@@ -453,17 +463,27 @@ class GoodsReceiptController extends Controller
 
 
 
+
     /*
 |--------------------------------------------------------------------------
 | Update Goods Receipt
 |--------------------------------------------------------------------------
 */
+
     public function update(Request $request, GoodsReceipt $goodsReceipt)
     {
         $validated = $request->validate([
             'purchase_order_id' => [
                 'required',
+                'integer',
                 'exists:purchase_orders,id',
+            ],
+
+            'reason' => [
+                'required',
+                'string',
+                'min:5',
+                'max:2000',
             ],
         ]);
 
@@ -486,20 +506,19 @@ class GoodsReceiptController extends Controller
             if ($receipt->items()->exists()) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'purchase_order_id' =>
-                        'Cannot change PO because goods have already been received.',
+                    'Cannot change PO because goods have already been received.',
                 ]);
             }
 
             // No active supplier payments
             if (
                 $receipt->payments()
-                    ->where('supplier_payments.status', 'active')
-                    ->exists()
+                ->where('supplier_payments.status', 'active')
+                ->exists()
             ) {
-
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'purchase_order_id' =>
-                        'Void active supplier payments before changing the PO.',
+                    'Void active supplier payments before changing the PO.',
                 ]);
             }
 
@@ -507,7 +526,7 @@ class GoodsReceiptController extends Controller
             if ($receipt->purchaseReturns()->exists()) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'purchase_order_id' =>
-                        'This GRN has Purchase Return records and cannot be edited.',
+                    'This GRN has Purchase Return records and cannot be edited.',
                 ]);
             }
 
@@ -517,40 +536,85 @@ class GoodsReceiptController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            // Destination PO must belong to the same supplier
+            if ($purchaseOrder->supplier_id != $receipt->supplier_id) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'purchase_order_id' =>
+                    'The selected Purchase Order must belong to the same supplier as this GRN.',
+                ]);
+            }
+
             // Only eligible Purchase Orders
             if (
                 !in_array($purchaseOrder->status, [
                     'confirmed',
                     'partially_received',
-                ])
+                ]) &&
+                $purchaseOrder->id != $receipt->purchase_order_id
             ) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'purchase_order_id' =>
-                        'Only confirmed or partially received Purchase Orders can be selected.',
+                    'Only confirmed or partially received Purchase Orders can be selected.',
+                ]);
+            }
+
+            // Previous primary PO
+            $oldPurchaseOrderId = $receipt->purchase_order_id;
+
+            // No correction needed if the selected PO is already primary
+            if ($oldPurchaseOrderId == $purchaseOrder->id) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'purchase_order_id' =>
+                    'The selected Purchase Order is already the primary PO for this GRN.',
                 ]);
             }
 
             /*
         |--------------------------------------------------------------------------
-        | Update Primary Purchase Order
+        | Preserve Existing PO Associations
+        |--------------------------------------------------------------------------
+        |
+        | Remove only the previous primary PO.
+        | Keep every other associated PO.
+        | Attach the replacement PO only if it is not already associated.
+        |
+        */
+
+            $receipt->purchaseOrders()->detach($oldPurchaseOrderId);
+
+            if (!$receipt->purchaseOrders()
+                ->where('purchase_orders.id', $purchaseOrder->id)
+                ->exists()) {
+
+                $receipt->purchaseOrders()->attach($purchaseOrder->id);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | Update GRN Primary Purchase Order
         |--------------------------------------------------------------------------
         */
+
             $receipt->purchase_order_id = $purchaseOrder->id;
 
-            $receipt->supplier_id = $purchaseOrder->supplier_id;
-
+            // Supplier remains unchanged
             $receipt->save();
 
             /*
         |--------------------------------------------------------------------------
-        | Synchronize Purchase Order Pivot
+        | Record Header-Level PO Correction Audit
         |--------------------------------------------------------------------------
-        |
-        | Replace previous PO associations with the selected PO.
-        |
         */
-            $receipt->purchaseOrders()->sync([
-                $purchaseOrder->id,
+
+            DB::table('goods_receipt_po_header_corrections')->insert([
+                'goods_receipt_id' => $receipt->id,
+                'from_purchase_order_id' => $oldPurchaseOrderId,
+                'to_purchase_order_id' => $purchaseOrder->id,
+                'reason' => $validated['reason'],
+                'corrected_by' => auth()->id(),
+                'corrected_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         });
 
@@ -558,9 +622,10 @@ class GoodsReceiptController extends Controller
             ->route('goods-receipts.show', $goodsReceipt)
             ->with(
                 'success',
-                'Goods Receipt Purchase Order updated successfully.'
+                'Goods Receipt Purchase Order corrected successfully. Audit history recorded.'
             );
     }
+
 
 
     public function store(Request $request)
@@ -634,7 +699,7 @@ class GoodsReceiptController extends Controller
                 ->withInput()
                 ->withErrors([
                     'purchase_order_id' =>
-                        'Goods can only be received against a confirmed or partially received Purchase Order.',
+                    'Goods can only be received against a confirmed or partially received Purchase Order.',
                 ]);
         }
 
@@ -648,22 +713,22 @@ class GoodsReceiptController extends Controller
         $goodsReceipt = GoodsReceipt::create([
 
             'grn_number' =>
-                $validated['grn_number'],
+            $validated['grn_number'],
 
             'purchase_order_id' =>
-                $purchaseOrder->id,
+            $purchaseOrder->id,
 
             'supplier_id' =>
-                $purchaseOrder->supplier_id,
+            $purchaseOrder->supplier_id,
 
             'receipt_date' =>
-                $validated['receipt_date'],
+            $validated['receipt_date'],
 
             'supplier_reference' =>
-                $validated['supplier_reference'] ?? null,
+            $validated['supplier_reference'] ?? null,
 
             'remarks' =>
-                $validated['remarks'] ?? null,
+            $validated['remarks'] ?? null,
 
         ]);
 
@@ -1043,17 +1108,17 @@ class GoodsReceiptController extends Controller
                 $items = $modelRows
                     ->groupBy(fn($r) => $r['line']->item_id)
                     ->map(function ($g) {
-                    $line = $g->first()['line'];
+                        $line = $g->first()['line'];
 
-                    return [
-                        'item_code' => $line->item->item_code ?? '-',
-                        'item_name' => $line->item->item_name ?? '-',
-                        'received' => (float) $g->sum('received'),
-                        'used' => (float) $g->sum('used'),
-                        'returned' => (float) $g->sum('returned'),
-                        'balance' => (float) $g->sum('remaining'),
-                    ];
-                })
+                        return [
+                            'item_code' => $line->item->item_code ?? '-',
+                            'item_name' => $line->item->item_name ?? '-',
+                            'received' => (float) $g->sum('received'),
+                            'used' => (float) $g->sum('used'),
+                            'returned' => (float) $g->sum('returned'),
+                            'balance' => (float) $g->sum('remaining'),
+                        ];
+                    })
                     ->sortBy('item_code')
                     ->values();
 
@@ -1167,6 +1232,7 @@ class GoodsReceiptController extends Controller
 |--------------------------------------------------------------------------
 */
 
+
     public function correct(
         Request $request,
         GoodsReceipt $goodsReceipt,
@@ -1189,16 +1255,21 @@ class GoodsReceiptController extends Controller
             'reason' => [
                 'required',
                 'string',
+                'min:5',
                 'max:2000',
             ],
         ]);
 
-        // Perform correction
+        // Verify that the selected GRN item belongs to this GRN
+        $goodsReceiptItem = GoodsReceiptItem::query()
+            ->where('id', $validated['goods_receipt_item_id'])
+            ->where('goods_receipt_id', $goodsReceipt->id)
+            ->firstOrFail();
+
+        // Perform correction through the existing service
         $correctionService->correct(
             $goodsReceipt,
-            GoodsReceiptItem::findOrFail(
-                $validated['goods_receipt_item_id']
-            ),
+            $goodsReceiptItem,
             (int) $validated['destination_purchase_order_item_id'],
             $validated['reason'],
             auth()->id()

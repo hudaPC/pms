@@ -9,6 +9,7 @@ use App\Models\PurchaseOrderItem;
 use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\GoodsReceiptPoCorrection;
 
 class GoodsReceiptReversalService
 {
@@ -34,6 +35,19 @@ class GoodsReceiptReversalService
         if ($goodsReceipt->status === 'voided') {
             throw ValidationException::withMessages([
                 'void_reason' => 'This Goods Receipt has already been voided.',
+            ]);
+        }
+        // Prevent reversal of a GRN that has undergone PO correction.
+        $hasPoCorrections = GoodsReceiptPoCorrection::where(
+            'goods_receipt_id',
+            $goodsReceipt->id
+        )->exists();
+
+        if ($hasPoCorrections) {
+            throw ValidationException::withMessages([
+                'void_reason' =>
+                'Cannot void this GRN because one or more GRN items have undergone PO correction. '
+                    . 'The PO allocation must be reviewed before reversal.',
             ]);
         }
 

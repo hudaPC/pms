@@ -376,7 +376,7 @@ class GoodsReceiptItemController extends Controller
                 'source_id' =>
                 $goodsReceiptItem->id,
 
-                 'movement_date' =>
+                'movement_date' =>
                 now()->toDateString(),
 
                 'reference' =>
@@ -653,6 +653,18 @@ class GoodsReceiptItemController extends Controller
                 ->whereKey($goodsReceiptItem->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+            // Prevent quantity changes after PO allocation correction
+            if (
+                \App\Models\GoodsReceiptPoCorrection::where(
+                    'goods_receipt_item_id',
+                    $line->id
+                )->exists()
+            ) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'received_quantity' =>
+                    'This GRN item has already undergone PO correction. Its received quantity cannot be edited or deleted.',
+                ]);
+            }
 
             $poItem = PurchaseOrderItem::query()
                 ->whereKey($line->purchase_order_item_id)
@@ -718,7 +730,7 @@ class GoodsReceiptItemController extends Controller
                     ]);
                 }
             }
-                        // Quantity 0 = remove this line completely
+            // Quantity 0 = remove this line completely
             if ($newQuantity === 0) {
 
                 $line->delete();
@@ -767,7 +779,7 @@ class GoodsReceiptItemController extends Controller
                     'movement_type' => 'purchase_receipt',
                     'movement_date' => now()->toDateString(),
                     'direction'     => 'in',
-                    'quantity'      => $newQuantity,                    
+                    'quantity'      => $newQuantity,
                     'reference'     => $receipt->grn_number,
                     'remarks'       => $line->remarks,
                 ]

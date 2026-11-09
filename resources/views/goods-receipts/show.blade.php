@@ -281,8 +281,7 @@
 
 
             {{-- Hidden Void Form --}}
-            <form id="voidGrnForm" action="{{ route('goods-receipts.void', $goodsReceipt) }}" method="POST"
-                class="d-none">
+            <form id="voidGrnForm" action="{{ route('goods-receipts.void', $goodsReceipt) }}" method="POST" class="d-none">
 
                 @csrf
 
@@ -384,7 +383,6 @@
             </div>
         @endif
 
-        {{-- Purchase Order Items (one tab per PO) --}}
         {{-- Purchase Order Items (one expandable row per PO) --}}
         <style>
             .po-toggle .fa-minus {
@@ -443,8 +441,8 @@
                                 <tr class="bg-light">
                                     <td class="text-center">
                                         <button type="button" class="btn btn-sm btn-outline-primary po-toggle collapsed"
-                                            data-toggle="collapse" data-target="#po-items-{{ $po->id }}"
-                                            aria-expanded="false" aria-controls="po-items-{{ $po->id }}">
+                                            data-toggle="collapse" data-target="#po-items-{{ $po->id }}" aria-expanded="false"
+                                            aria-controls="po-items-{{ $po->id }}">
                                             <i class="fas fa-plus"></i>
                                             <i class="fas fa-minus"></i>
                                         </button>
@@ -477,13 +475,12 @@
                                                         ->filter(
                                                             fn($i) => !in_array($i->id, $receivedPoItemIds) &&
                                                                 (float) $i->ordered_quantity >
-                                                                    (float) $i->received_quantity,
+                                                                (float) $i->received_quantity,
                                                         )
                                                         ->count();
                                                 @endphp
 
-                                                <form
-                                                    action="{{ route('goods-receipts.items.bulk-store', $goodsReceipt) }}"
+                                                <form action="{{ route('goods-receipts.items.bulk-store', $goodsReceipt) }}"
                                                     method="POST" class="po-bulk-form">
                                                     @csrf
 
@@ -527,9 +524,11 @@
                                                                     <td>{{ $poItem->item->item_code ?? '-' }}</td>
                                                                     <td>{{ $poItem->item->item_name ?? '-' }}</td>
                                                                     <td class="text-right">
-                                                                        {{ number_format($ordered, 3) }}</td>
+                                                                        {{ number_format($ordered, 3) }}
+                                                                    </td>
                                                                     <td class="text-right">
-                                                                        {{ number_format($received, 3) }}</td>
+                                                                        {{ number_format($received, 3) }}
+                                                                    </td>
 
                                                                     <td class="text-right">
                                                                         @if ($outstanding > 0)
@@ -547,16 +546,24 @@
                                                                             <span class="badge badge-danger">
                                                                                 <i class="fas fa-lock mr-1"></i> Locked
                                                                             </span>
+
                                                                         @elseif ($receiptLine)
+
                                                                             @php
+                                                                                $isPoCorrected = \App\Models\GoodsReceiptPoCorrection::where(
+                                                                                    'goods_receipt_item_id',
+                                                                                    $receiptLine->id
+                                                                                )->exists();
+
                                                                                 $minQty = (int) ceil(
                                                                                     (float) $receiptLine->activeUsedQuantity() +
-                                                                                        (float) $receiptLine->postedReturnedQuantity(),
+                                                                                    (float) $receiptLine->postedReturnedQuantity()
                                                                                 );
+
                                                                                 $maxQty = (int) round(
                                                                                     $ordered -
-                                                                                        $received +
-                                                                                        (float) $receiptLine->received_quantity,
+                                                                                    $received +
+                                                                                    (float) $receiptLine->received_quantity
                                                                                 );
                                                                             @endphp
 
@@ -566,35 +573,44 @@
                                                                                 {{ number_format((float) $receiptLine->received_quantity, 0) }}
                                                                             </span>
 
-                                                                            <button type="button"
-                                                                                class="btn btn-sm btn-outline-warning btn-edit-received"
-                                                                                data-action="{{ route('goods-receipts.items.update', [$goodsReceipt, $receiptLine]) }}"
-                                                                                data-po="{{ $po->po_number }}"
-                                                                                data-item="{{ $poItem->item->item_code ?? '' }} - {{ $poItem->item->item_name ?? '' }}"
-                                                                                data-current="{{ (int) round((float) $receiptLine->received_quantity) }}"
-                                                                                data-min="{{ $minQty }}"
-                                                                                data-max="{{ $maxQty }}">
-                                                                                <i class="fas fa-edit"></i> Edit
-                                                                            </button>
+                                                                            @if ($isPoCorrected)
+
+                                                                                <span class="badge badge-warning">
+                                                                                    <i class="fas fa-lock mr-1"></i> PO Corrected
+                                                                                </span>
+
+                                                                            @else
+
+                                                                                <button type="button"
+                                                                                    class="btn btn-sm btn-outline-warning btn-edit-received"
+                                                                                    data-action="{{ route('goods-receipts.items.update', [$goodsReceipt, $receiptLine]) }}"
+                                                                                    data-po="{{ $po->po_number }}"
+                                                                                    data-item="{{ $poItem->item->item_code ?? '' }} - {{ $poItem->item->item_name ?? '' }}"
+                                                                                    data-current="{{ (int) round((float) $receiptLine->received_quantity) }}"
+                                                                                    data-min="{{ $minQty }}" data-max="{{ $maxQty }}">
+                                                                                    <i class="fas fa-edit"></i> Edit
+                                                                                </button>
+
+                                                                            @endif
+
                                                                         @elseif ($outstanding > 0)
-                                                                            <input type="number"
-                                                                                name="quantities[{{ $poItem->id }}]"
-                                                                                min="0"
-                                                                                max="{{ (int) round($outstanding) }}"
-                                                                                step="1"
+
+                                                                            <input type="number" name="quantities[{{ $poItem->id }}]"
+                                                                                min="0" max="{{ (int) round($outstanding) }}" step="1"
                                                                                 data-outstanding="{{ (int) round($outstanding) }}"
                                                                                 class="form-control form-control-sm text-right bulk-qty"
                                                                                 placeholder="0">
+
                                                                         @else
-                                                                            <span class="badge badge-success">Fully
-                                                                                Received</span>
+
+                                                                            <span class="badge badge-success">Fully Received</span>
+
                                                                         @endif
                                                                     </td>
                                                                 </tr>
                                                             @empty
                                                                 <tr>
-                                                                    <td colspan="9"
-                                                                        class="text-center text-muted py-3">
+                                                                    <td colspan="9" class="text-center text-muted py-3">
                                                                         No items found for this Purchase Order.
                                                                     </td>
                                                                 </tr>
@@ -650,11 +666,11 @@
                 </h3>
 
                 @if (
-                    $goodsReceipt->status !== 'voided' &&
+                        $goodsReceipt->status !== 'voided' &&
                         in_array($goodsReceipt->payment_status, ['unpaid', 'partially_paid']) &&
-                        (float) $goodsReceipt->balance_amount > 0)
-                    <a href="{{ route('goods-receipts.payments.create', $goodsReceipt) }}"
-                        class="btn btn-sm btn-success">
+                        (float) $goodsReceipt->balance_amount > 0
+                    )
+                    <a href="{{ route('goods-receipts.payments.create', $goodsReceipt) }}" class="btn btn-sm btn-success">
                         <i class="fas fa-plus mr-1"></i>
                         Add Payment
                     </a>
@@ -735,15 +751,12 @@
                                     </td>
                                     <td>
                                         @if ($payment->status === 'active')
-                                            <form
-                                                action="{{ route('goods-receipts.payments.destroy', [$goodsReceipt, $payment]) }}"
-                                                method="POST" class="form-inline"
-                                                onsubmit="return confirm('Void this payment?');">
+                                            <form action="{{ route('goods-receipts.payments.destroy', [$goodsReceipt, $payment]) }}"
+                                                method="POST" class="form-inline" onsubmit="return confirm('Void this payment?');">
                                                 @csrf
                                                 @method('DELETE')
                                                 <input type="text" name="void_reason" maxlength="500"
-                                                    class="form-control form-control-sm mr-1" placeholder="Void reason"
-                                                    required>
+                                                    class="form-control form-control-sm mr-1" placeholder="Void reason" required>
                                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                                     Void
                                                 </button>
@@ -769,245 +782,372 @@
         </div>
 
 
-        {{-- ============================================================
-     GRN PO ALLOCATION CORRECTION
-     ============================================================ --}}
+        
+{{-- ============================================================
+GRN PO ALLOCATION CORRECTION
+============================================================ --}}
 
-        @php
-            $correctionsByLine = $goodsReceipt->poCorrections->keyBy('goods_receipt_item_id');
+@php
+    $correctionsByLine = $goodsReceipt->poCorrections->keyBy('goods_receipt_item_id');
+    $hasCorrections = $goodsReceipt->poCorrections->isNotEmpty();
+@endphp
 
-            $hasCorrections = $goodsReceipt->poCorrections->isNotEmpty();
-        @endphp
+<div class="card card-info card-outline mb-4">
 
-        <div class="card card-info card-outline mb-4">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-exchange-alt mr-2"></i>
+            PO Allocation Correction
+        </h3>
+    </div>
 
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="fas fa-exchange-alt mr-2"></i>
-                    PO Allocation Correction
-                </h3>
-            </div>
+    <div class="card-body">
 
-            <div class="card-body">
+        <div class="alert alert-light border py-2 mb-3">
+            <strong>Important:</strong>
+            Transfer the full GRN item quantity from its original PO allocation
+            to another eligible PO.
 
-                <div class="alert alert-light border">
-                    <strong>Important:</strong>
-                    This action transfers the full GRN item quantity
-                    from its original PO allocation to another eligible PO.
-
-                    <div class="small text-muted mt-2">
-                        Original GRN price, stock movements, production
-                        usage, supplier payments and financial history
-                        remain unchanged.
-                    </div>
-                </div>
-
-                @if ($goodsReceipt->status !== 'posted')
-
-                    <div class="alert alert-secondary mb-0">
-                        Only posted Goods Receipts can be corrected.
-                    </div>
-                @elseif ($hasPurchaseReturns)
-                    <div class="alert alert-warning mb-0">
-                        PO correction is unavailable because this GRN
-                        already has Purchase Return records.
-                    </div>
-                @elseif ($goodsReceipt->items->isEmpty())
-                    <div class="alert alert-secondary mb-0">
-                        No received items are available for correction.
-                    </div>
-                @else
-                    @foreach ($goodsReceipt->items as $receiptItem)
-                        @php
-                            $sourcePoItem = $receiptItem->purchaseOrderItem;
-                            $sourcePo = $sourcePoItem?->purchaseOrder;
-
-                            $existingCorrection = $correctionsByLine->get($receiptItem->id);
-
-                            $quantity = (float) $receiptItem->received_quantity;
-
-                            $destinationItems = $correctionDestinationPoItems->filter(function ($candidate) use (
-                                $sourcePoItem,
-                                $sourcePo,
-                                $receiptItem,
-                                $quantity,
-                                $goodsReceipt,
-                            ) {
-                                if (!$sourcePoItem || !$sourcePo) {
-                                    return false;
-                                }
-
-                                if ((int) $candidate->purchase_order_id === (int) $sourcePo->id) {
-                                    return false;
-                                }
-
-                                if ((int) $candidate->item_id !== (int) $receiptItem->item_id) {
-                                    return false;
-                                }
-
-                                if ($candidate->product_model_id != $sourcePoItem->product_model_id) {
-                                    return false;
-                                }
-
-                                if ($goodsReceipt->items->contains('purchase_order_item_id', $candidate->id)) {
-                                    return false;
-                                }
-
-                                $outstanding =
-                                    (float) $candidate->ordered_quantity - (float) $candidate->received_quantity;
-
-                                return $outstanding + 0.0001 >= $quantity;
-                            });
-                        @endphp
-
-                        <div class="border rounded p-3 mb-3">
-
-                            <div class="row mb-3">
-
-                                <div class="col-md-4">
-                                    <strong>Original PO</strong>
-                                    <div>
-                                        {{ $sourcePo->po_number ?? '-' }}
-                                    </div>
-                                </div>
-
-                                <div class="col-md-5">
-                                    <strong>Item</strong>
-                                    <div>
-                                        {{ $receiptItem->item->item_code ?? '-' }}
-                                        -
-                                        {{ $receiptItem->item->item_name ?? '-' }}
-                                    </div>
-                                    <small class="text-muted">
-                                        Model:
-                                        {{ $sourcePoItem?->productModel?->model_code ?? 'Common' }}
-                                    </small>
-                                </div>
-
-                                <div class="col-md-3">
-                                    <strong>GRN Quantity</strong>
-                                    <div>
-                                        {{ number_format($quantity, 3) }}
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            @if ($existingCorrection)
-                                <div class="alert alert-success mb-0">
-                                    <i class="fas fa-check-circle mr-1"></i>
-                                    This GRN item has already been corrected.
-
-                                    <div class="mt-2">
-                                        <strong>Corrected To:</strong>
-                                        {{ $existingCorrection->toPurchaseOrderItem?->purchaseOrder?->po_number ?? '-' }}
-                                    </div>
-
-                                    <div>
-                                        <strong>Transferred Quantity:</strong>
-                                        {{ number_format((float) $existingCorrection->transferred_quantity, 3) }}
-                                    </div>
-                                </div>
-                            @elseif (!$sourcePoItem || !$sourcePo)
-                                <div class="alert alert-danger mb-0">
-                                    Original Purchase Order information is missing.
-                                </div>
-                            @elseif ($destinationItems->isEmpty())
-                                <div class="alert alert-secondary mb-0">
-                                    No eligible destination PO item is available
-                                    for this quantity and product model.
-                                </div>
-                            @else
-                                <form action="{{ route('goods-receipts.correct', $goodsReceipt) }}" method="POST"
-                                    class="grn-po-correction-form">
-                                    @csrf
-
-                                    <input type="hidden" name="goods_receipt_item_id" value="{{ $receiptItem->id }}">
-
-                                    <div class="form-group">
-
-                                        <label>
-                                            Destination Purchase Order
-                                            <span class="text-danger">*</span>
-                                        </label>
-
-                                        <select name="destination_purchase_order_item_id" class="form-control" required>
-                                            <option value="">
-                                                Select Correct PO Item
-                                            </option>
-
-                                            @foreach ($destinationItems as $candidate)
-                                                @php
-                                                    $available =
-                                                        (float) $candidate->ordered_quantity -
-                                                        (float) $candidate->received_quantity;
-                                                @endphp
-
-                                                <option value="{{ $candidate->id }}">
-                                                    {{ $candidate->purchaseOrder->po_number ?? '-' }}
-                                                    |
-                                                    {{ $candidate->item->item_code ?? '-' }}
-                                                    |
-                                                    {{ $candidate->productModel->model_code ?? 'Common' }}
-                                                    |
-                                                    Available: {{ number_format($available, 3) }}
-                                                </option>
-                                            @endforeach
-
-                                        </select>
-
-                                    </div>
-
-                                    <div class="form-group">
-
-                                        <label>
-                                            Correction Reason
-                                            <span class="text-danger">*</span>
-                                        </label>
-
-                                        <textarea name="reason" class="form-control" rows="2" maxlength="2000" required
-                                            placeholder="Explain why the original PO allocation was incorrect..."></textarea>
-
-                                    </div>
-
-                                    <div class="text-right">
-
-                                        <button type="submit" class="btn btn-info">
-                                            <i class="fas fa-exchange-alt mr-1"></i>
-                                            Correct PO Allocation
-                                        </button>
-
-                                    </div>
-
-                                </form>
-                            @endif
-
-                        </div>
-                    @endforeach
-
-                @endif
-
+            <div class="small text-muted mt-1">
+                Original GRN price, stock movements, production usage,
+                supplier payments and financial history remain unchanged.
             </div>
         </div>
 
-        {{-- ============================================================
-     PO CORRECTION HISTORY
-     ============================================================ --}}
+        @if ($goodsReceipt->status !== 'posted')
 
-        @if ($hasCorrections)
+            <div class="alert alert-secondary mb-0">
+                Only posted Goods Receipts can be corrected.
+            </div>
 
-            <div class="card card-secondary card-outline mb-4">
+        @elseif ($hasPurchaseReturns)
 
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-history mr-2"></i>
-                        PO Correction History
-                    </h3>
-                </div>
+            <div class="alert alert-warning mb-0">
+                PO correction is unavailable because this GRN already has
+                Purchase Return records.
+            </div>
 
-                <div class="card-body table-responsive">
+        @elseif ($goodsReceipt->items->isEmpty())
 
-                    <table class="table table-bordered table-sm">
+            <div class="alert alert-secondary mb-0">
+                No received items are available for correction.
+            </div>
+
+        @else
+
+            <div class="table-responsive">
+
+                <table class="table table-sm table-bordered table-hover mb-0">
+
+                    <thead class="thead-light">
+                        <tr>
+                            <th style="width: 18%;">Original PO</th>
+                            <th>Item / Product Model</th>
+                            <th class="text-right" style="width: 12%;">GRN Qty</th>
+                            <th style="width: 25%;">Correction Status / Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        @foreach ($goodsReceipt->items as $receiptItem)
+
+                            @php
+                                $sourcePoItem = $receiptItem->purchaseOrderItem;
+                                $sourcePo = $sourcePoItem?->purchaseOrder;
+
+                                $existingCorrection = $correctionsByLine->get($receiptItem->id);
+
+                                $quantity = (float) $receiptItem->received_quantity;
+
+                                $destinationItems = $correctionDestinationPoItems->filter(
+                                    function ($candidate) use (
+                                        $sourcePoItem,
+                                        $sourcePo,
+                                        $receiptItem,
+                                        $quantity,
+                                        $goodsReceipt
+                                    ) {
+                                        if (!$sourcePoItem || !$sourcePo) {
+                                            return false;
+                                        }
+
+                                        if ((int) $candidate->purchase_order_id === (int) $sourcePo->id) {
+                                            return false;
+                                        }
+
+                                        if ((int) $candidate->item_id !== (int) $receiptItem->item_id) {
+                                            return false;
+                                        }
+
+                                        if ($candidate->product_model_id != $sourcePoItem->product_model_id) {
+                                            return false;
+                                        }
+
+                                        if ($goodsReceipt->items->contains(
+                                            'purchase_order_item_id',
+                                            $candidate->id
+                                        )) {
+                                            return false;
+                                        }
+
+                                        $outstanding =
+                                            (float) $candidate->ordered_quantity -
+                                            (float) $candidate->received_quantity;
+
+                                        return $outstanding + 0.0001 >= $quantity;
+                                    }
+                                );
+
+                                $formId = 'po-correction-' . $receiptItem->id;
+                            @endphp
+
+                            <tr>
+
+                                <td>
+                                    <strong>
+                                        {{ $sourcePo->po_number ?? '-' }}
+                                    </strong>
+                                </td>
+
+                                <td>
+                                    <strong>
+                                        {{ $receiptItem->item->item_code ?? '-' }}
+                                        -
+                                        {{ $receiptItem->item->item_name ?? '-' }}
+                                    </strong>
+
+                                    <small class="d-block text-muted">
+                                        Model:
+                                        {{ $sourcePoItem?->productModel?->model_code ?? 'Common' }}
+                                    </small>
+                                </td>
+
+                                <td class="text-right">
+                                    {{ number_format($quantity, 3) }}
+                                </td>
+
+                                <td>
+
+                                    @if ($existingCorrection)
+
+                                        <span class="badge badge-success">
+                                            <i class="fas fa-check-circle mr-1"></i>
+                                            Corrected
+                                        </span>
+
+                                        <small class="d-block mt-1">
+                                            To:
+                                            <strong>
+                                                {{ $existingCorrection->toPurchaseOrderItem?->purchaseOrder?->po_number ?? '-' }}
+                                            </strong>
+                                        </small>
+
+                                    @elseif (!$sourcePoItem || !$sourcePo)
+
+                                        <span class="badge badge-danger">
+                                            Original PO missing
+                                        </span>
+
+                                    @elseif ($destinationItems->isEmpty())
+
+                                        <span class="badge badge-secondary">
+                                            No eligible destination PO
+                                        </span>
+
+                                    @else
+
+                                        <button type="button"
+                                            class="btn btn-sm btn-outline-info"
+                                            data-toggle="collapse"
+                                            data-target="#{{ $formId }}"
+                                            aria-expanded="false"
+                                            aria-controls="{{ $formId }}">
+
+                                            <i class="fas fa-exchange-alt mr-1"></i>
+                                            Correct PO
+
+                                        </button>
+
+                                    @endif
+
+                                </td>
+
+                            </tr>
+
+                            @if (
+                                !$existingCorrection &&
+                                $sourcePoItem &&
+                                $sourcePo &&
+                                $destinationItems->isNotEmpty()
+                            )
+
+                                <tr class="bg-light">
+
+                                    <td colspan="4" class="p-0">
+
+                                        <div class="collapse" id="{{ $formId }}">
+
+                                            <div class="p-3 border-top">
+
+                                                <form
+                                                    action="{{ route('goods-receipts.correct', $goodsReceipt) }}"
+                                                    method="POST"
+                                                    class="grn-po-correction-form">
+
+                                                    @csrf
+
+                                                    <input type="hidden"
+                                                        name="goods_receipt_item_id"
+                                                        value="{{ $receiptItem->id }}">
+
+                                                    <div class="form-row">
+
+                                                        <div class="col-md-6 form-group">
+                                                            <label>
+                                                                Destination Purchase Order
+                                                                <span class="text-danger">*</span>
+                                                            </label>
+
+                                                            <select
+                                                                name="destination_purchase_order_item_id"
+                                                                class="form-control form-control-sm"
+                                                                required>
+
+                                                                <option value="">
+                                                                    Select Correct PO Item
+                                                                </option>
+
+                                                                @foreach ($destinationItems as $candidate)
+
+                                                                    @php
+                                                                        $available =
+                                                                            (float) $candidate->ordered_quantity -
+                                                                            (float) $candidate->received_quantity;
+                                                                    @endphp
+
+                                                                    <option value="{{ $candidate->id }}">
+                                                                        {{ $candidate->purchaseOrder->po_number ?? '-' }}
+                                                                        |
+                                                                        {{ $candidate->item->item_code ?? '-' }}
+                                                                        |
+                                                                        {{ $candidate->productModel->model_code ?? 'Common' }}
+                                                                        |
+                                                                        Available:
+                                                                        {{ number_format($available, 3) }}
+                                                                    </option>
+
+                                                                @endforeach
+
+                                                            </select>
+                                                        </div>
+
+                                                        <div class="col-md-6 form-group">
+                                                            <label>
+                                                                Correction Reason
+                                                                <span class="text-danger">*</span>
+                                                            </label>
+
+                                                            <textarea
+                                                                name="reason"
+                                                                class="form-control form-control-sm"
+                                                                rows="2"
+                                                                maxlength="2000"
+                                                                required
+                                                                placeholder="Explain why the original PO allocation was incorrect..."></textarea>
+                                                        </div>
+
+                                                    </div>
+
+                                                    <div class="text-right">
+
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-secondary"
+                                                            data-toggle="collapse"
+                                                            data-target="#{{ $formId }}">
+                                                            Cancel
+                                                        </button>
+
+                                                        <button type="submit"
+                                                            class="btn btn-sm btn-info">
+                                                            <i class="fas fa-exchange-alt mr-1"></i>
+                                                            Confirm PO Correction
+                                                        </button>
+
+                                                    </div>
+
+                                                </form>
+
+                                            </div>
+
+                                        </div>
+
+                                    </td>
+
+                                </tr>
+
+                            @endif
+
+                        @endforeach
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <small class="text-muted d-block mt-2">
+                Click <strong>Correct PO</strong> beside an item to open its
+                correction form.
+            </small>
+
+        @endif
+
+    </div>
+
+</div>
+
+
+{{-- ============================================================
+PO CORRECTION HISTORY - COLLAPSIBLE
+============================================================ --}}
+
+@if ($hasCorrections)
+
+    <div class="card card-secondary card-outline mb-4">
+
+        <div class="card-header d-flex justify-content-between align-items-center">
+
+            <h3 class="card-title">
+                <i class="fas fa-history mr-2"></i>
+                PO Correction History
+
+                <span class="badge badge-secondary ml-2">
+                    {{ $goodsReceipt->poCorrections->count() }}
+                </span>
+            </h3>
+
+            <button type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-toggle="collapse"
+                data-target="#poCorrectionHistory"
+                aria-expanded="false"
+                aria-controls="poCorrectionHistory">
+
+                <i class="fas fa-eye mr-1"></i>
+                View History
+
+            </button>
+
+        </div>
+
+        <div class="collapse" id="poCorrectionHistory">
+
+            <div class="card-body p-2">
+
+                <div class="table-responsive">
+
+                    <table class="table table-bordered table-sm mb-0">
 
                         <thead class="thead-light">
                             <tr>
@@ -1023,7 +1163,9 @@
                         <tbody>
 
                             @foreach ($goodsReceipt->poCorrections as $correction)
+
                                 <tr>
+
                                     <td>
                                         {{ $correction->corrected_at?->format('d-M-Y h:i A') ?? '-' }}
                                     </td>
@@ -1040,12 +1182,16 @@
                                         {{ number_format((float) $correction->transferred_quantity, 3) }}
                                     </td>
 
-                                    <td>{{ $correction->reason }}</td>
+                                    <td>
+                                        {{ $correction->reason }}
+                                    </td>
 
                                     <td>
                                         {{ $correction->correctedBy?->name ?? 'System' }}
                                     </td>
+
                                 </tr>
+
                             @endforeach
 
                         </tbody>
@@ -1056,7 +1202,11 @@
 
             </div>
 
-        @endif
+        </div>
+
+    </div>
+
+@endif
 
         {{-- Received Items on this GRN (one expandable row per PO) --}}
         @php
@@ -1207,8 +1357,8 @@
 
                         <div class="form-group mb-0">
                             <label>Received Quantity <span class="text-danger">*</span></label>
-                            <input type="number" name="received_quantity" id="editRcvQty" class="form-control"
-                                step="1" min="0" required>
+                            <input type="number" name="received_quantity" id="editRcvQty" class="form-control" step="1"
+                                min="0" required>
                             <small class="form-text text-muted" id="editRcvHint"></small>
                         </div>
                     </div>
@@ -1225,9 +1375,9 @@
     </div>
     @push('scripts')
         <script>
-            $(document).ready(function() {
+            $(document).ready(function () {
                 // Edit a received quantity
-                $(document).on('click', '.btn-edit-received', function() {
+                $(document).on('click', '.btn-edit-received', function () {
                     const b = $(this);
                     const minQty = Math.max(1, parseInt(b.data('min'), 10) || 1);
                     const maxQty = parseInt(b.data('max'), 10) || minQty;
@@ -1249,16 +1399,16 @@
                 });
 
                 // Fill every box of this PO with its outstanding quantity
-                $(document).on('click', '.btn-fill-outstanding', function() {
-                    $(this).closest('form').find('.bulk-qty').each(function() {
+                $(document).on('click', '.btn-fill-outstanding', function () {
+                    $(this).closest('form').find('.bulk-qty').each(function () {
                         $(this).val($(this).data('outstanding'));
                     });
                 });
 
                 // One-click save: need at least one quantity, and stop double clicks
-                $(document).on('submit', '.po-bulk-form', function(e) {
+                $(document).on('submit', '.po-bulk-form', function (e) {
                     let filled = 0;
-                    $(this).find('.bulk-qty').each(function() {
+                    $(this).find('.bulk-qty').each(function () {
                         if (parseInt($(this).val(), 10) > 0) filled++;
                     });
 
@@ -1290,13 +1440,13 @@
                     toastr.error(
                         @json($errors->first('void_reason')),
                         'GRN Reversal Blocked', {
-                            closeButton: true,
-                            progressBar: true,
-                            timeOut: 10000,
-                            extendedTimeOut: 3000,
-                            positionClass: 'toast-top-right',
-                            preventDuplicates: true
-                        }
+                        closeButton: true,
+                        progressBar: true,
+                        timeOut: 10000,
+                        extendedTimeOut: 3000,
+                        positionClass: 'toast-top-right',
+                        preventDuplicates: true
+                    }
                     );
                 @endif
 
@@ -1306,94 +1456,94 @@
                 | Void GRN Button
                 |--------------------------------------------------------------------------
                 */
-                $('#btnVoidGrn').on('click', function() {
+                $('#btnVoidGrn').on('click', function () {
 
                     Swal.fire({
 
                         title: 'Void Goods Receipt?',
 
                         html: `
-                                            <div class="text-left">
+                                                            <div class="text-left">
 
-                                                <p class="mb-2">
-                                                    You are about to void
-                                                    <strong>{{ $goodsReceipt->grn_number }}</strong>.
-                                                </p>
+                                                                <p class="mb-2">
+                                                                    You are about to void
+                                                                    <strong>{{ $goodsReceipt->grn_number }}</strong>.
+                                                                </p>
 
-                                                <p class="text-danger mb-3">
-                                                    This will reverse the received stock
-                                                    and restore the PO outstanding quantity.
-                                                </p>
+                                                                <p class="text-danger mb-3">
+                                                                    This will reverse the received stock
+                                                                    and restore the PO outstanding quantity.
+                                                                </p>
 
-                                                <div class="form-group mb-3">
+                                                                <div class="form-group mb-3">
 
-                                                    <label for="swalVoidReason">
-                                                        Void Reason
-                                                    </label>
+                                                                    <label for="swalVoidReason">
+                                                                        Void Reason
+                                                                    </label>
 
-                                                    <select
-                                                        id="swalVoidReason"
-                                                        class="form-control"
-                                                    >
-                                                        <option value="">
-                                                            Select void reason
-                                                        </option>
+                                                                    <select
+                                                                        id="swalVoidReason"
+                                                                        class="form-control"
+                                                                    >
+                                                                        <option value="">
+                                                                            Select void reason
+                                                                        </option>
 
-                                                        <option value="Wrong quantity received">
-                                                            Wrong quantity received
-                                                        </option>
+                                                                        <option value="Wrong quantity received">
+                                                                            Wrong quantity received
+                                                                        </option>
 
-                                                        <option value="Wrong item received">
-                                                            Wrong item received
-                                                        </option>
+                                                                        <option value="Wrong item received">
+                                                                            Wrong item received
+                                                                        </option>
 
-                                                        <option value="Duplicate goods receipt">
-                                                            Duplicate goods receipt
-                                                        </option>
+                                                                        <option value="Duplicate goods receipt">
+                                                                            Duplicate goods receipt
+                                                                        </option>
 
-                                                        <option value="Supplier delivery rejected">
-                                                            Supplier delivery rejected
-                                                        </option>
+                                                                        <option value="Supplier delivery rejected">
+                                                                            Supplier delivery rejected
+                                                                        </option>
 
-                                                        <option value="Data entry mistake">
-                                                            Data entry mistake
-                                                        </option>
+                                                                        <option value="Data entry mistake">
+                                                                            Data entry mistake
+                                                                        </option>
 
-                                                        <option value="Other">
-                                                            Other
-                                                        </option>
+                                                                        <option value="Other">
+                                                                            Other
+                                                                        </option>
 
-                                                    </select>
+                                                                    </select>
 
-                                                </div>
+                                                                </div>
 
-                                                <div
-                                                    id="otherVoidReasonWrapper"
-                                                    class="form-group mb-0"
-                                                    style="display: none;"
-                                                >
+                                                                <div
+                                                                    id="otherVoidReasonWrapper"
+                                                                    class="form-group mb-0"
+                                                                    style="display: none;"
+                                                                >
 
-                                                    <label for="otherVoidReason">
-                                                        Specify Other Reason
-                                                        <span class="text-danger">*</span>
-                                                    </label>
+                                                                    <label for="otherVoidReason">
+                                                                        Specify Other Reason
+                                                                        <span class="text-danger">*</span>
+                                                                    </label>
 
-                                                    <textarea
-                                                        id="otherVoidReason"
-                                                        class="form-control"
-                                                        rows="3"
-                                                        maxlength="1000"
-                                                        placeholder="Enter the reason for voiding this Goods Receipt..."
-                                                    ></textarea>
+                                                                    <textarea
+                                                                        id="otherVoidReason"
+                                                                        class="form-control"
+                                                                        rows="3"
+                                                                        maxlength="1000"
+                                                                        placeholder="Enter the reason for voiding this Goods Receipt..."
+                                                                    ></textarea>
 
-                                                    <small class="text-muted">
-                                                        Maximum 1000 characters.
-                                                    </small>
+                                                                    <small class="text-muted">
+                                                                        Maximum 1000 characters.
+                                                                    </small>
 
-                                                </div>
+                                                                </div>
 
-                                            </div>
-                                        `,
+                                                            </div>
+                                                        `,
 
                         showCancelButton: true,
 
@@ -1405,7 +1555,7 @@
 
                         focusConfirm: false,
 
-                        didOpen: function() {
+                        didOpen: function () {
 
                             const reasonSelect =
                                 document.getElementById(
@@ -1424,14 +1574,14 @@
 
                             reasonSelect.addEventListener(
                                 'change',
-                                function() {
+                                function () {
 
                                     if (this.value === 'Other') {
 
                                         otherWrapper.style.display =
                                             'block';
 
-                                        setTimeout(function() {
+                                        setTimeout(function () {
                                             otherInput.focus();
                                         }, 100);
 
@@ -1449,7 +1599,7 @@
 
                         },
 
-                        preConfirm: function() {
+                        preConfirm: function () {
 
                             const reason =
                                 document.getElementById(
@@ -1492,7 +1642,7 @@
 
                         }
 
-                    }).then(function(result) {
+                    }).then(function (result) {
 
                         if (!result.isConfirmed) {
                             return;

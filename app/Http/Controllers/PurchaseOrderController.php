@@ -21,19 +21,55 @@ class PurchaseOrderController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function index()
-    {
-        $purchaseOrders = PurchaseOrder::with('supplier')
-            ->latest('order_date')
-            ->latest('id')
-            ->paginate(20);
+   public function index(Request $request)
+{
+    $query = PurchaseOrder::with('supplier');
 
-        return view(
-            'purchase-orders.index',
-            compact('purchaseOrders')
-        );
+    // Search: PO number or supplier name
+    if ($request->filled('search')) {
+        $search = $request->search;
+
+        $query->where(function ($q) use ($search) {
+            $q->where('po_number', 'like', '%' . $search . '%')
+                ->orWhereHas('supplier', function ($s) use ($search) {
+                    $s->where('name', 'like', '%' . $search . '%');
+                });
+        });
     }
 
+    // Supplier
+    if ($request->filled('supplier_id')) {
+        $query->where('supplier_id', $request->supplier_id);
+    }
+
+    // Status
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+
+    // Order date range
+    if ($request->filled('date_from')) {
+        $query->whereDate('order_date', '>=', $request->date_from);
+    }
+
+    if ($request->filled('date_to')) {
+        $query->whereDate('order_date', '<=', $request->date_to);
+    }
+
+    $purchaseOrders = $query
+        ->latest('order_date')
+        ->latest('id')
+        ->paginate(20)
+        ->withQueryString();
+
+    // All suppliers (including inactive) so old POs can still be filtered
+    $suppliers = Supplier::orderBy('name')->get();
+
+    return view(
+        'purchase-orders.index',
+        compact('purchaseOrders', 'suppliers')
+    );
+}
 
     /*
     |--------------------------------------------------------------------------

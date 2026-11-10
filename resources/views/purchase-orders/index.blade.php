@@ -29,6 +29,79 @@
         </div>
 
 
+        {{-- Search Filter --}}
+        <div class="card shadow-sm mb-3">
+
+            <div class="card-body">
+
+                <form method="GET" action="{{ route('purchase-orders.index') }}">
+
+                    <div class="form-row">
+
+                        <div class="form-group col-md-3">
+                            <label for="search" class="mb-1">Search</label>
+                            <input type="text" name="search" id="search" class="form-control form-control-sm"
+                                placeholder="PO number or supplier" value="{{ request('search') }}">
+                        </div>
+
+                        <div class="form-group col-md-3">
+                            <label for="supplier_id" class="mb-1">Supplier</label>
+                            <select name="supplier_id" id="supplier_id" class="form-control form-control-sm">
+                                <option value="">All Suppliers</option>
+                                @foreach($suppliers as $supplier)
+                                    <option value="{{ $supplier->id }}"
+                                        {{ (string) request('supplier_id') === (string) $supplier->id ? 'selected' : '' }}>
+                                        {{ $supplier->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="form-group col-md-2">
+                            <label for="status" class="mb-1">Status</label>
+                            <select name="status" id="status" class="form-control form-control-sm">
+                                <option value="">All Status</option>
+                                <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>Draft</option>
+                                <option value="confirmed" {{ request('status') === 'confirmed' ? 'selected' : '' }}>Confirmed</option>
+                                <option value="partially_received" {{ request('status') === 'partially_received' ? 'selected' : '' }}>Partially Received</option>
+                                <option value="received" {{ request('status') === 'received' ? 'selected' : '' }}>Received</option>
+                                <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group col-md-2">
+                            <label for="date_from" class="mb-1">Order Date From</label>
+                            <input type="date" name="date_from" id="date_from" class="form-control form-control-sm"
+                                value="{{ request('date_from') }}">
+                        </div>
+
+                        <div class="form-group col-md-2">
+                            <label for="date_to" class="mb-1">Order Date To</label>
+                            <input type="date" name="date_to" id="date_to" class="form-control form-control-sm"
+                                value="{{ request('date_to') }}">
+                        </div>
+
+                    </div>
+
+                    <div>
+                        <button type="submit" class="btn btn-sm btn-primary">
+                            <i class="fas fa-search mr-1"></i>
+                            Search
+                        </button>
+
+                        <a href="{{ route('purchase-orders.index') }}" class="btn btn-sm btn-secondary">
+                            <i class="fas fa-undo mr-1"></i>
+                            Reset
+                        </a>
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+
         <div class="card shadow-sm">
 
             <div class="card-header">
@@ -69,115 +142,113 @@
 
                             @forelse($purchaseOrders as $purchaseOrder)
 
-                                                <tr>
+                                <tr>
 
-                                                    <td>
-                                                        {{ $purchaseOrders->firstItem() + $loop->index }}
-                                                    </td>
+                                    <td>
+                                        {{ $purchaseOrders->firstItem() + $loop->index }}
+                                    </td>
 
-                                                    <td>
-                                                        <strong>
-                                                            {{ $purchaseOrder->po_number }}
-                                                        </strong>
-                                                    </td>
+                                    <td>
+                                        <strong>
+                                            {{ $purchaseOrder->po_number }}
+                                        </strong>
+                                    </td>
 
-                                                    <td>
-                                                        {{ $purchaseOrder->supplier->name ?? '-' }}
-                                                    </td>
+                                    <td>
+                                        {{ $purchaseOrder->supplier->name ?? '-' }}
+                                    </td>
 
-                                                    <td>
-                                                        {{ $purchaseOrder->order_date
-                                ? $purchaseOrder->order_date->format('d-M-Y')
-                                : '-'
-                                                            }}
-                                                    </td>
+                                    <td>
+                                        {{ $purchaseOrder->order_date
+                                            ? $purchaseOrder->order_date->format('d-M-Y')
+                                            : '-' }}
+                                    </td>
 
-                                                    <td>
-                                                        {{ $purchaseOrder->expected_delivery_date
-                                ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
-                                : '-'
-                                                            }}
-                                                    </td>
+                                    <td>
+                                        {{ $purchaseOrder->expected_delivery_date
+                                            ? $purchaseOrder->expected_delivery_date->format('d-M-Y')
+                                            : '-' }}
+                                    </td>
 
-                                                    <td>
+                                    <td>
 
-                                                        @if($purchaseOrder->status === 'draft')
+                                        @if($purchaseOrder->status === 'draft')
 
-                                                            <span class="badge badge-secondary">
-                                                                Draft
-                                                            </span>
+                                            <span class="badge badge-secondary">
+                                                Draft
+                                            </span>
 
-                                                        @elseif($purchaseOrder->status === 'confirmed')
+                                        @elseif($purchaseOrder->status === 'confirmed')
 
-                                                            <span class="badge badge-primary">
-                                                                Confirmed
-                                                            </span>
+                                            <span class="badge badge-primary">
+                                                Confirmed
+                                            </span>
 
-                                                        @elseif($purchaseOrder->status === 'partially_received')
+                                        @elseif($purchaseOrder->status === 'partially_received')
 
-                                                            <span class="badge badge-warning">
-                                                                Partially Received
-                                                            </span>
+                                            <span class="badge badge-warning">
+                                                Partially Received
+                                            </span>
 
-                                                        @elseif($purchaseOrder->status === 'received')
+                                        @elseif($purchaseOrder->status === 'received')
 
-                                                            <span class="badge badge-success">
-                                                                Received
-                                                            </span>
+                                            <span class="badge badge-success">
+                                                Received
+                                            </span>
 
-                                                        @else
+                                        @else
 
-                                                            <span class="badge badge-danger">
-                                                                Cancelled
-                                                            </span>
+                                            <span class="badge badge-danger">
+                                                Cancelled
+                                            </span>
 
-                                                        @endif
+                                        @endif
 
-                                                    </td>
+                                    </td>
 
-                                                    <td>
+                                    <td>
 
-                                                        <a href="{{ route('purchase-orders.show', $purchaseOrder) }}"
-                                                            class="btn btn-sm btn-info">
+                                        <a href="{{ route('purchase-orders.show', $purchaseOrder) }}"
+                                            class="btn btn-sm btn-info">
 
-                                                            <i class="fas fa-eye"></i>
+                                            <i class="fas fa-eye"></i>
 
-                                                            View
+                                            View
 
-                                                        </a>
+                                        </a>
 
-                                                        @if ($purchaseOrder->status === 'draft')
+                                        @if ($purchaseOrder->status === 'draft')
 
-                                                                                    <a href="{{ route(
-                                                                'purchase-orders.edit',
-                                                                $purchaseOrder
-                                                            ) }}" class="btn btn-sm btn-warning">
+                                            <a href="{{ route('purchase-orders.edit', $purchaseOrder) }}"
+                                                class="btn btn-sm btn-warning">
 
-                                                                                        <i class="fas fa-edit"></i>
+                                                <i class="fas fa-edit"></i>
 
-                                                                                        Edit
+                                                Edit
 
-                                                                                    </a>
+                                            </a>
 
-                                                        @else
+                                        @else
 
-                                                            <span class="badge badge-secondary">
+                                            <span class="badge badge-secondary">
 
-                                                                <i class="fas fa-lock mr-1"></i>
+                                                <i class="fas fa-lock mr-1"></i>
 
-                                                                Locked
+                                                Locked
 
-                                                            </span>
+                                            </span>
 
-                                                        @endif
-                                                        <a href="{{ route('purchase-orders.pdf', $purchaseOrder) }}"
-                                                            class="btn btn-danger btn-sm">
-                                                            <i class="fas fa-file-pdf"></i>
-                                                            PDF
-                                                        </a>
-                                                    </td>
+                                        @endif
 
-                                                </tr>
+                                        <a href="{{ route('purchase-orders.pdf', $purchaseOrder) }}"
+                                            class="btn btn-danger btn-sm">
+                                            <i class="fas fa-file-pdf"></i>
+                                            PDF
+                                        </a>
+
+                                    </td>
+
+                                </tr>
 
                             @empty
 

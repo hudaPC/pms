@@ -25,151 +25,115 @@ class GoodsReceiptController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function index()
-    {
-        /*
-        |--------------------------------------------------------------------------
-        | Pending Purchase Order Receipts
-        |--------------------------------------------------------------------------
-        |
-        | Show only Purchase Orders that:
-        |
-        | - are Confirmed or Partially Received
-        | - still have outstanding quantity
-        |
-        | Pending Qty =
-        | Total Ordered Qty - Total Received Qty
-        |
-        */
+    public function index(Request $request)
+{
+    /*
+    |--------------------------------------------------------------------------
+    | Pending Purchase Order Receipts
+    |--------------------------------------------------------------------------
+    */
 
-        $pendingPurchaseOrders =
-            PurchaseOrder::with([
-                'supplier',
-                'items.item',
-            ])
-            ->whereIn(
-                'status',
-                [
-                    'confirmed',
-                    'partially_received',
-                ]
-            )
-            ->orderBy('expected_delivery_date')
-            ->orderBy('id')
-            ->get()
-            ->map(function ($purchaseOrder) {
+    $pendingPurchaseOrders =
+        PurchaseOrder::with([
+            'supplier',
+            'items.item',
+        ])
+        ->whereIn(
+            'status',
+            [
+                'confirmed',
+                'partially_received',
+            ]
+        )
+        // Search by PO Number only
+        ->when($request->filled('pending_search'), function ($query) use ($request) {
+            $query->where('po_number', 'like', '%' . $request->pending_search . '%');
+        })
+        ->orderBy('expected_delivery_date')
+        ->orderBy('id')
+        ->get()
+        ->map(function ($purchaseOrder) {
 
-                /*
-                                |--------------------------------------------------------------------------
-                                | Total Ordered
-                                |--------------------------------------------------------------------------
-                                */
+            $totalOrdered =
+                (float) $purchaseOrder
+                    ->items
+                    ->sum('ordered_quantity');
 
-                $totalOrdered =
-                    (float) $purchaseOrder
-                        ->items
-                        ->sum('ordered_quantity');
+            $totalReceived =
+                (float) $purchaseOrder
+                    ->items
+                    ->sum('received_quantity');
 
+            $pendingQuantity =
+                max(
+                    0,
+                    $totalOrdered - $totalReceived
+                );
 
-                /*
-                                |--------------------------------------------------------------------------
-                                | Total Received
-                                |--------------------------------------------------------------------------
-                                */
+            $purchaseOrder->total_ordered_quantity =
+                $totalOrdered;
 
-                $totalReceived =
-                    (float) $purchaseOrder
-                        ->items
-                        ->sum('received_quantity');
+            $purchaseOrder->total_received_quantity =
+                $totalReceived;
 
+            $purchaseOrder->pending_receipt_quantity =
+                $pendingQuantity;
 
-                /*
-                                |--------------------------------------------------------------------------
-                                | Pending Receipt
-                                |--------------------------------------------------------------------------
-                                */
+            return $purchaseOrder;
+        })
+        ->filter(function ($purchaseOrder) {
 
-                $pendingQuantity =
-                    max(
-                        0,
-                        $totalOrdered - $totalReceived
-                    );
+            return
+                $purchaseOrder
+                ->pending_receipt_quantity > 0;
+        })
+        ->values();
 
 
-                /*
-                                |--------------------------------------------------------------------------
-                                | Attach Calculated Values
-                                |--------------------------------------------------------------------------
-                                */
+    /*
+    |--------------------------------------------------------------------------
+    | Goods Receipt History
+    |--------------------------------------------------------------------------
+    */
 
-                $purchaseOrder->total_ordered_quantity =
-                    $totalOrdered;
-
-                $purchaseOrder->total_received_quantity =
-                    $totalReceived;
-
-                $purchaseOrder->pending_receipt_quantity =
-                    $pendingQuantity;
-
-
-                return $purchaseOrder;
-            })
-            ->filter(function ($purchaseOrder) {
-
-                return
-                    $purchaseOrder
-                    ->pending_receipt_quantity > 0;
-            })
-            ->values();
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Goods Receipt History
-        |--------------------------------------------------------------------------
-        */
-
-
-        $goodsReceipts =
-            GoodsReceipt::with([
-                'purchaseOrder.supplier',
-                'purchaseOrders',
-            ])
-            ->withCount('items')
-            ->withSum(
-                'items as total_received_quantity',
-                'received_quantity'
-            )
-            ->addSelect([
-                'total_price' => GoodsReceiptItem::query()
-                    ->whereColumn(
-                        'goods_receipt_items.goods_receipt_id',
-                        'goods_receipts.id'
-                    )
-                    ->selectRaw(
-                        'SUM(goods_receipt_items.received_quantity * COALESCE(goods_receipt_items.unit_price, 0))'
-                    ),
-            ])
-            ->latest('receipt_date')
-            ->latest('id')
-            ->paginate(20);
+    $goodsReceipts =
+        GoodsReceipt::with([
+            'purchaseOrder.supplier',
+            'purchaseOrders',
+        ])
+        ->withCount('items')
+        ->withSum(
+            'items as total_received_quantity',
+            'received_quantity'
+        )
+        ->addSelect([
+            'total_price' => GoodsReceiptItem::query()
+                ->whereColumn(
+                    'goods_receipt_items.goods_receipt_id',
+                    'goods_receipts.id'
+                )
+                ->selectRaw(
+                    'SUM(goods_receipt_items.received_quantity * COALESCE(goods_receipt_items.unit_price, 0))'
+                ),
+        ])
+        // Search by GRN Number only
+        ->when($request->filled('grn_search'), function ($query) use ($request) {
+            $query->where('grn_number', 'like', '%' . $request->grn_search . '%');
+        })
+        ->latest('receipt_date')
+        ->latest('id')
+        ->paginate(20)
+        ->withQueryString();
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Return View
-        |--------------------------------------------------------------------------
-        */
-
-        return view(
-            'goods-receipts.index',
-            compact(
-                'goodsReceipts',
-                'pendingPurchaseOrders'
-            )
-        );
-    }
-
+    return view(
+        'goods-receipts.index',
+        compact(
+            'goodsReceipts',
+            'pendingPurchaseOrders'
+        )
+    );
+}
 
     /*
     |--------------------------------------------------------------------------

@@ -4,6 +4,11 @@
 
 @section('content')
 
+    @php
+        // True when user came from Pending Receipts → Receive Goods
+        $isPoLocked = !empty($selectedPurchaseOrderId);
+    @endphp
+
     <div class="container py-4">
 
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -74,81 +79,67 @@
 
 
                         {{-- GRN Number --}}
-<div class="col-md-4">
+                        <div class="col-md-4">
 
-    <div class="form-group">
+                            <div class="form-group">
 
-        <label>
-            GRN Number
-            <span class="text-danger">*</span>
-        </label>
+                                <label>
+                                    GRN Number
+                                    <span class="text-danger">*</span>
+                                </label>
 
-        {{-- GRN Number Mode --}}
-        <div class="mb-2">
+                                {{-- GRN Number Mode --}}
+                                <div class="mb-2">
 
-            <div class="custom-control custom-radio custom-control-inline">
+                                    <div class="custom-control custom-radio custom-control-inline">
 
-                <input type="radio"
-                    id="grn_mode_automatic"
-                    name="grn_mode"
-                    value="automatic"
-                    class="custom-control-input"
-                    {{ old('grn_mode', 'automatic') === 'automatic' ? 'checked' : '' }}>
+                                        <input type="radio" id="grn_mode_automatic" name="grn_mode"
+                                            value="automatic" class="custom-control-input"
+                                            {{ old('grn_mode', 'automatic') === 'automatic' ? 'checked' : '' }}>
 
-                <label class="custom-control-label"
-                    for="grn_mode_automatic">
-                    Automatic
-                </label>
+                                        <label class="custom-control-label" for="grn_mode_automatic">
+                                            Automatic
+                                        </label>
 
-            </div>
+                                    </div>
 
 
-            <div class="custom-control custom-radio custom-control-inline">
+                                    <div class="custom-control custom-radio custom-control-inline">
 
-                <input type="radio"
-                    id="grn_mode_manual"
-                    name="grn_mode"
-                    value="manual"
-                    class="custom-control-input"
-                    {{ old('grn_mode') === 'manual' ? 'checked' : '' }}>
+                                        <input type="radio" id="grn_mode_manual" name="grn_mode" value="manual"
+                                            class="custom-control-input"
+                                            {{ old('grn_mode') === 'manual' ? 'checked' : '' }}>
 
-                <label class="custom-control-label"
-                    for="grn_mode_manual">
-                    Manual
-                </label>
+                                        <label class="custom-control-label" for="grn_mode_manual">
+                                            Manual
+                                        </label>
 
-            </div>
+                                    </div>
 
-        </div>
+                                </div>
 
 
-        {{-- GRN Number Input --}}
-        <input type="text"
-            name="grn_number"
-            id="grn_number"
-            value="{{ old('grn_number', $grnNumber) }}"
-            data-generated-grn="{{ $grnNumber }}"
-            class="form-control @error('grn_number') is-invalid @enderror"
-            maxlength="50"
-            required>
+                                {{-- GRN Number Input --}}
+                                <input type="text" name="grn_number" id="grn_number"
+                                    value="{{ old('grn_number', $grnNumber) }}"
+                                    data-generated-grn="{{ $grnNumber }}"
+                                    class="form-control @error('grn_number') is-invalid @enderror" maxlength="50"
+                                    required>
 
-        <small id="grnHelp"
-            class="form-text text-muted">
-            Automatically generated GRN number.
-        </small>
+                                <small id="grnHelp" class="form-text text-muted">
+                                    Automatically generated GRN number.
+                                </small>
 
 
-        @error('grn_number')
+                                @error('grn_number')
+                                    <div class="invalid-feedback">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
 
-            <div class="invalid-feedback">
-                {{ $message }}
-            </div>
+                            </div>
 
-        @enderror
-
-    </div>
-
-</div>
+                        </div>
 
 
                         {{-- Purchase Order --}}
@@ -164,46 +155,47 @@
 
                                 </label>
 
-                                <select name="purchase_order_id" id="purchase_order_id"
-                                    class="form-control @error('purchase_order_id') is-invalid @enderror" required>
+                                {{--
+                                    When locked, the select is disabled (display only).
+                                    A disabled field is not submitted, so a hidden input
+                                    sends the value instead.
+                                --}}
+                                <select @if (!$isPoLocked) name="purchase_order_id" @endif
+                                    id="purchase_order_id"
+                                    class="form-control @error('purchase_order_id') is-invalid @enderror"
+                                    {{ $isPoLocked ? 'disabled' : 'required' }}>
 
                                     <option value="">
                                         Select Purchase Order
                                     </option>
 
                                     @foreach ($purchaseOrders as $purchaseOrder)
-                                        @php
+                                        <option value="{{ $purchaseOrder->id }}"
+                                            data-supplier-name="{{ $purchaseOrder->supplier->name ?? 'SUP' }}"
+                                            {{ (string) old('purchase_order_id', $selectedPurchaseOrderId ?? '') === (string) $purchaseOrder->id ? 'selected' : '' }}>
 
-                                            $supplierCode =
-                                                $purchaseOrder->supplier->code ??
-                                                ($purchaseOrder->supplier->name ?? 'SUPPLIER');
-                                        @endphp
+                                            {{ $purchaseOrder->po_number }}
+                                            -
+                                            {{ $purchaseOrder->supplier->name ?? '-' }}
 
-                                        <option
-            value="{{ $purchaseOrder->id }}"
-            {{
-                (string) old(
-                    'purchase_order_id',
-                    $selectedPurchaseOrderId ?? ''
-                )
-                ===
-                (string) $purchaseOrder->id
-                    ? 'selected'
-                    : ''
-            }}
-        >
-
-            {{ $purchaseOrder->po_number }}
-            -
-            {{ $purchaseOrder->supplier->name ?? '-' }}
-
-        </option>
+                                        </option>
                                     @endforeach
 
                                 </select>
 
+                                @if ($isPoLocked)
+                                    <input type="hidden" name="purchase_order_id"
+                                        value="{{ old('purchase_order_id', $selectedPurchaseOrderId) }}">
+
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-lock mr-1"></i>
+                                        Locked from Pending Receipts.
+                                        <a href="{{ route('goods-receipts.create') }}">Change PO</a>
+                                    </small>
+                                @endif
+
                                 @error('purchase_order_id')
-                                    <div class="invalid-feedback">
+                                    <div class="invalid-feedback d-block">
                                         {{ $message }}
                                     </div>
                                 @enderror
@@ -252,8 +244,8 @@
 
                                 <input type="text" name="supplier_reference" id="supplier_reference"
                                     value="{{ old('supplier_reference') }}"
-                                    class="form-control @error('supplier_reference') is-invalid @enderror" maxlength="100"
-                                    placeholder="Auto-generated, but you can change it">
+                                    class="form-control @error('supplier_reference') is-invalid @enderror"
+                                    maxlength="100" placeholder="Auto-generated, but you can change it">
 
                                 <small class="form-text text-muted">
 
@@ -316,168 +308,119 @@
         </form>
 
     </div>
-   @push('scripts')
-    <script>
-    $(document).ready(function () {
 
-        const purchaseOrderSelect = document.getElementById('purchase_order_id');
-        const receiptDateInput = document.getElementById('receipt_date');
-        const supplierReferenceInput = document.getElementById('supplier_reference');
-        const referenceSequence = @json($referenceSequence);
-        /*
-|--------------------------------------------------------------------------
-| GRN Number - Automatic / Manual
-|--------------------------------------------------------------------------
-*/
+    @push('scripts')
+        <script>
+            $(document).ready(function() {
 
-const grnNumberInput =
-    document.getElementById('grn_number');
+                const purchaseOrderSelect = document.getElementById('purchase_order_id');
+                const receiptDateInput = document.getElementById('receipt_date');
+                const supplierReferenceInput = document.getElementById('supplier_reference');
+                const referenceSequence = @json($referenceSequence);
 
-const automaticGrnRadio =
-    document.getElementById('grn_mode_automatic');
+                /*
+                |--------------------------------------------------------------------------
+                | GRN Number - Automatic / Manual
+                |--------------------------------------------------------------------------
+                */
 
-const manualGrnRadio =
-    document.getElementById('grn_mode_manual');
+                const grnNumberInput = document.getElementById('grn_number');
+                const automaticGrnRadio = document.getElementById('grn_mode_automatic');
+                const manualGrnRadio = document.getElementById('grn_mode_manual');
+                const grnHelp = document.getElementById('grnHelp');
+                const generatedGrn = grnNumberInput.dataset.generatedGrn;
 
-const grnHelp =
-    document.getElementById('grnHelp');
+                function updateGrnMode() {
 
-const generatedGrn =
-    grnNumberInput.dataset.generatedGrn;
+                    // Automatic
+                    if (automaticGrnRadio.checked) {
 
+                        grnNumberInput.value = generatedGrn;
+                        grnNumberInput.readOnly = true;
+                        grnHelp.textContent = 'Automatically generated GRN number.';
 
-/*
-|--------------------------------------------------------------------------
-| Update GRN Mode
-|--------------------------------------------------------------------------
-*/
+                        return;
+                    }
 
-function updateGrnMode() {
+                    // Manual
+                    grnNumberInput.readOnly = false;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Automatic
-    |--------------------------------------------------------------------------
-    */
+                    // Clear the automatic number only when it is still the generated value
+                    if (grnNumberInput.value === generatedGrn) {
+                        grnNumberInput.value = '';
+                    }
 
-    if (automaticGrnRadio.checked) {
+                    grnHelp.textContent =
+                        'Enter the GRN number manually. Duplicate GRN numbers are not allowed.';
 
-        grnNumberInput.value =
-            generatedGrn;
-
-        grnNumberInput.readOnly =
-            true;
-
-        grnHelp.textContent =
-            'Automatically generated GRN number.';
-
-        return;
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Manual
-    |--------------------------------------------------------------------------
-    */
-
-    grnNumberInput.readOnly =
-        false;
-
-    /*
-     * Clear the automatic number only when
-     * it is still the generated value.
-     */
-    if (
-        grnNumberInput.value === generatedGrn
-    ) {
-        grnNumberInput.value = '';
-    }
-
-    grnHelp.textContent =
-        'Enter the GRN number manually. Duplicate GRN numbers are not allowed.';
-
-    grnNumberInput.focus();
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| GRN Mode Change
-|--------------------------------------------------------------------------
-*/
-
-automaticGrnRadio.addEventListener(
-    'change',
-    updateGrnMode
-);
-
-manualGrnRadio.addEventListener(
-    'change',
-    updateGrnMode
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| Initial GRN State
-|--------------------------------------------------------------------------
-*/
-
-updateGrnMode();
-
-        // Once the user manually edits Supplier Reference, don't overwrite it
-        // just because the date changes.
-        let supplierReferenceManuallyEdited = false;
-
-        supplierReferenceInput.addEventListener('input', function () {
-            supplierReferenceManuallyEdited = true;
-        });
-
-        function generateSupplierReference(force = false) {
-
-            if (supplierReferenceManuallyEdited && !force) {
-                return;
-            }
-
-            const selectedOption = purchaseOrderSelect.options[purchaseOrderSelect.selectedIndex];
-
-            if (!selectedOption || !selectedOption.value) {
-                if (!supplierReferenceManuallyEdited) {
-                    supplierReferenceInput.value = '';
+                    grnNumberInput.focus();
                 }
-                return;
-            }
 
-            let supplierName = selectedOption.dataset.supplierName || 'SUP';
-            supplierName = supplierName.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-            const supplierPrefix = supplierName.substring(0, 3);
+                automaticGrnRadio.addEventListener('change', updateGrnMode);
+                manualGrnRadio.addEventListener('change', updateGrnMode);
 
-            const receiptDate = receiptDateInput.value;
-            if (!receiptDate) return;
+                // Initial GRN state
+                updateGrnMode();
 
-            const formattedDate = receiptDate.replace(/-/g, '');
 
-            supplierReferenceInput.value = supplierPrefix + '-' + formattedDate + '-' + referenceSequence;
-        }
+                /*
+                |--------------------------------------------------------------------------
+                | Supplier Reference
+                |--------------------------------------------------------------------------
+                */
 
-        // Select2 fires change through jQuery, not native DOM events.
-        $(purchaseOrderSelect).on('change select2:select select2:clear', function () {
-            supplierReferenceManuallyEdited = false;
-            generateSupplierReference(true);
-        });
+                // Once the user manually edits Supplier Reference, don't overwrite it
+                // just because the date changes.
+                let supplierReferenceManuallyEdited = false;
 
-        $(receiptDateInput).on('change', function () {
-            generateSupplierReference();
-        });
+                supplierReferenceInput.addEventListener('input', function() {
+                    supplierReferenceManuallyEdited = true;
+                });
 
-        // Initial load (e.g. after a validation error with old() repopulated PO)
-        if (purchaseOrderSelect.value && !supplierReferenceInput.value) {
-            generateSupplierReference(true);
-        }
+                function generateSupplierReference(force = false) {
 
-    });
-    </script>
+                    if (supplierReferenceManuallyEdited && !force) {
+                        return;
+                    }
+
+                    const selectedOption = purchaseOrderSelect.options[purchaseOrderSelect.selectedIndex];
+
+                    if (!selectedOption || !selectedOption.value) {
+                        if (!supplierReferenceManuallyEdited) {
+                            supplierReferenceInput.value = '';
+                        }
+                        return;
+                    }
+
+                    let supplierName = selectedOption.dataset.supplierName || 'SUP';
+                    supplierName = supplierName.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    const supplierPrefix = supplierName.substring(0, 3);
+
+                    const receiptDate = receiptDateInput.value;
+                    if (!receiptDate) return;
+
+                    const formattedDate = receiptDate.replace(/-/g, '');
+
+                    supplierReferenceInput.value = supplierPrefix + '-' + formattedDate + '-' + referenceSequence;
+                }
+
+                // Select2 fires change through jQuery, not native DOM events.
+                $(purchaseOrderSelect).on('change select2:select select2:clear', function() {
+                    supplierReferenceManuallyEdited = false;
+                    generateSupplierReference(true);
+                });
+
+                $(receiptDateInput).on('change', function() {
+                    generateSupplierReference();
+                });
+
+                // Initial load (PO preselected from Pending Receipts, or old() after a validation error)
+                if (purchaseOrderSelect.value && !supplierReferenceInput.value) {
+                    generateSupplierReference(true);
+                }
+
+            });
+        </script>
     @endpush
 
 @endsection

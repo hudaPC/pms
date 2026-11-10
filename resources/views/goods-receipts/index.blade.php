@@ -53,6 +53,42 @@
 
                 </h3>
 
+                {{-- Search by PO Number --}}
+                <div class="card-tools">
+
+                    <form method="GET" action="{{ route('goods-receipts.index') }}">
+
+                        {{-- Keep the History search when searching Pending Receipts --}}
+                        @if (request()->filled('grn_search'))
+                            <input type="hidden" name="grn_search" value="{{ request('grn_search') }}">
+                        @endif
+
+                        <div class="input-group input-group-sm" style="width: 280px;">
+
+                            <input type="text" name="pending_search" class="form-control"
+                                placeholder="Search PO Number" value="{{ request('pending_search') }}">
+
+                            <div class="input-group-append">
+
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="fas fa-search"></i>
+                                </button>
+
+                                @if (request()->filled('pending_search'))
+                                    <a href="{{ route('goods-receipts.index', request()->except('pending_search', 'page')) }}"
+                                        class="btn btn-secondary" title="Reset">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                @endif
+
+                            </div>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
             </div>
 
 
@@ -111,8 +147,7 @@
 
                         <tbody>
 
-                            @forelse ($pendingPurchaseOrders
-                                                            as $purchaseOrder)
+                            @forelse ($pendingPurchaseOrders as $purchaseOrder)
                                 <tr>
 
                                     <td>
@@ -230,9 +265,13 @@
 
                                     <td colspan="10" class="text-center text-muted py-4">
 
-                                        <i class="fas fa-check-circle text-success mr-1"></i>
-
-                                        No pending supplier receipts.
+                                        @if (request()->filled('pending_search'))
+                                            <i class="fas fa-search mr-1"></i>
+                                            No pending receipts found for "{{ request('pending_search') }}".
+                                        @else
+                                            <i class="fas fa-check-circle text-success mr-1"></i>
+                                            No pending supplier receipts.
+                                        @endif
 
                                     </td>
 
@@ -266,6 +305,42 @@
                     Goods Receipt History
 
                 </h3>
+
+                {{-- Search by GRN Number --}}
+                <div class="card-tools">
+
+                    <form method="GET" action="{{ route('goods-receipts.index') }}">
+
+                        {{-- Keep the Pending Receipts search when searching History --}}
+                        @if (request()->filled('pending_search'))
+                            <input type="hidden" name="pending_search" value="{{ request('pending_search') }}">
+                        @endif
+
+                        <div class="input-group input-group-sm" style="width: 280px;">
+
+                            <input type="text" name="grn_search" class="form-control"
+                                placeholder="Search GRN Number" value="{{ request('grn_search') }}">
+
+                            <div class="input-group-append">
+
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i>
+                                </button>
+
+                                @if (request()->filled('grn_search'))
+                                    <a href="{{ route('goods-receipts.index', request()->except('grn_search', 'page')) }}"
+                                        class="btn btn-secondary" title="Reset">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                @endif
+
+                            </div>
+
+                        </div>
+
+                    </form>
+
+                </div>
 
             </div>
 
@@ -437,7 +512,11 @@
 
                                     <td colspan="10" class="text-center text-muted py-5">
 
-                                        No Goods Receipt history found.
+                                        @if (request()->filled('grn_search'))
+                                            No Goods Receipt found for "{{ request('grn_search') }}".
+                                        @else
+                                            No Goods Receipt history found.
+                                        @endif
 
                                     </td>
 

@@ -135,6 +135,7 @@ class GoodsReceiptController extends Controller
     );
 }
 
+
     /*
     |--------------------------------------------------------------------------
     | Create Goods Receipt
